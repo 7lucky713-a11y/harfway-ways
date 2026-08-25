@@ -1,6 +1,7 @@
 ---
 import { readFile } from 'node:fs/promises';
-const source = await readFile(new URL('../../snapshot/index.html', import.meta.url), 'utf8');
+import { resolve } from 'node:path';
+const source = await readFile(resolve(process.cwd(), 'snapshot/index.html'), 'utf8');
 const head = source.match(/<head>([\s\S]*?)<\/head>/i)?.[1] ?? '';
 const body = source.match(/<body>([\s\S]*?)<\/body>/i)?.[1] ?? source;
 ---
