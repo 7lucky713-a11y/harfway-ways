@@ -1,0 +1,14 @@
+---
+const SOURCE = 'https://harfway-playback.vercel.app/archive/';
+const response = await fetch(SOURCE, { headers: { 'user-agent': 'HARF-WAY Git bootstrap' } });
+if (!response.ok) throw new Error(`Failed to fetch current WAYS archive: ${response.status}`);
+let source = await response.text();
+source = source.replace("const API='/api/games';", "const API='https://harfway-playback.vercel.app/api/games';");
+const head = source.match(/<head>([\s\S]*?)<\/head>/i)?.[1] ?? '';
+const body = source.match(/<body>([\s\S]*?)<\/body>/i)?.[1] ?? source;
+---
+<!doctype html>
+<html lang="ja">
+  <head><Fragment set:html={head} /></head>
+  <body><Fragment set:html={body} /></body>
+</html>
