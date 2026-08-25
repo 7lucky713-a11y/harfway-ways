@@ -1,0 +1,33 @@
+name: Snapshot current WAYS
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/snapshot-production.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/git-source
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Snapshot production HTML
+        run: node scripts/snapshot-production.mjs
+      - name: Commit snapshot to feature branch
+        run: |
+          git config user.name "harfway-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add snapshot
+          git diff --cached --quiet && exit 0
+          git commit -m "chore: snapshot current production WAYS"
+          git push origin HEAD:feature/git-source
