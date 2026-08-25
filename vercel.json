@@ -1,3 +1,13 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json"
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/api/track",
+      "destination": "https://ways-analytics-staging.vercel.app/api/track"
+    },
+    {
+      "source": "/api/analytics",
+      "destination": "https://ways-analytics-staging.vercel.app/api/analytics"
+    }
+  ]
 }
