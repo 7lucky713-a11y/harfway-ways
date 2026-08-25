@@ -1,9 +1,6 @@
 ---
-const SOURCE = 'https://harfway-playback.vercel.app/';
-const response = await fetch(SOURCE, { headers: { 'user-agent': 'HARF-WAY Git bootstrap' } });
-if (!response.ok) throw new Error(`Failed to fetch current WAYS: ${response.status}`);
-let source = await response.text();
-source = source.replace("const API='/api/games';", "const API='https://harfway-playback.vercel.app/api/games';");
+import { readFile } from 'node:fs/promises';
+const source = await readFile(new URL('../../snapshot/index.html', import.meta.url), 'utf8');
 const head = source.match(/<head>([\s\S]*?)<\/head>/i)?.[1] ?? '';
 const body = source.match(/<body>([\s\S]*?)<\/body>/i)?.[1] ?? source;
 ---
