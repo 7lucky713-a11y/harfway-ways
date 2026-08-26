@@ -2,7 +2,12 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 const raw = await readFile(resolve(process.cwd(), 'snapshot/archive/index.html'), 'utf8');
-const source = raw.replaceAll('https://harfway-playback.vercel.app/api/games', '/api/games-live');
+const source = raw
+  .replaceAll('https://harfway-playback.vercel.app/api/games', '/api/games-live')
+  .replace(/const API\s*=\s*['"]\/api\/games['"]\s*;/g, "const API='/api/games-live';");
+if (/const API\s*=\s*['"]\/api\/games['"]\s*;/.test(source)) {
+  throw new Error('Legacy /api/games binding remains in WAYS archive frontend');
+}
 const head = source.match(/<head>([\s\S]*?)<\/head>/i)?.[1] ?? '';
 const body = source.match(/<body>([\s\S]*?)<\/body>/i)?.[1] ?? source;
 ---
