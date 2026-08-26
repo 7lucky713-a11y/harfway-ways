@@ -5,7 +5,6 @@ const ALLOWED_EVENTS = new Set([
   'store_click','article_click','tag_click'
 ]);
 const STAGING_TRACK_URL = 'https://ways-analytics-staging.vercel.app/api/track';
-const FINAL_PROD_PREVIEW_BRANCH = 'feature/prod-analytics-preview';
 
 const cleanText = (value, max = 128) => {
   if (value == null) return null;
@@ -19,9 +18,7 @@ const cleanNumber = (value, min = 0, max = Number.MAX_SAFE_INTEGER) => {
   return Math.min(max, Math.max(min, n));
 };
 
-const shouldUseProductionDb = () =>
-  process.env.VERCEL_ENV === 'production' ||
-  process.env.VERCEL_GIT_COMMIT_REF === FINAL_PROD_PREVIEW_BRANCH;
+const shouldUseProductionDb = () => process.env.VERCEL_ENV === 'production';
 
 async function proxyToStaging(req, res) {
   try {
