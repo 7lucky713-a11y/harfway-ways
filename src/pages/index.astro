@@ -1,0 +1,12 @@
+---
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+const source = await readFile(resolve(process.cwd(), 'snapshot/index.html'), 'utf8');
+const head = source.match(/<head>([\s\S]*?)<\/head>/i)?.[1] ?? '';
+const body = source.match(/<body>([\s\S]*?)<\/body>/i)?.[1] ?? source;
+---
+<!doctype html>
+<html lang="ja">
+  <head><Fragment set:html={head} /></head>
+  <body><Fragment set:html={body} /><script is:inline src="/ways-analytics.js"></script></body>
+</html>
