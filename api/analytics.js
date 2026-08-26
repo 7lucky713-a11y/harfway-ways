@@ -1,13 +1,38 @@
 import { neon } from '@neondatabase/serverless';
 
+const STAGING_ANALYTICS_URL = 'https://ways-analytics-staging.vercel.app/api/analytics';
+const FINAL_PROD_PREVIEW_BRANCH = 'feature/prod-analytics-preview';
+
 const intParam = (value, fallback, min, max) => {
   const n = Number.parseInt(String(value ?? ''), 10);
   return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
 };
 
+const shouldUseProductionDb = () =>
+  process.env.VERCEL_ENV === 'production' ||
+  process.env.VERCEL_GIT_COMMIT_REF === FINAL_PROD_PREVIEW_BRANCH;
+
+async function proxyToStaging(req, res) {
+  try {
+    const params = new URLSearchParams();
+    if (req.query?.days != null) params.set('days', String(req.query.days));
+    if (req.query?.device != null) params.set('device', String(req.query.device));
+    const url = `${STAGING_ANALYTICS_URL}${params.size ? `?${params.toString()}` : ''}`;
+    const upstream = await fetch(url, { headers: { accept: 'application/json' } });
+    const text = await upstream.text();
+    res.status(upstream.status);
+    try { return res.json(JSON.parse(text)); } catch { return res.end(text); }
+  } catch (error) {
+    console.error('[ways-analytics-staging-proxy]', error?.message || error);
+    return res.status(502).json({ ok: false, error: 'staging_proxy_failed' });
+  }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'method_not_allowed' });
+
+  if (!shouldUseProductionDb()) return proxyToStaging(req, res);
 
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) return res.status(503).json({ ok: false, error: 'database_not_configured' });
