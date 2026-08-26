@@ -4,6 +4,8 @@ const ALLOWED_EVENTS = new Set([
   'page_view','view','select','play','p25','p50','p75','complete','view_end',
   'store_click','article_click','tag_click'
 ]);
+const STAGING_TRACK_URL = 'https://ways-analytics-staging.vercel.app/api/track';
+const FINAL_PROD_PREVIEW_BRANCH = 'feature/prod-analytics-preview';
 
 const cleanText = (value, max = 128) => {
   if (value == null) return null;
@@ -17,10 +19,33 @@ const cleanNumber = (value, min = 0, max = Number.MAX_SAFE_INTEGER) => {
   return Math.min(max, Math.max(min, n));
 };
 
+const shouldUseProductionDb = () =>
+  process.env.VERCEL_ENV === 'production' ||
+  process.env.VERCEL_GIT_COMMIT_REF === FINAL_PROD_PREVIEW_BRANCH;
+
+async function proxyToStaging(req, res) {
+  try {
+    const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
+    const upstream = await fetch(STAGING_TRACK_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body
+    });
+    const text = await upstream.text();
+    res.status(upstream.status);
+    try { return res.json(JSON.parse(text)); } catch { return res.end(text); }
+  } catch (error) {
+    console.error('[ways-track-staging-proxy]', error?.message || error);
+    return res.status(502).json({ ok: false, error: 'staging_proxy_failed' });
+  }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'method_not_allowed' });
+
+  if (!shouldUseProductionDb()) return proxyToStaging(req, res);
 
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) return res.status(503).json({ ok: false, error: 'database_not_configured' });
