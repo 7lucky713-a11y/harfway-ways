@@ -42,3 +42,4 @@ if (metrics.status !== 200 || metrics.body?.ok !== true) {
 
 console.log(`[verify-release] games-live OK source=${games.body.source} count=${entries.length} flywrench=${hasFlywrench}`);
 console.log(`[verify-release] analytics OK days=${metrics.body?.days ?? 7}`);
+// rerun after Preview env update
