@@ -1,16 +1,13 @@
 import { neon } from '@neondatabase/serverless';
 
 const STAGING_ANALYTICS_URL = 'https://ways-analytics-staging.vercel.app/api/analytics';
-const FINAL_PROD_PREVIEW_BRANCH = 'feature/prod-analytics-preview';
 
 const intParam = (value, fallback, min, max) => {
   const n = Number.parseInt(String(value ?? ''), 10);
   return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
 };
 
-const shouldUseProductionDb = () =>
-  process.env.VERCEL_ENV === 'production' ||
-  process.env.VERCEL_GIT_COMMIT_REF === FINAL_PROD_PREVIEW_BRANCH;
+const shouldUseProductionDb = () => process.env.VERCEL_ENV === 'production';
 
 async function proxyToStaging(req, res) {
   try {
