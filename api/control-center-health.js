@@ -1,5 +1,13 @@
 const HUB_API='https://harfway-vercel-hub.vercel.app/api/entries';
 
+// Snapshot of HUB entries that existed when automatic sync was introduced.
+// Any new HUB id added after this point is treated as an AUTO SYNC candidate.
+const BASELINE_HUB_IDS=new Set([
+  'hub','play','scr','show','ads','clean','mochikomi-02','editors-pick','tv','pltv','petit',
+  'yorimichi-editor','scrap-extractor','design-stock','factory','zine-editor','todays-flyer',
+  'db-importer','kirehashi-read-watch'
+]);
+
 const CORE_CHECKS=[
   {id:'hub',name:'VERCEL HUB',kind:'ops',url:'https://harfway-vercel-hub.vercel.app/'},
   {id:'ways',name:'WAYS',kind:'publish',url:'https://harfway-playback.vercel.app/'},
@@ -24,13 +32,35 @@ async function timedFetch(url,opts={}){
   const timer=setTimeout(()=>ctrl.abort(),6500);
   const started=Date.now();
   try{
-    let res=await fetch(url,{method:'HEAD',redirect:'follow',signal:ctrl.signal,headers:{'user-agent':'HARF-WAY-Control-Center/0.2'},...opts});
+    let res=await fetch(url,{method:'HEAD',redirect:'follow',signal:ctrl.signal,headers:{'user-agent':'HARF-WAY-Control-Center/0.3'},...opts});
     if(res.status===405||res.status===501){
-      res=await fetch(url,{method:'GET',redirect:'follow',signal:ctrl.signal,headers:{'user-agent':'HARF-WAY-Control-Center/0.2'},...opts});
+      res=await fetch(url,{method:'GET',redirect:'follow',signal:ctrl.signal,headers:{'user-agent':'HARF-WAY-Control-Center/0.3'},...opts});
     }
     return {ok:res.ok,status:res.status,latencyMs:Date.now()-started,finalUrl:res.url||url};
   }catch(error){
     return {ok:false,status:0,latencyMs:Date.now()-started,error:error?.name==='AbortError'?'timeout':String(error?.message||error)};
+  }finally{clearTimeout(timer)}
+}
+
+function manifestUrl(item={}){
+  const raw=String(item.admin_url||item.public_url||'').trim();
+  if(!raw)return '';
+  try{return new URL('/harfway-tool.json',raw).toString()}catch{return ''}
+}
+
+async function withManifest(item={}){
+  const url=manifestUrl(item);
+  if(!url)return {...item,sync_source:'hub',manifest:null};
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(),2500);
+  try{
+    const response=await fetch(url,{cache:'no-store',signal:ctrl.signal,headers:{'user-agent':'HARF-WAY-Control-Center/0.3'}});
+    if(!response.ok)return {...item,sync_source:'hub',manifest:null};
+    const manifest=await response.json().catch(()=>null);
+    if(!manifest||manifest.harfway!==true)return {...item,sync_source:'hub',manifest:null};
+    return {...item,sync_source:'manifest',manifest};
+  }catch{
+    return {...item,sync_source:'hub',manifest:null};
   }finally{clearTimeout(timer)}
 }
 
@@ -39,18 +69,26 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
   const checkedAt=new Date().toISOString();
   const [hubResult,checks]=await Promise.all([
-    fetch(HUB_API,{headers:{'user-agent':'HARF-WAY-Control-Center/0.2'}})
+    fetch(HUB_API,{headers:{'user-agent':'HARF-WAY-Control-Center/0.3'}})
       .then(async r=>({ok:r.ok,status:r.status,data:r.ok?await r.json():null}))
       .catch(error=>({ok:false,status:0,error:String(error?.message||error)})),
     Promise.all(CORE_CHECKS.map(async item=>({...item,...await timedFetch(item.url)})))
   ]);
   const hubItems=Array.isArray(hubResult?.data?.items)?hubResult.data.items:[];
+  const autoCandidates=hubItems.filter(item=>!BASELINE_HUB_IDS.has(String(item?.id||'')));
+  const autoItems=await Promise.all(autoCandidates.slice(0,20).map(withManifest));
   const healthy=checks.filter(x=>x.ok).length;
   return res.status(200).json({
     ok:true,
     checkedAt,
-    summary:{healthy,total:checks.length,hubEntries:hubItems.length},
+    summary:{healthy,total:checks.length,hubEntries:hubItems.length,autoSync:autoItems.length},
     checks,
-    hub:{connected:!!hubResult.ok,status:hubResult.status||0,items:hubItems}
+    hub:{
+      connected:!!hubResult.ok,
+      status:hubResult.status||0,
+      items:hubItems,
+      autoItems,
+      baselineCount:BASELINE_HUB_IDS.size
+    }
   });
 }
