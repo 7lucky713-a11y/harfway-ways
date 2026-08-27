@@ -27,8 +27,10 @@ function cleanBodyText(value=''){
     .split(/\n+/)
     .map(x=>x.trim())
     .filter(Boolean)
-    .filter(line=>!(/\$\{[^}]+\}|escapeHTML\s*\(|\bgame\.(title|steam|comment|developer|store|url)\b|\bEDITOR'S PICK\b.*\$\{/i.test(line)))
+    .filter(line=>!(/\$\{[^}]*\}|escapeHTML\s*\(|\bgame\.(title|steam|comment|developer|store|url)\b|\bEDITOR['’]?S PICK\b|\bEDITOR.?S PICK\b.*(?:\$\{|game\.)/i.test(line)))
     .join('\n\n')
+    .replace(/EDITOR['’]?S PICK\s*\$\{[^}]*\}/gi,' ')
+    .replace(/\$\{\s*escapeHTML\([^)]*\)\s*\}/gi,' ')
     .replace(/\n{3,}/g,'\n\n')
     .trim();
 }
@@ -62,18 +64,52 @@ function hintConfidence(source=''){
   if(source.startsWith('heading-'))return 78;
   return 70;
 }
+function hintKey(value=''){
+  return cleanCandidate(value).normalize('NFKC').toLowerCase().replace(/[\s:：・!！?？'"“”‘’()（）\[\]【】_\-–—～~]+/g,'');
+}
+function sameStore(a='',b=''){
+  if(!a||!b)return false;
+  try{
+    const ua=new URL(a),ub=new URL(b);
+    if(ua.hostname!==ub.hostname)return false;
+    const steamA=ua.pathname.match(/\/app\/(\d+)/)?.[1]||'';
+    const steamB=ub.pathname.match(/\/app\/(\d+)/)?.[1]||'';
+    if(steamA&&steamB)return steamA===steamB;
+    return ua.origin+ua.pathname.replace(/\/$/,'')===ub.origin+ub.pathname.replace(/\/$/,'');
+  }catch{return a===b}
+}
+function looksSameGame(a,b){
+  const ka=hintKey(a?.name),kb=hintKey(b?.name);
+  if(!ka||!kb)return false;
+  if(ka===kb)return true;
+  if(sameStore(a?.url,b?.url))return true;
+  const shorter=ka.length<=kb.length?ka:kb;
+  const longer=ka.length>kb.length?ka:kb;
+  if(shorter.length>=5&&longer.includes(shorter))return true;
+  return false;
+}
+function mergeHint(prev,item){
+  const preferred=(item.confidence>prev.confidence)||(item.confidence===prev.confidence&&item.name.length>prev.name.length)?item:prev;
+  const other=preferred===item?prev:item;
+  return {
+    ...other,
+    ...preferred,
+    url:preferred.url||other.url||'',
+    confidence:Math.max(Number(prev.confidence||0),Number(item.confidence||0)),
+    sources:[...new Set([...(prev.sources||[prev.source]).filter(Boolean),...(item.sources||[item.source]).filter(Boolean)])]
+  };
+}
 function uniqueHints(items){
-  const seen=new Map();
+  const result=[];
   for(const raw of items){
     const name=cleanCandidate(raw.name||'');
     if(!name||name.length<2||name.length>120)continue;
-    const key=name.normalize('NFKC').toLowerCase().replace(/[\s:：・!！?？'"“”‘’()（）\[\]【】_\-–—～~]+/g,'');
-    if(!key)continue;
-    const item={...raw,name,confidence:Number(raw.confidence||hintConfidence(raw.source))};
-    const prev=seen.get(key);
-    if(!prev||item.confidence>prev.confidence||(!prev.url&&item.url))seen.set(key,item);
+    const item={...raw,name,confidence:Number(raw.confidence||hintConfidence(raw.source)),sources:[raw.source].filter(Boolean)};
+    const index=result.findIndex(prev=>looksSameGame(prev,item));
+    if(index>=0)result[index]=mergeHint(result[index],item);
+    else result.push(item);
   }
-  return [...seen.values()].sort((a,b)=>b.confidence-a.confidence).slice(0,120);
+  return result.sort((a,b)=>b.confidence-a.confidence).slice(0,120);
 }
 function addTitleHints(items,title){
   const t=cleanCandidate(title);
@@ -155,7 +191,7 @@ export default async function handler(req,res){
   try{
     const raw=String(req.query?.url||'').trim();if(!raw)return res.status(400).json({ok:false,error:'url_required'});
     const url=new URL(raw);if(!/(^|\.)harf-way\.com$/i.test(url.hostname))return res.status(400).json({ok:false,error:'harf_way_url_only'});
-    const response=await fetch(url.toString(),{headers:{'user-agent':'HARF-WAY Archive Salvager/0.5'},redirect:'follow'});
+    const response=await fetch(url.toString(),{headers:{'user-agent':'HARF-WAY Archive Salvager/0.7'},redirect:'follow'});
     if(!response.ok)return res.status(502).json({ok:false,error:`source_${response.status}`});
     const html=await response.text();const finalUrl=response.url||url.toString();
     const title=pick(html,[/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i,/<title[^>]*>([\s\S]*?)<\/title>/i]);
@@ -163,7 +199,7 @@ export default async function handler(req,res){
     const rawBody=pick(html,[/<article[^>]*>([\s\S]*?)<\/article>/i,/<main[^>]*>([\s\S]*?)<\/main>/i])||stripHtml(html);
     const body=cleanBodyText(rawBody);
     const images=extractImages(html,finalUrl);const featuredImage=images.find(x=>x.featured)?.url||'';
-    const nameHints=extractNameHints(html,finalUrl,title);const storeLinks=nameHints.filter(x=>x.url).map(x=>({name:x.name,url:x.url,source:x.source,confidence:x.confidence}));
+    const nameHints=extractNameHints(html,finalUrl,title);const storeLinks=nameHints.filter(x=>x.url).map(x=>({name:x.name,url:x.url,source:x.source,sources:x.sources,confidence:x.confidence}));
     return res.status(200).json({ok:true,article:{url:finalUrl,title,date,text:body.slice(0,150000),featuredImage,images,nameHints,storeLinks}});
   }catch(error){console.error('[archive-fetch]',error);return res.status(500).json({ok:false,error:'archive_fetch_failed'});}
 }
