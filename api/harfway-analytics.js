@@ -60,13 +60,15 @@ export default async function handler(req,res){
     }:null;
     const ga4For=name=>ga4.ok?ga4.services?.[name]||null:null;
     const ga4Period=ga4.ok?ga4.period:`last_${days}_days`;
+    const showcaseGa4=ga4Summary(ga4For('showcase'));
+    const showcaseReporting=showcase.ok||ga4.ok;
 
     return res.status(200).json({
       ok:true,
       generatedAt:new Date().toISOString(),
       services:{
         ways:{connected:ways.ok,reportingConnected:ways.ok,reportingProvider:'custom',collection:collection('ways'),period:`last_${days}_days`,status:ways.status,summary:waysSummary,ga4Summary:ga4Summary(ga4For('ways')),games:waysGames,devices:ways.data?.devices||[],error:ways.ok?null:ways.data?.error},
-        showcase:{connected:showcase.ok,reportingConnected:showcase.ok,reportingProvider:'custom',collection:collection('showcase'),period:'all_time',status:showcase.status,error:showcase.ok?null:(showcase.data?.error||'showcase_unavailable'),summary:showcaseSummary,ga4Summary:ga4Summary(ga4For('showcase')),games:showcase.data?.games||[]},
+        showcase:{connected:showcaseReporting,reportingConnected:showcaseReporting,deepReportingConnected:showcase.ok,reportingProvider:showcase.ok?'custom+ga4_data_api':'ga4_data_api',collection:collection('showcase'),period:showcase.ok?'all_time':ga4Period,status:showcase.ok?showcase.status:(ga4.ok?200:showcase.status),error:showcaseReporting?null:(showcase.data?.error||ga4.reason||'showcase_unavailable'),summary:showcase.ok?showcaseSummary:showcaseGa4,ga4Summary:showcaseGa4,games:showcase.ok?(showcase.data?.games||[]):[]},
         playlist:{connected:ga4.ok,reportingConnected:ga4.ok,reportingProvider:'ga4_data_api',collection:collection('playlist'),period:ga4Period,status:ga4.ok?200:null,reason:ga4.ok?null:ga4.reason,summary:ga4Summary(ga4For('playlist'))},
         yorimichi:{connected:ga4.ok,reportingConnected:ga4.ok,reportingProvider:'ga4_data_api',collection:collection('yorimichi'),period:ga4Period,status:ga4.ok?200:null,reason:ga4.ok?null:ga4.reason,summary:ga4Summary(ga4For('yorimichi'))},
         zine:{connected:ga4.ok,reportingConnected:ga4.ok,reportingProvider:'ga4_data_api',collection:collection('zine'),period:ga4Period,status:ga4.ok?200:null,reason:ga4.ok?null:ga4.reason,summary:ga4Summary(ga4For('zine'))}
