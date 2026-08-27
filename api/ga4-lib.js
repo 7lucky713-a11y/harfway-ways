@@ -1,4 +1,3 @@
-// Preview redeploy marker: OIDC environment configured.
 import {getVercelOidcToken} from '@vercel/oidc';
 import {ExternalAccountClient} from 'google-auth-library';
 
@@ -31,21 +30,24 @@ function credentials(){
   return {propertyId,projectNumber,poolId,providerId,serviceAccountEmail,configured};
 }
 
-function audience(c){
+function providerResource(c){
+  return `//iam.googleapis.com/projects/${c.projectNumber}/locations/global/workloadIdentityPools/${c.poolId}/providers/${c.providerId}`;
+}
+
+function oidcAudience(c){
   return `https://iam.googleapis.com/projects/${c.projectNumber}/locations/global/workloadIdentityPools/${c.poolId}/providers/${c.providerId}`;
 }
 
 async function accessToken(c){
-  const gcpAudience=audience(c);
   const authClient=ExternalAccountClient.fromJSON({
     type:'external_account',
-    audience:gcpAudience,
+    audience:providerResource(c),
     subject_token_type:'urn:ietf:params:oauth:token-type:jwt',
     token_url:'https://sts.googleapis.com/v1/token',
-    service_account_impersonation_url:`https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${encodeURIComponent(c.serviceAccountEmail)}:generateAccessToken`,
+    service_account_impersonation_url:`https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${c.serviceAccountEmail}:generateAccessToken`,
     scopes:[SCOPE],
     subject_token_supplier:{
-      getSubjectToken:()=>getVercelOidcToken({audience:gcpAudience})
+      getSubjectToken:()=>getVercelOidcToken({audience:oidcAudience(c)})
     }
   });
   if(!authClient)throw new Error('gcp_external_account_client_unavailable');
@@ -115,6 +117,7 @@ export async function getGa4Summary(days=7){
     }
     return {ok:true,reason:null,config:ga4ConfigStatus(),period:`last_${Math.max(1,Math.min(365,Number(days)||7))}_days`,services};
   }catch(error){
+    console.error('[ga4-data-api]',error?.message||error);
     return {ok:false,reason:'ga4_data_api_error',message:error?.message||'ga4_data_api_error',status:error?.status||0,config:ga4ConfigStatus(),services:{}};
   }
 }
