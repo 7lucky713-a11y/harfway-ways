@@ -1,0 +1,293 @@
+---
+---
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>HARF-WAY ADS / Advertiser Portal</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background:#0a0c0f;
+        color:#f4f6f8;
+      }
+      * { box-sizing:border-box; }
+      body { margin:0; min-height:100vh; background:radial-gradient(circle at 18% 0%, #19202a 0, #0a0c0f 34rem); }
+      button,input { font:inherit; }
+      button { cursor:pointer; }
+      .shell { max-width:1180px; margin:0 auto; padding:28px 22px 72px; }
+      .topbar { display:flex; justify-content:space-between; align-items:center; gap:18px; margin-bottom:34px; }
+      .brand { display:flex; align-items:center; gap:12px; }
+      .mark { width:38px; height:38px; border-radius:12px; display:grid; place-items:center; background:#f3f5f7; color:#0a0c0f; font-weight:900; letter-spacing:-.08em; }
+      .brand-copy strong { display:block; font-size:13px; letter-spacing:.08em; }
+      .brand-copy span { display:block; margin-top:2px; font-size:11px; color:#7f8996; }
+      .preview { padding:7px 10px; border:1px solid #63532b; background:#211b0d; color:#e9c976; border-radius:999px; font-size:11px; font-weight:800; letter-spacing:.08em; }
+      .login-wrap { min-height:72vh; display:grid; place-items:center; }
+      .login-card { width:min(100%, 560px); border:1px solid #242b34; border-radius:26px; background:rgba(15,18,23,.92); padding:34px; box-shadow:0 24px 80px rgba(0,0,0,.35); }
+      .eyebrow { font-size:11px; letter-spacing:.16em; color:#7e8997; font-weight:800; }
+      h1 { margin:10px 0 12px; font-size:clamp(34px,6vw,58px); line-height:.98; letter-spacing:-.055em; }
+      .intro { color:#9da7b3; line-height:1.75; font-size:14px; }
+      .login-form { margin-top:26px; }
+      label { display:block; margin-bottom:8px; color:#8a95a2; font-size:11px; font-weight:700; letter-spacing:.08em; }
+      .code-row { display:flex; gap:10px; }
+      input { width:100%; border:1px solid #313a46; border-radius:13px; background:#0d1116; color:#f4f6f8; padding:14px 15px; outline:none; }
+      input:focus { border-color:#65758a; box-shadow:0 0 0 3px rgba(101,117,138,.12); }
+      .primary { border:0; border-radius:13px; padding:14px 18px; background:#f3f5f7; color:#0b0d10; font-weight:900; white-space:nowrap; }
+      .primary:disabled { opacity:.5; cursor:default; }
+      .login-message { min-height:20px; margin:10px 0 0; color:#7e8997; font-size:12px; }
+      .login-message.error { color:#ee9c9c; }
+      .demo-note { margin-top:22px; padding:14px 15px; border:1px dashed #343d49; border-radius:14px; color:#8994a1; font-size:12px; line-height:1.7; background:#0c1014; }
+      .demo-note code { color:#d8dee7; font-weight:800; }
+      .portal[hidden], .login-wrap[hidden] { display:none; }
+      .portal-head { display:flex; justify-content:space-between; gap:20px; align-items:flex-start; margin-bottom:26px; }
+      .portal-head h1 { font-size:clamp(36px,5vw,62px); margin-bottom:8px; }
+      .portal-head p { margin:0; color:#8f99a6; }
+      .portal-actions { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+      .ghost { border:1px solid #303844; background:#11161c; color:#d8dee7; border-radius:999px; padding:10px 14px; font-size:12px; font-weight:800; }
+      .notice { margin-bottom:18px; padding:14px 16px; border:1px solid #63532b; border-radius:14px; background:#1e190e; color:#dfc47c; font-size:12px; line-height:1.7; }
+      .notice[data-state="live"] { border-color:#2f5942; background:#101c15; color:#8fd2a8; }
+      .metrics { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:18px; }
+      .metric { border:1px solid #232a33; background:#10141a; border-radius:18px; padding:18px; }
+      .metric span { display:block; color:#74808f; font-size:10px; letter-spacing:.1em; font-weight:800; }
+      .metric strong { display:block; margin-top:8px; font-size:28px; letter-spacing:-.04em; }
+      .panel { border:1px solid #232a33; background:#10141a; border-radius:20px; overflow:hidden; }
+      .panel-head { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; padding:20px 20px 16px; border-bottom:1px solid #232a33; }
+      .panel-head h2 { margin:4px 0 0; font-size:21px; letter-spacing:-.02em; }
+      .panel-head p { margin:5px 0 0; color:#7f8996; font-size:12px; }
+      .table-wrap { overflow-x:auto; }
+      table { width:100%; min-width:920px; border-collapse:collapse; }
+      th,td { text-align:left; padding:15px 20px; border-bottom:1px solid #202730; font-size:13px; }
+      th { color:#707c8b; font-size:10px; letter-spacing:.08em; font-weight:800; }
+      td { color:#c3cbd5; }
+      tbody tr:last-child td { border-bottom:0; }
+      .campaign-name { color:#f1f3f6; font-weight:800; }
+      .campaign-id { display:block; margin-top:4px; color:#687482; font-size:10px; }
+      .status { display:inline-flex; padding:5px 8px; border:1px solid #344254; border-radius:999px; color:#aebaca; font-size:10px; font-weight:800; }
+      .status.live { border-color:#315844; background:#11231a; color:#8fd9aa; }
+      .progress { width:116px; height:6px; border-radius:999px; background:#242b34; overflow:hidden; }
+      .progress > i { display:block; height:100%; background:#d9dee6; border-radius:inherit; }
+      .progress-copy { margin-top:6px; color:#778391; font-size:10px; }
+      .empty { padding:44px 20px; text-align:center; color:#7f8996; }
+      .footer-note { margin-top:18px; color:#697482; font-size:11px; line-height:1.7; }
+      @media (max-width:900px) {
+        .metrics { grid-template-columns:repeat(2,1fr); }
+        .portal-head { flex-direction:column; }
+        .portal-actions { justify-content:flex-start; }
+      }
+      @media (max-width:620px) {
+        .shell { padding:20px 14px 50px; }
+        .topbar { margin-bottom:22px; }
+        .login-card { padding:24px 18px; border-radius:20px; }
+        .code-row { flex-direction:column; }
+        .primary { width:100%; }
+        .metrics { grid-template-columns:1fr 1fr; gap:8px; }
+        .metric { padding:14px; }
+        .metric strong { font-size:23px; }
+        .panel-head { flex-direction:column; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="mark">HW</div>
+          <div class="brand-copy"><strong>HARF-WAY ADS</strong><span>Advertiser Portal</span></div>
+        </div>
+        <span class="preview">PREVIEW V1</span>
+      </header>
+
+      <section class="login-wrap" id="login-wrap">
+        <div class="login-card">
+          <div class="eyebrow">FOR ADVERTISERS</div>
+          <h1>広告の結果を、<br />自分で確認。</h1>
+          <p class="intro">HARF-WAYに出稿した広告の配信状況、インプレッション、クリック、CTRを確認する広告主専用ページです。</p>
+          <form class="login-form" id="login-form">
+            <label for="access-code">ACCESS CODE</label>
+            <div class="code-row">
+              <input id="access-code" name="code" autocomplete="one-time-code" placeholder="広告主用アクセスコード" required />
+              <button class="primary" id="login-button" type="submit">マイページを開く</button>
+            </div>
+            <p class="login-message" id="login-message"></p>
+          </form>
+          <div class="demo-note">Preview確認用コード：<code>HARFWAY-DEMO</code><br />このコードはProductionでは無効になる設計です。</div>
+        </div>
+      </section>
+
+      <section class="portal" id="portal" hidden>
+        <div class="portal-head">
+          <div>
+            <div class="eyebrow">ADVERTISER DASHBOARD</div>
+            <h1 id="advertiser-name">—</h1>
+            <p>あなたのキャンペーンだけを表示しています。</p>
+          </div>
+          <div class="portal-actions">
+            <button class="ghost" id="csv-button" type="button">CSVを書き出す</button>
+            <button class="ghost" id="refresh-button" type="button">再読み込み</button>
+            <button class="ghost" id="logout-button" type="button">ログアウト</button>
+          </div>
+        </div>
+
+        <div class="notice" id="data-notice">データを確認しています…</div>
+
+        <div class="metrics">
+          <div class="metric"><span>ACTIVE</span><strong id="metric-active">—</strong></div>
+          <div class="metric"><span>IMPRESSIONS</span><strong id="metric-impressions">—</strong></div>
+          <div class="metric"><span>CLICKS</span><strong id="metric-clicks">—</strong></div>
+          <div class="metric"><span>CTR</span><strong id="metric-ctr">—</strong></div>
+          <div class="metric"><span>REMAINING</span><strong id="metric-remaining">—</strong></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="eyebrow">CAMPAIGNS</div>
+              <h2>配信案件</h2>
+              <p>広告主に紐づく案件だけを表示します。</p>
+            </div>
+            <div id="last-updated" class="eyebrow">—</div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>CAMPAIGN</th>
+                  <th>STATUS</th>
+                  <th>PLACEMENT</th>
+                  <th>DELIVERY</th>
+                  <th>CLICKS</th>
+                  <th>CTR</th>
+                  <th>PERIOD</th>
+                </tr>
+              </thead>
+              <tbody id="campaign-body"><tr><td colspan="7" class="empty">読み込み中…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+        <p class="footer-note">V1は読み取り専用です。広告内容や配信条件の変更はできません。正式運用では広告主ごとに個別アクセスコードを発行し、案件データを紐づけます。</p>
+      </section>
+    </main>
+
+    <script is:inline>
+      const $ = (id) => document.getElementById(id);
+      const state = { campaigns: [], advertiser: null };
+      const nf = new Intl.NumberFormat('ja-JP');
+
+      function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
+      }
+      function number(value) { return nf.format(Number(value || 0)); }
+      function pct(value) { return `${Number(value || 0).toFixed(2)}%`; }
+      function showLogin() { $('login-wrap').hidden = false; $('portal').hidden = true; }
+      function showPortal() { $('login-wrap').hidden = true; $('portal').hidden = false; }
+
+      function renderCampaigns(campaigns) {
+        const body = $('campaign-body');
+        if (!campaigns.length) {
+          body.innerHTML = '<tr><td colspan="7" class="empty">表示できるキャンペーンはまだありません。</td></tr>';
+          return;
+        }
+        body.innerHTML = campaigns.map((c) => {
+          const target = Number(c.impressionsTarget || 0);
+          const served = Number(c.impressionsServed || 0);
+          const progress = target > 0 ? Math.min((served / target) * 100, 100) : 0;
+          const live = /配信中|active|running|live/i.test(String(c.status || ''));
+          return `<tr>
+            <td><span class="campaign-name">${escapeHtml(c.name || '名称未設定')}</span><span class="campaign-id">${escapeHtml(c.id || '')}</span></td>
+            <td><span class="status ${live ? 'live' : ''}">${escapeHtml(c.status || '—')}</span></td>
+            <td>${escapeHtml(c.placement || '—')}</td>
+            <td><div class="progress"><i style="width:${progress.toFixed(1)}%"></i></div><div class="progress-copy">${number(served)} / ${number(target)} imp</div></td>
+            <td>${number(c.clicks)}</td>
+            <td>${pct(c.ctr)}</td>
+            <td>${escapeHtml(c.startDate || '—')} → ${escapeHtml(c.endDate || '—')}</td>
+          </tr>`;
+        }).join('');
+      }
+
+      function render(data) {
+        state.campaigns = Array.isArray(data.campaigns) ? data.campaigns : [];
+        state.advertiser = data.advertiser || null;
+        $('advertiser-name').textContent = data.advertiser?.name || '広告主';
+        $('metric-active').textContent = number(data.summary?.activeCampaigns);
+        $('metric-impressions').textContent = number(data.summary?.impressionsServed);
+        $('metric-clicks').textContent = number(data.summary?.clicks);
+        $('metric-ctr').textContent = pct(data.summary?.ctr);
+        $('metric-remaining').textContent = number(data.summary?.remainingImpressions);
+        $('last-updated').textContent = data.generatedAt ? `UPDATED ${new Date(data.generatedAt).toLocaleString('ja-JP')}` : '—';
+
+        const notice = $('data-notice');
+        if (data.dataState === 'demo') {
+          notice.dataset.state = '';
+          notice.textContent = 'Preview用のデモデータを表示しています。Productionではデモコードは利用できません。';
+        } else if (data.dataState === 'configured') {
+          notice.dataset.state = 'live';
+          notice.textContent = '広告主専用の実績データを表示しています。';
+        } else {
+          notice.dataset.state = '';
+          notice.textContent = 'ログインは有効です。実績データの紐づけ待ちです。';
+        }
+        renderCampaigns(state.campaigns);
+      }
+
+      async function loadPortal() {
+        try {
+          const response = await fetch('/api/advertiser-me', { cache:'no-store', credentials:'same-origin' });
+          if (response.status === 401) { showLogin(); return false; }
+          const data = await response.json();
+          if (!response.ok || !data.ok) throw new Error('load_failed');
+          render(data); showPortal(); return true;
+        } catch {
+          showLogin();
+          $('login-message').textContent = 'ポータルを読み込めませんでした。';
+          $('login-message').classList.add('error');
+          return false;
+        }
+      }
+
+      $('login-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const button = $('login-button');
+        const message = $('login-message');
+        button.disabled = true;
+        message.classList.remove('error');
+        message.textContent = '確認しています…';
+        try {
+          const response = await fetch('/api/advertiser-auth', {
+            method:'POST',
+            credentials:'same-origin',
+            headers:{ 'content-type':'application/json' },
+            body:JSON.stringify({ code:$('access-code').value }),
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || !data.ok) throw new Error(data.error || 'login_failed');
+          message.textContent = '';
+          await loadPortal();
+        } catch {
+          message.textContent = 'アクセスコードを確認してください。';
+          message.classList.add('error');
+        } finally { button.disabled = false; }
+      });
+
+      $('logout-button').addEventListener('click', async () => {
+        await fetch('/api/advertiser-logout', { method:'POST', credentials:'same-origin' }).catch(() => null);
+        state.campaigns = []; state.advertiser = null; $('access-code').value = ''; showLogin();
+      });
+      $('refresh-button').addEventListener('click', loadPortal);
+      $('csv-button').addEventListener('click', () => {
+        if (!state.campaigns.length) return;
+        const rows = [['campaign','status','placement','impressions_target','impressions_served','remaining','clicks','ctr','start_date','end_date']];
+        state.campaigns.forEach((c) => rows.push([c.name,c.status,c.placement,c.impressionsTarget,c.impressionsServed,c.remainingImpressions,c.clicks,Number(c.ctr || 0).toFixed(2),c.startDate,c.endDate]));
+        const csv = rows.map((row) => row.map((value) => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+        const blob = new Blob(['\ufeff' + csv], { type:'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url; link.download = `harfway-ads-${state.advertiser?.id || 'report'}.csv`; link.click();
+        URL.revokeObjectURL(url);
+      });
+
+      loadPortal();
+    </script>
+  </body>
+</html>
