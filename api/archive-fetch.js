@@ -31,43 +31,74 @@ function stripHtml(html=''){
 
 function isBoilerplate(text=''){
   const s=String(text).trim();
-  if(!s)return true;
-  if(hasTemplateGarbage(s))return true;
+  if(!s||hasTemplateGarbage(s))return true;
   if(/^(https?:\/\/|www\.)/i.test(s))return true;
   if(/Amazonをご利用の方|Amazonアソシエイト|アフィリエイト|プライバシーポリシー|Cookie|無断転載|著作権/i.test(s))return true;
   if(/^(STORE PAGE|DEVELOPER|EDITOR['’]?S PICK)$/i.test(s))return true;
   return false;
 }
 
-function cleanText(value=''){
-  const text=stripHtml(value)
-    .replace(/\$\{[^}]*\}/g,' ')
-    .replace(/\s+/g,' ')
+function removeInlineBoilerplate(text=''){
+  return String(text)
+    .replace(/Amazonをご利用の方[^。！？!?]*(?:[。！？!?]|$)/gi,' ')
+    .replace(/HARF-?WAYを支援できます[^。！？!?]*(?:[。！？!?]|$)/gi,' ')
+    .replace(/このリンクを経由して購入すると[^。！？!?]*(?:[。！？!?]|$)/gi,' ')
+    .replace(/ゲーム以外の買い物でも大丈夫です[^。！？!?]*(?:[。！？!?]|$)/gi,' ')
+    .replace(/当サイトでは[^。！？!?]*(?:アフィリエイト|広告)[^。！？!?]*(?:[。！？!?]|$)/gi,' ')
+    .replace(/[ \t]+/g,' ')
+    .replace(/\n[ \t]+/g,'\n')
+    .replace(/\n{3,}/g,'\n\n')
     .trim();
-  return isBoilerplate(text)?'':text;
+}
+
+function paragraphize(text=''){
+  const cleaned=removeInlineBoilerplate(text);
+  if(!cleaned)return '';
+  const existing=cleaned.split(/\n{2,}/).map(x=>x.trim()).filter(x=>x&&!isBoilerplate(x));
+  if(existing.length>1)return existing.join('\n\n');
+  if(cleaned.length<420)return cleaned;
+
+  const sentences=cleaned.match(/[^。！？!?\n]+[。！？!?]?/g)?.map(x=>x.trim()).filter(Boolean)||[cleaned];
+  const parts=[];
+  let buf='';
+  for(const sentence of sentences){
+    if(!sentence||isBoilerplate(sentence))continue;
+    if(buf && (buf.length+sentence.length>300 || /[。！？!?]$/.test(buf)&&buf.length>180)){
+      parts.push(buf.trim());
+      buf='';
+    }
+    buf+=sentence;
+  }
+  if(buf.trim())parts.push(buf.trim());
+  return parts.join('\n\n');
+}
+
+function cleanText(value=''){
+  const raw=stripHtml(value)
+    .replace(/\$\{[^}]*\}/g,' ')
+    .replace(/[ \t]+/g,' ')
+    .replace(/\n[ \t]+/g,'\n')
+    .replace(/\n{3,}/g,'\n\n')
+    .trim();
+  if(!raw)return '';
+  return paragraphize(raw);
 }
 
 function extractReadableBlocks(html=''){
-  const raw=String(html||'');
-  const out=[];
-  const seen=new Set();
-  for(const m of raw.matchAll(/<(p|h[2-6]|li|blockquote)\b[^>]*>([\s\S]*?)<\/\1>/gi)){
+  const out=[],seen=new Set();
+  for(const m of String(html).matchAll(/<(p|h[2-6]|li|blockquote)\b[^>]*>([\s\S]*?)<\/\1>/gi)){
     if(hasTemplateGarbage(m[0]))continue;
     const text=cleanText(m[2]);
-    if(!text||text.length<2)continue;
+    if(!text||text.length<2||isBoilerplate(text))continue;
     const key=text.normalize('NFKC');
     if(seen.has(key))continue;
-    seen.add(key);
-    out.push(text);
+    seen.add(key);out.push(text);
   }
-  return out.join('\n\n').slice(0,150000);
+  return paragraphize(out.join('\n\n')).slice(0,150000);
 }
 
 function pick(html,patterns){
-  for(const re of patterns){
-    const m=String(html).match(re);
-    if(m?.[1])return stripHtml(m[1]);
-  }
+  for(const re of patterns){const m=String(html).match(re);if(m?.[1])return stripHtml(m[1]);}
   return '';
 }
 
@@ -85,8 +116,7 @@ function cleanCandidate(value=''){
     .replace(/\s*[|｜]\s*HARF[- ]?WAY.*$/i,'')
     .replace(/\s*[–—-]\s*(Steam|itch\.io|BOOTH|DLsite|Nintendo.*|PlayStation.*|Xbox.*)$/i,'')
     .replace(/^(Steam|itch\.io|BOOTH|DLsite)[:：\s-]*/i,'')
-    .replace(/\s+/g,' ')
-    .trim();
+    .replace(/\s+/g,' ').trim();
   if(!text||hasTemplateGarbage(text))return '';
   if(/\b(const|let|var|function|return|escapehtml|game\.)\b/i.test(text))return '';
   return text;
@@ -111,9 +141,8 @@ function sameStore(a='',b=''){
   try{
     const ua=new URL(a),ub=new URL(b);
     if(ua.hostname!==ub.hostname)return false;
-    const steamA=ua.pathname.match(/\/app\/(\d+)/)?.[1]||'';
-    const steamB=ub.pathname.match(/\/app\/(\d+)/)?.[1]||'';
-    if(steamA&&steamB)return steamA===steamB;
+    const sa=ua.pathname.match(/\/app\/(\d+)/)?.[1]||'',sb=ub.pathname.match(/\/app\/(\d+)/)?.[1]||'';
+    if(sa&&sb)return sa===sb;
     return ua.origin+ua.pathname.replace(/\/$/,'')===ub.origin+ub.pathname.replace(/\/$/,'');
   }catch{return a===b}
 }
@@ -122,8 +151,7 @@ function looksSameGame(a,b){
   const ka=hintKey(a?.name),kb=hintKey(b?.name);
   if(!ka||!kb)return false;
   if(ka===kb||sameStore(a?.url,b?.url))return true;
-  const shorter=ka.length<=kb.length?ka:kb;
-  const longer=ka.length>kb.length?ka:kb;
+  const shorter=ka.length<=kb.length?ka:kb,longer=ka.length>kb.length?ka:kb;
   return shorter.length>=5&&longer.includes(shorter);
 }
 
@@ -139,8 +167,8 @@ function uniqueHints(items){
     const name=cleanCandidate(raw.name||'');
     if(!name||name.length<2||name.length>120)continue;
     const item={...raw,name,confidence:Number(raw.confidence||hintConfidence(raw.source)),sources:[raw.source].filter(Boolean)};
-    const index=result.findIndex(prev=>looksSameGame(prev,item));
-    if(index>=0)result[index]=mergeHint(result[index],item);else result.push(item);
+    const i=result.findIndex(prev=>looksSameGame(prev,item));
+    if(i>=0)result[i]=mergeHint(result[i],item);else result.push(item);
   }
   return result.sort((a,b)=>b.confidence-a.confidence).slice(0,120);
 }
@@ -205,73 +233,70 @@ function extractImages(html,baseUrl){
     const src=attr(tag,'data-src')||attr(tag,'data-lazy-src')||attr(tag,'src');if(!src||hasTemplateGarbage(src))continue;
     const url=absoluteUrl(src,baseUrl);if(!url||seen.has(url)||/^data:/i.test(url)||/%24%7B/i.test(url))continue;
     const alt=attr(tag,'alt');if(hasTemplateGarbage(alt))continue;
-    seen.add(url);result.push({url,alt,featured:false});if(result.length>=100)break;
+    seen.add(url);result.push({url,alt,featured:false});if(result.length>=40)break;
   }
   return result;
 }
 
 function fieldPenalty(path=''){
-  const p=path.toLowerCase();
-  let n=0;
+  const p=path.toLowerCase();let n=0;
   if(/(?:^|\.)(?:link|guid|slug|date|modified|status|type|template|author|id)$/.test(p))n+=1000;
-  if(/_links|yoast|rank_math|jetpack|media|image|thumbnail|avatar|caption|alt_text/.test(p))n+=500;
-  if(/excerpt/.test(p))n+=120;
+  if(/_links|yoast|rank_math|jetpack|media|image|thumbnail|avatar|caption|alt_text/.test(p))n+=700;
+  if(/excerpt/.test(p))n+=180;
   return n;
 }
 
 function fieldBonus(path=''){
-  const p=path.toLowerCase();
-  let n=0;
-  if(/acf|custom|meta/.test(p))n+=160;
-  if(/body|content|text|description|summary|review|comment|note|intro|point|catch|scene|memo/.test(p))n+=120;
+  const p=path.toLowerCase();let n=0;
+  if(/acf|custom|meta/.test(p))n+=180;
+  if(/body|content|text|description|summary|review|comment|note|intro|point|catch|scene|memo/.test(p))n+=150;
   return n;
 }
 
 function textScore(text='',path=''){
   const t=String(text).trim();if(!t||isBoilerplate(t))return -9999;
-  const jp=(t.match(/[ぁ-んァ-ヶ一-龯]/g)||[]).length;
-  const urls=(t.match(/https?:\/\//g)||[]).length;
-  return Math.min(t.length,4000)+Math.min(jp,1000)*1.8+fieldBonus(path)-fieldPenalty(path)-urls*120;
+  const jp=(t.match(/[ぁ-んァ-ヶ一-龯]/g)||[]).length,urls=(t.match(/https?:\/\//g)||[]).length;
+  return Math.min(t.length,7000)+Math.min(jp,1800)*1.6+fieldBonus(path)-fieldPenalty(path)-urls*180;
 }
 
 function collectTextFields(value,path='',out=[],depth=0){
   if(depth>7||value==null)return out;
   if(typeof value==='string'){
-    const text=/<[a-z][\s\S]*>/i.test(value)?extractReadableBlocks(value)||cleanText(value):cleanText(value);
-    if(text&&text.length>=24)out.push({path,text,score:textScore(text,path),order:out.length});
+    const text=cleanText(value);
+    if(text&&text.length>=40)out.push({path,text,score:textScore(text,path),order:out.length});
     return out;
   }
-  if(Array.isArray(value)){
-    value.forEach((v,i)=>collectTextFields(v,`${path}[${i}]`,out,depth+1));return out;
-  }
+  if(Array.isArray(value)){value.forEach((v,i)=>collectTextFields(v,`${path}[${i}]`,out,depth+1));return out;}
   if(typeof value==='object')for(const [k,v] of Object.entries(value))collectTextFields(v,path?`${path}.${k}`:k,out,depth+1);
   return out;
 }
 
 function selectWordPressText(row){
-  const fields=collectTextFields(row).filter(x=>x.score>80);
+  const fields=collectTextFields(row).filter(x=>x.score>100).sort((a,b)=>b.score-a.score);
   const preferred=fields.filter(x=>/^(acf|meta|custom)(?:\.|\[)/i.test(x.path)||/(?:\.)(body|text|description|summary|review|comment|note|intro|point|catch|scene|memo)(?:\.|\[|$)/i.test(x.path));
   const pool=preferred.length?preferred:fields;
-  pool.sort((a,b)=>b.score-a.score);
   if(!pool.length)return {text:'',source:'none',fields:[]};
 
   const best=pool[0];
-  const root=best.path.split('.')[0].replace(/\[.*$/,'');
-  const sameRoot=fields.filter(x=>x.path.split('.')[0].replace(/\[.*$/,'')===root&&x.score>120).sort((a,b)=>a.order-b.order);
-  const selected=sameRoot.length>1?sameRoot:[best];
-  const seen=new Set(),parts=[];
-  for(const f of selected){
-    const key=f.text.normalize('NFKC');if(seen.has(key))continue;seen.add(key);parts.push(f.text);
+  const selected=[best];
+  for(const candidate of pool.slice(1,8)){
+    if(selected.length>=4)break;
+    if(candidate.score<best.score*.45)continue;
+    const c=candidate.text.normalize('NFKC');
+    if(selected.some(x=>x.text.normalize('NFKC').includes(c)||c.includes(x.text.normalize('NFKC'))))continue;
+    if(candidate.path.split('.')[0]!==best.path.split('.')[0])continue;
+    selected.push(candidate);
   }
-  return {text:parts.join('\n\n').slice(0,150000),source:selected.map(x=>x.path).join(', ').slice(0,500),fields:pool.slice(0,8).map(x=>({path:x.path,score:Math.round(x.score),length:x.text.length}))};
+  selected.sort((a,b)=>a.order-b.order);
+  const body=paragraphize(selected.map(x=>x.text).join('\n\n')).slice(0,150000);
+  return {text:body,source:selected.map(x=>x.path).join(', ').slice(0,500),fields:pool.slice(0,8).map(x=>({path:x.path,score:Math.round(x.score),length:x.text.length}))};
 }
 
 function extractJsonLdText(html=''){
   const candidates=[];
   for(const m of String(html).matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)){
     try{
-      const data=JSON.parse(m[1]);
-      const stack=Array.isArray(data)?data:[data];
+      const data=JSON.parse(m[1]),stack=Array.isArray(data)?data:[data];
       while(stack.length){
         const x=stack.pop();if(!x||typeof x!=='object')continue;
         if(typeof x.articleBody==='string')candidates.push({path:'jsonld.articleBody',text:cleanText(x.articleBody)});
@@ -284,7 +309,7 @@ function extractJsonLdText(html=''){
 
 async function fetchJson(url){
   try{
-    const r=await fetch(url,{headers:{'user-agent':'HARF-WAY Archive Salvager/0.9','accept':'application/json'},redirect:'follow'});
+    const r=await fetch(url,{headers:{'user-agent':'HARF-WAY Archive Salvager/1.0','accept':'application/json'},redirect:'follow'});
     if(!r.ok)return null;return await r.json();
   }catch{return null}
 }
@@ -319,7 +344,7 @@ export default async function handler(req,res){
   try{
     const raw=String(req.query?.url||'').trim();if(!raw)return res.status(400).json({ok:false,error:'url_required'});
     const url=new URL(raw);if(!/(^|\.)harf-way\.com$/i.test(url.hostname))return res.status(400).json({ok:false,error:'harf_way_url_only'});
-    const response=await fetch(url.toString(),{headers:{'user-agent':'HARF-WAY Archive Salvager/0.9'},redirect:'follow'});
+    const response=await fetch(url.toString(),{headers:{'user-agent':'HARF-WAY Archive Salvager/1.0'},redirect:'follow'});
     if(!response.ok)return res.status(502).json({ok:false,error:`source_${response.status}`});
     const html=await response.text(),finalUrl=response.url||url.toString();
     const pageTitle=pick(html,[/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i,/<title[^>]*>([\s\S]*?)<\/title>/i]);
@@ -329,12 +354,17 @@ export default async function handler(req,res){
     if(wp?.text&&wp.text.length>=80){body=wp.text;contentSource=`wp:${wp.restBase}#${wp.id} / ${wp.contentSource||'field discovery'}`}
     else if(jsonLd?.text&&jsonLd.text.length>=80){body=jsonLd.text;contentSource=jsonLd.path}
     else{body=fallback;contentSource='html-fallback'}
+    body=paragraphize(body);
     const title=wp?.title||pageTitle,date=wp?.date||pageDate;
-    const images=(wp?.images?.length?wp.images:extractImages(html,finalUrl));
+    const allImages=[...(wp?.images||[]),...extractImages(html,finalUrl)],images=[],seen=new Set();
+    for(const img of allImages){if(!img?.url||seen.has(img.url))continue;seen.add(img.url);images.push(img);if(images.length>=20)break;}
     const featuredImage=images.find(x=>x.featured)?.url||images[0]?.url||'';
     const hintsSource=[wp?.rendered||'',html].join('\n');
     const nameHints=extractNameHints(hintsSource,finalUrl,title);
     const storeLinks=nameHints.filter(x=>x.url).map(x=>({name:x.name,url:x.url,source:x.source,sources:x.sources,confidence:x.confidence}));
     return res.status(200).json({ok:true,article:{url:wp?.link||finalUrl,title,date,text:body.slice(0,150000),featuredImage,images,nameHints,storeLinks,contentSource,wp:{id:wp?.id||null,restBase:wp?.restBase||null,fieldCandidates:wp?.fieldCandidates||[]}}});
-  }catch(error){console.error('[archive-fetch]',error);return res.status(500).json({ok:false,error:'archive_fetch_failed'});}
+  }catch(error){
+    console.error('[archive-fetch]',error);
+    return res.status(500).json({ok:false,error:'archive_fetch_failed'});
+  }
 }
