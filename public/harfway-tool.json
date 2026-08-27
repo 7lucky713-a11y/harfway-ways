@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "harfway": true,
+  "id": "ways",
+  "name": "WAYS",
+  "group": "PUBLISH",
+  "role": "短尺ゲーム発見",
+  "description": "動画からゲームを見つけるHARF-WAYの発見基盤。",
+  "project_slug": "harfway-playback",
+  "public_url": "https://harfway-playback.vercel.app/",
+  "admin_url": "https://harfway-playback-editor.vercel.app/",
+  "metrics_url": "https://harfway-playback.vercel.app/analytics",
+  "control_center": {
+    "sync": true,
+    "health_url": "https://harfway-playback.vercel.app/"
+  }
+}
