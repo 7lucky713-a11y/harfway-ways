@@ -55,20 +55,7 @@ function summarize(state) {
   const showcases = Array.isArray(state?.showcases) ? state.showcases : [];
   const published = games.filter(g => g.status === 'published').length;
   const draft = games.length - published;
-  const missingStore = games.filter(g => !g.storeUrl).length;
-  const missingVideo = games.filter(g => !g.video).length;
-  const missingArticle = games.filter(g => !g.articleUrl).length;
-  const missingCategory = games.filter(g => !g.category).length;
-  return {
-    games: games.length,
-    published,
-    draft,
-    showcases: showcases.length,
-    missingStore,
-    missingVideo,
-    missingArticle,
-    missingCategory
-  };
+  return { games: games.length, published, draft, showcases: showcases.length };
 }
 
 function coreDatabaseUrl() {
@@ -81,37 +68,60 @@ function coreDatabaseUrl() {
   );
 }
 
-function normalizeJsonArray(value) {
-  return Array.isArray(value) ? value : [];
-}
+function array(value) { return Array.isArray(value) ? value : []; }
 
-async function readCoreArticles() {
+async function readCore() {
   const databaseUrl = coreDatabaseUrl();
   if (!databaseUrl) {
-    return { available: false, configured: false, articles: [], error: 'core_database_not_configured' };
+    return { available: false, configured: false, games: [], articles: [], error: 'core_database_not_configured' };
   }
 
   try {
     const sql = neon(databaseUrl);
-    const rows = await sql`
-      SELECT
-        id,
-        title,
-        url,
-        published_at,
-        excerpt,
-        status,
-        source,
-        games,
-        assets,
-        updated_at
-      FROM core.content_catalog
-      WHERE content_type = 'article'
-      ORDER BY updated_at DESC
-      LIMIT 500
-    `;
+    const [gameRows, articleRows] = await Promise.all([
+      sql`
+        SELECT
+          c.id,c.title,c.description,c.store_url,c.article_url,c.category,c.status,c.source_of_truth,c.tags,
+          COALESCE((
+            SELECT jsonb_agg(jsonb_build_object(
+              'service',r.service,
+              'externalId',r.external_id,
+              'externalUrl',r.external_url,
+              'metadata',r.metadata
+            ) ORDER BY r.service,r.external_id)
+            FROM core.game_refs r WHERE r.game_id=c.id
+          ),'[]'::jsonb) AS refs,
+          c.created_at,c.updated_at
+        FROM core.game_catalog c
+        WHERE c.status='active'
+        ORDER BY c.updated_at DESC,c.title ASC
+        LIMIT 1000
+      `,
+      sql`
+        SELECT id,title,url,published_at,excerpt,status,source,games,assets,updated_at
+        FROM core.content_catalog
+        WHERE content_type='article'
+        ORDER BY updated_at DESC
+        LIMIT 1000
+      `
+    ]);
 
-    const articles = rows.map((row) => ({
+    const games = gameRows.map(row => ({
+      id: String(row.id || ''),
+      title: String(row.title || ''),
+      description: String(row.description || ''),
+      storeUrl: String(row.store_url || ''),
+      articleUrl: String(row.article_url || ''),
+      category: String(row.category || ''),
+      status: String(row.status || ''),
+      sourceOfTruth: String(row.source_of_truth || ''),
+      tags: array(row.tags),
+      refs: array(row.refs),
+      createdAt: row.created_at || null,
+      updatedAt: row.updated_at || null
+    }));
+
+    const articles = articleRows.map(row => ({
       id: String(row.id || ''),
       title: String(row.title || ''),
       url: String(row.url || ''),
@@ -119,25 +129,28 @@ async function readCoreArticles() {
       excerpt: String(row.excerpt || ''),
       status: String(row.status || ''),
       source: String(row.source || ''),
-      games: normalizeJsonArray(row.games),
-      assets: normalizeJsonArray(row.assets),
+      games: array(row.games),
+      assets: array(row.assets),
       updatedAt: row.updated_at || null
     }));
 
     return {
       available: true,
       configured: true,
+      games,
       articles,
       summary: {
+        games: games.length,
         articles: articles.length,
-        reviewed: articles.filter((a) => a.status === 'reviewed' || a.status === 'published').length,
-        draft: articles.filter((a) => a.status === 'draft').length,
-        gameLinks: articles.reduce((sum, a) => sum + a.games.length, 0)
+        articleOriginGames: games.filter(g => g.sourceOfTruth === 'archive-salvager').length,
+        waysGames: games.filter(g => g.refs.some(r => r?.service === 'ways')).length,
+        playlistGames: games.filter(g => g.refs.some(r => r?.service === 'playlist')).length,
+        yorimichiGames: games.filter(g => g.refs.some(r => r?.service === 'yorimichi')).length
       }
     };
   } catch (error) {
     console.error('[db-master-core]', error);
-    return { available: false, configured: true, articles: [], error: 'core_articles_unavailable' };
+    return { available: false, configured: true, games: [], articles: [], error: 'core_unavailable' };
   }
 }
 
@@ -150,16 +163,13 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const [data, core] = await Promise.all([
-        editorRequest('state', key),
-        readCoreArticles()
-      ]);
+      const [data, core] = await Promise.all([editorRequest('state', key), readCore()]);
       const state = data?.state || { games: [], showcases: [] };
       return res.status(200).json({
         ok: true,
         state,
         summary: summarize(state),
-        source: 'ways-editor',
+        source: 'core-first-with-ways-editor',
         core
       });
     }
