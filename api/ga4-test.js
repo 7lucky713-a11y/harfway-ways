@@ -28,17 +28,20 @@ export default async function handler(req, res) {
     GCP_SERVICE_ACCOUNT_EMAIL,
   } = process.env;
 
-  const audience = `https://iam.googleapis.com/projects/${GCP_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${GCP_WORKLOAD_IDENTITY_POOL_ID}/providers/${GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID}`;
+  // Google STS expects the external-account audience as the full resource name
+  // (leading //). Vercel's custom OIDC audience uses the https URL form.
+  const providerResource = `//iam.googleapis.com/projects/${GCP_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${GCP_WORKLOAD_IDENTITY_POOL_ID}/providers/${GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID}`;
+  const oidcAudience = `https://iam.googleapis.com/projects/${GCP_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${GCP_WORKLOAD_IDENTITY_POOL_ID}/providers/${GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID}`;
 
   try {
     const authClient = ExternalAccountClient.fromJSON({
       type: 'external_account',
-      audience,
+      audience: providerResource,
       subject_token_type: 'urn:ietf:params:oauth:token-type:jwt',
       token_url: 'https://sts.googleapis.com/v1/token',
       service_account_impersonation_url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${GCP_SERVICE_ACCOUNT_EMAIL}:generateAccessToken`,
       subject_token_supplier: {
-        getSubjectToken: () => getVercelOidcToken({ audience }),
+        getSubjectToken: () => getVercelOidcToken({ audience: oidcAudience }),
       },
     });
 
