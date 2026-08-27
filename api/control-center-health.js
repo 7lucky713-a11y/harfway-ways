@@ -1,18 +1,22 @@
 const HUB_API='https://harfway-vercel-hub.vercel.app/api/entries';
 
 const CORE_CHECKS=[
-  {id:'hub',name:'VERCEL HUB',kind:'hub',url:'https://harfway-vercel-hub.vercel.app/'},
-  {id:'ways',name:'WAYS',kind:'public',url:'https://harfway-playback.vercel.app/'},
-  {id:'ways-archive',name:'WAYS ARCHIVE',kind:'public',url:'https://harfway-playback.vercel.app/archive/'},
-  {id:'salvager',name:'ARCHIVE SALVAGER',kind:'tool',url:'https://harfway-playback.vercel.app/salvage/'},
-  {id:'db-master',name:'DB MASTER',kind:'tool',url:'https://harfway-playback.vercel.app/db-master'},
-  {id:'analytics',name:'ANALYTICS HUB',kind:'analytics',url:'https://harfway-playback.vercel.app/analytics'},
-  {id:'showcase',name:'SHOWCASE',kind:'public',url:'https://harfway-showcase-ui-v4.vercel.app/'},
-  {id:'playlist',name:'PLAYLIST TV',kind:'public',url:'https://harfway-playlist-tv.vercel.app/'},
-  {id:'yorimichi',name:'YORIMICHI EDITOR',kind:'editor',url:'https://weekly-yorimichi-editor.vercel.app/'},
-  {id:'zine',name:'ZINE EDITOR',kind:'editor',url:'https://harfway-zine-editor.vercel.app/'},
-  {id:'design-stock',name:'DESIGN STOCK',kind:'tool',url:'https://design-stock-nu.vercel.app/'},
-  {id:'factory',name:'HARFWAY FACTORY',kind:'tool',url:'https://harfway-factory-restart-test.vercel.app/'}
+  {id:'hub',name:'VERCEL HUB',kind:'ops',url:'https://harfway-vercel-hub.vercel.app/'},
+  {id:'ways',name:'WAYS',kind:'publish',url:'https://harfway-playback.vercel.app/'},
+  {id:'ways-editor',name:'WAYS EDITOR',kind:'create',url:'https://harfway-playback-editor.vercel.app/'},
+  {id:'archive',name:'WAYS ARCHIVE',kind:'publish',url:'https://harfway-playback.vercel.app/archive/'},
+  {id:'salvager',name:'ARCHIVE SALVAGER',kind:'core',url:'https://harfway-playback.vercel.app/salvage/'},
+  {id:'db-master',name:'DB MASTER',kind:'core',url:'https://harfway-playback.vercel.app/db-master'},
+  {id:'r2-media',name:'R2 MEDIA MANAGER',kind:'core',url:'https://harfway-showcase-manager-v2.vercel.app/r2-media.html'},
+  {id:'analytics',name:'ANALYTICS HUB',kind:'ops',url:'https://harfway-playback.vercel.app/analytics'},
+  {id:'showcase',name:'SHOWCASE',kind:'publish',url:'https://harfway-showcase-ui-v4.vercel.app/'},
+  {id:'playlist',name:'PLAYLIST TV',kind:'publish',url:'https://harfway-playlist-tv.vercel.app/'},
+  {id:'scrapbook',name:'GAME SCRAPBOOK',kind:'publish',url:'https://harf-way-game-scrapbook.vercel.app/'},
+  {id:'yorimichi',name:'YORIMICHI EDITOR',kind:'create',url:'https://weekly-yorimichi-editor.vercel.app/'},
+  {id:'zine',name:'ZINE EDITOR',kind:'create',url:'https://harfway-zine-editor.vercel.app/'},
+  {id:'design-stock',name:'DESIGN STOCK',kind:'create',url:'https://design-stock-nu.vercel.app/'},
+  {id:'factory',name:'HARFWAY FACTORY',kind:'create',url:'https://harfway-factory-restart-test.vercel.app/'},
+  {id:'cleanup',name:'VERCEL CLEANUP',kind:'ops',url:'https://harfway-vercel-cleanup-harf-way.vercel.app/'}
 ];
 
 async function timedFetch(url,opts={}){
@@ -20,9 +24,9 @@ async function timedFetch(url,opts={}){
   const timer=setTimeout(()=>ctrl.abort(),6500);
   const started=Date.now();
   try{
-    let res=await fetch(url,{method:'HEAD',redirect:'follow',signal:ctrl.signal,headers:{'user-agent':'HARF-WAY-Control-Center/0.1'},...opts});
+    let res=await fetch(url,{method:'HEAD',redirect:'follow',signal:ctrl.signal,headers:{'user-agent':'HARF-WAY-Control-Center/0.2'},...opts});
     if(res.status===405||res.status===501){
-      res=await fetch(url,{method:'GET',redirect:'follow',signal:ctrl.signal,headers:{'user-agent':'HARF-WAY-Control-Center/0.1'},...opts});
+      res=await fetch(url,{method:'GET',redirect:'follow',signal:ctrl.signal,headers:{'user-agent':'HARF-WAY-Control-Center/0.2'},...opts});
     }
     return {ok:res.ok,status:res.status,latencyMs:Date.now()-started,finalUrl:res.url||url};
   }catch(error){
@@ -35,7 +39,7 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
   const checkedAt=new Date().toISOString();
   const [hubResult,checks]=await Promise.all([
-    fetch(HUB_API,{headers:{'user-agent':'HARF-WAY-Control-Center/0.1'}})
+    fetch(HUB_API,{headers:{'user-agent':'HARF-WAY-Control-Center/0.2'}})
       .then(async r=>({ok:r.ok,status:r.status,data:r.ok?await r.json():null}))
       .catch(error=>({ok:false,status:0,error:String(error?.message||error)})),
     Promise.all(CORE_CHECKS.map(async item=>({...item,...await timedFetch(item.url)})))
