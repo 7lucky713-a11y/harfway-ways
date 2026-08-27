@@ -1,0 +1,1 @@
+export default function handler(req,res){let recipe=null;try{recipe=process.env.HARFWAY_FACTORY_RECIPE?JSON.parse(process.env.HARFWAY_FACTORY_RECIPE):null}catch{}res.status(200).json({ok:Boolean(recipe),recipe,environment:process.env.VERCEL_ENV||'unknown',generatedBy:'HARF-WAY Factory'});}
