@@ -1,3 +1,5 @@
+import { neon } from '@neondatabase/serverless';
+
 const EDITOR_URL = process.env.WAYS_EDITOR_URL || 'https://harfway-playback-editor.vercel.app';
 
 function adminKey(req) {
@@ -69,6 +71,76 @@ function summarize(state) {
   };
 }
 
+function coreDatabaseUrl() {
+  return (
+    process.env.WAYS_DATABASE_URL ||
+    process.env.DATABASE_URL ||
+    process.env.NEON_DATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    ''
+  );
+}
+
+function normalizeJsonArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+async function readCoreArticles() {
+  const databaseUrl = coreDatabaseUrl();
+  if (!databaseUrl) {
+    return { available: false, configured: false, articles: [], error: 'core_database_not_configured' };
+  }
+
+  try {
+    const sql = neon(databaseUrl);
+    const rows = await sql`
+      SELECT
+        id,
+        title,
+        url,
+        published_at,
+        excerpt,
+        status,
+        source,
+        games,
+        assets,
+        updated_at
+      FROM core.content_catalog
+      WHERE content_type = 'article'
+      ORDER BY updated_at DESC
+      LIMIT 500
+    `;
+
+    const articles = rows.map((row) => ({
+      id: String(row.id || ''),
+      title: String(row.title || ''),
+      url: String(row.url || ''),
+      publishedAt: row.published_at || null,
+      excerpt: String(row.excerpt || ''),
+      status: String(row.status || ''),
+      source: String(row.source || ''),
+      games: normalizeJsonArray(row.games),
+      assets: normalizeJsonArray(row.assets),
+      updatedAt: row.updated_at || null
+    }));
+
+    return {
+      available: true,
+      configured: true,
+      articles,
+      summary: {
+        articles: articles.length,
+        reviewed: articles.filter((a) => a.status === 'reviewed' || a.status === 'published').length,
+        draft: articles.filter((a) => a.status === 'draft').length,
+        gameLinks: articles.reduce((sum, a) => sum + a.games.length, 0)
+      }
+    };
+  } catch (error) {
+    console.error('[db-master-core]', error);
+    return { available: false, configured: true, articles: [], error: 'core_articles_unavailable' };
+  }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
@@ -78,9 +150,18 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const data = await editorRequest('state', key);
+      const [data, core] = await Promise.all([
+        editorRequest('state', key),
+        readCoreArticles()
+      ]);
       const state = data?.state || { games: [], showcases: [] };
-      return res.status(200).json({ ok: true, state, summary: summarize(state), source: 'ways-editor' });
+      return res.status(200).json({
+        ok: true,
+        state,
+        summary: summarize(state),
+        source: 'ways-editor',
+        core
+      });
     }
 
     if (req.method === 'POST') {
