@@ -28,9 +28,6 @@ export default async function handler(req, res) {
     GCP_SERVICE_ACCOUNT_EMAIL,
   } = process.env;
 
-  // Google STS expects the external-account audience as the full resource name
-  // (leading //). Vercel's custom OIDC audience uses the https URL form.
-  // Redeploy marker: pool-id corrected in Preview environment variables.
   const providerResource = `//iam.googleapis.com/projects/${GCP_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${GCP_WORKLOAD_IDENTITY_POOL_ID}/providers/${GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID}`;
   const oidcAudience = `https://iam.googleapis.com/projects/${GCP_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${GCP_WORKLOAD_IDENTITY_POOL_ID}/providers/${GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID}`;
 
@@ -46,16 +43,11 @@ export default async function handler(req, res) {
       },
     });
 
-    if (!authClient) {
-      throw new Error('failed_to_create_external_account_client');
-    }
+    if (!authClient) throw new Error('failed_to_create_external_account_client');
 
     const tokenResult = await authClient.getAccessToken();
     const accessToken = typeof tokenResult === 'string' ? tokenResult : tokenResult?.token;
-
-    if (!accessToken) {
-      throw new Error('failed_to_get_google_access_token');
-    }
+    if (!accessToken) throw new Error('failed_to_get_google_access_token');
 
     const gaResponse = await fetch(
       `https://analyticsdata.googleapis.com/v1beta/properties/${GA4_PROPERTY_ID}:runReport`,
@@ -75,6 +67,12 @@ export default async function handler(req, res) {
     const payload = await gaResponse.json().catch(() => ({}));
 
     if (!gaResponse.ok) {
+      console.error('[ga4-data-api]', {
+        status: gaResponse.status,
+        code: payload?.error?.code,
+        statusText: payload?.error?.status,
+        message: payload?.error?.message,
+      });
       return res.status(gaResponse.status).json({
         ok: false,
         stage: 'ga4_data_api',
@@ -84,7 +82,6 @@ export default async function handler(req, res) {
     }
 
     const values = payload?.rows?.[0]?.metricValues || [];
-
     return res.status(200).json({
       ok: true,
       environment: process.env.VERCEL_ENV || 'unknown',
