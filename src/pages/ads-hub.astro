@@ -98,6 +98,21 @@ const placements = [
       .performance-state { margin-top:16px; padding:14px 16px; border:1px dashed #3a3323; border-radius:12px; background:#15130e; color:#c9b77f; font-size:13px; line-height:1.7; }
       .performance-state[data-state="available"] { border-color:#264c37; background:#0f1b14; color:#92d8ad; }
       .performance-state[data-state="error"] { border-color:#5c3232; background:#1c1111; color:#e3a0a0; }
+      .auth-panel { margin-top:12px; padding:14px 16px; border:1px solid #262e38; border-radius:14px; background:#0d1116; }
+      .auth-form { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; }
+      .auth-field { flex:1 1 260px; }
+      .auth-field label { display:block; margin-bottom:7px; color:#8d96a4; font-size:11px; letter-spacing:.06em; }
+      .auth-field input { width:100%; box-sizing:border-box; border:1px solid #303844; border-radius:10px; background:#11161c; color:#f6f7f9; padding:11px 12px; font:inherit; outline:none; }
+      .auth-field input:focus { border-color:#68778a; }
+      .auth-button { border:0; border-radius:999px; background:#f5f7fa; color:#111; padding:11px 16px; font:inherit; font-size:13px; font-weight:800; cursor:pointer; }
+      .auth-button.secondary { border:1px solid #303844; background:#161b21; color:#d9dee6; }
+      .auth-button:disabled { opacity:.55; cursor:default; }
+      .auth-message { margin:9px 0 0; color:#87919f; font-size:12px; line-height:1.6; }
+      .auth-message[data-state="error"] { color:#ef9d9d; }
+      .auth-session { display:flex; justify-content:space-between; gap:12px; align-items:center; }
+      .auth-session[hidden], .auth-form[hidden] { display:none; }
+      .auth-session strong { font-size:13px; }
+      .auth-session span { display:block; margin-top:4px; color:#7f8a98; font-size:12px; }
       .table-wrap { overflow-x:auto; margin-top:14px; }
       .performance-table { min-width:860px; }
       .performance-table td { color:#c5ccd6; }
@@ -116,6 +131,9 @@ const placements = [
       }
       @media (max-width: 520px) {
         .performance-grid { grid-template-columns:1fr; }
+        .auth-form { align-items:stretch; flex-direction:column; }
+        .auth-button { width:100%; }
+        .auth-session { align-items:flex-start; flex-direction:column; }
       }
     </style>
   </head>
@@ -186,6 +204,21 @@ const placements = [
           </div>
 
           <div class="performance-state" id="performance-state" data-state="loading">キャンペーン実績の取得可否を確認しています。</div>
+
+          <div class="auth-panel">
+            <form class="auth-form" id="performance-login-form">
+              <div class="auth-field">
+                <label for="performance-admin-key">広告Admin 管理キー</label>
+                <input id="performance-admin-key" name="key" type="password" autocomplete="current-password" placeholder="管理キーを入力" />
+              </div>
+              <button class="auth-button" id="performance-login-button" type="submit">認証して表示</button>
+            </form>
+            <div class="auth-session" id="performance-auth-session" hidden>
+              <div><strong>広告Admin 認証済み</strong><span>セッションはHttpOnly Cookieで保持し、管理キーは保存しません。</span></div>
+              <button class="auth-button secondary" id="performance-logout-button" type="button">ログアウト</button>
+            </div>
+            <p class="auth-message" id="performance-auth-message">管理キーは保存されず、広告Adminの正規ログインAPIへ送信されます。</p>
+          </div>
 
           <div class="table-wrap">
             <table class="performance-table">
@@ -331,6 +364,26 @@ const placements = [
         }
       }
 
+      function resetPerformanceValues() {
+        document.querySelector('#performance-active').textContent = '—';
+        document.querySelector('#performance-impressions').textContent = '—';
+        document.querySelector('#performance-clicks').textContent = '—';
+        document.querySelector('#performance-ctr').textContent = '—';
+        document.querySelector('#performance-remaining').textContent = '—';
+      }
+
+      function setAuthUi(authenticated, message = '', messageState = '') {
+        const form = document.querySelector('#performance-login-form');
+        const session = document.querySelector('#performance-auth-session');
+        const authMessage = document.querySelector('#performance-auth-message');
+        form.hidden = authenticated;
+        session.hidden = !authenticated;
+        authMessage.textContent = message || (authenticated
+          ? '認証済みです。管理キーは保存されていません。'
+          : '管理キーは保存されず、広告Adminの正規ログインAPIへ送信されます。');
+        authMessage.dataset.state = messageState;
+      }
+
       function renderCampaigns(campaigns) {
         const body = document.querySelector('#performance-body');
         if (!campaigns.length) {
@@ -365,26 +418,32 @@ const placements = [
           if (data.status === 'available') {
             setBadge(badge, 'ok', '取得済み');
             state.dataset.state = 'available';
-            state.textContent = `広告Adminの正式データを読み取り専用で取得しています。最終確認 ${new Date(data.generatedAt).toLocaleString('ja-JP')}`;
+            state.textContent = `広告Adminの正式データを認証済みセッションで読み取り専用取得しています。最終確認 ${new Date(data.generatedAt).toLocaleString('ja-JP')}`;
             document.querySelector('#performance-active').textContent = displayNumber(data.summary?.activeCampaigns);
             document.querySelector('#performance-impressions').textContent = displayNumber(data.summary?.impressions);
             document.querySelector('#performance-clicks').textContent = displayNumber(data.summary?.clicks);
             document.querySelector('#performance-ctr').textContent = displayCtr(data.summary?.ctr);
             document.querySelector('#performance-remaining').textContent = displayNumber(data.summary?.remainingImpressions);
+            setAuthUi(true);
             renderCampaigns(data.campaigns || []);
             return;
           }
 
           if (data.status === 'protected') {
+            resetPerformanceValues();
             setBadge(badge, 'protected', '認証保護');
             state.dataset.state = 'protected';
-            state.textContent = 'キャンペーン名・imp・click・CTRは広告Adminの認証で保護されています。ADS HUBから認証を迂回せず、数値は未取得のままです。広告Adminへログインすると正式データを確認できます。';
-            body.innerHTML = '<tr class="empty-row"><td colspan="8">広告Adminの認証後に確認できます。未取得値を 0 として表示していません。</td></tr>';
+            state.textContent = data.reason === 'session_expired'
+              ? '広告Adminのセッションが切れました。管理キーでもう一度認証してください。'
+              : 'キャンペーン名・imp・click・CTRは広告Adminの認証で保護されています。下の管理キー認証後だけ実数を表示します。';
+            setAuthUi(false, data.reason === 'session_expired' ? 'セッションが切れました。もう一度認証してください。' : '管理キーは保存せず、安全なセッションだけを保持します。');
+            body.innerHTML = '<tr class="empty-row"><td colspan="8">管理キーで認証すると正式データを表示します。未取得値を 0 として表示していません。</td></tr>';
             return;
           }
 
           throw new Error(`performance ${data.status || 'unknown'}`);
         } catch (error) {
+          resetPerformanceValues();
           setBadge(badge, 'error', '要確認');
           state.dataset.state = 'error';
           state.textContent = 'キャンペーン実績APIへ接続できませんでした。広告Admin本体のデータや認証には変更を加えていません。';
@@ -393,6 +452,66 @@ const placements = [
         }
       }
 
+      async function loginPerformance(event) {
+        event.preventDefault();
+        const input = document.querySelector('#performance-admin-key');
+        const button = document.querySelector('#performance-login-button');
+        const key = input.value;
+        if (!key) {
+          setAuthUi(false, '管理キーを入力してください。', 'error');
+          input.focus();
+          return;
+        }
+
+        button.disabled = true;
+        button.textContent = '認証中…';
+        setAuthUi(false, '広告Adminへ認証しています。');
+
+        try {
+          const response = await fetch('/api/ads-auth', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ key }),
+          });
+          const data = await response.json().catch(() => ({}));
+          input.value = '';
+
+          if (response.status === 401 || data.error === 'invalid_key') {
+            setAuthUi(false, '管理キーが違います。入力内容を確認してください。', 'error');
+            input.focus();
+            return;
+          }
+          if (!response.ok || !data.ok) throw new Error(data.error || `HTTP ${response.status}`);
+
+          setAuthUi(true, '認証しました。正式なキャンペーン実績を読み込んでいます。');
+          await loadPerformance();
+        } catch (error) {
+          input.value = '';
+          setAuthUi(false, '認証APIへ接続できませんでした。広告Admin本体には変更を加えていません。', 'error');
+          console.error('[ads-auth]', error);
+        } finally {
+          button.disabled = false;
+          button.textContent = '認証して表示';
+        }
+      }
+
+      async function logoutPerformance() {
+        const button = document.querySelector('#performance-logout-button');
+        button.disabled = true;
+        button.textContent = 'ログアウト中…';
+        try {
+          await fetch('/api/ads-logout', { method: 'POST' });
+        } finally {
+          button.disabled = false;
+          button.textContent = 'ログアウト';
+          resetPerformanceValues();
+          setAuthUi(false, 'ログアウトしました。管理キーで再認証できます。');
+          await loadPerformance();
+        }
+      }
+
+      document.querySelector('#performance-login-form').addEventListener('submit', loginPerformance);
+      document.querySelector('#performance-logout-button').addEventListener('click', logoutPerformance);
       loadStatus();
       loadPerformance();
     </script>
