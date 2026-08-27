@@ -30,6 +30,7 @@ export default async function handler(req, res) {
 
   // Google STS expects the external-account audience as the full resource name
   // (leading //). Vercel's custom OIDC audience uses the https URL form.
+  // Redeploy marker: pool-id corrected in Preview environment variables.
   const providerResource = `//iam.googleapis.com/projects/${GCP_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${GCP_WORKLOAD_IDENTITY_POOL_ID}/providers/${GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID}`;
   const oidcAudience = `https://iam.googleapis.com/projects/${GCP_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${GCP_WORKLOAD_IDENTITY_POOL_ID}/providers/${GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID}`;
 
