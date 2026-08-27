@@ -5,11 +5,13 @@ function decodeEntities(value=''){
     .replace(/&quot;/gi,'"')
     .replace(/&#39;/gi,"'")
     .replace(/&lt;/gi,'<')
-    .replace(/&gt;/gi,'>');
+    .replace(/&gt;/gi,'>')
+    .replace(/&#(\d+);/g,(_,n)=>String.fromCodePoint(Number(n)||32))
+    .replace(/&#x([0-9a-f]+);/gi,(_,n)=>String.fromCodePoint(parseInt(n,16)||32));
 }
 
 function hasTemplateGarbage(value=''){
-  return /\$\{|escapeHTML\s*\(|\bgame\.(?:title|steam|comment|developer|store|url)\b|EDITOR['’]?S PICK|\b(?:STORE PAGE|DEVELOPER)\b[\s\S]*[?:]/i.test(String(value));
+  return /\$\{|escapeHTML\s*\(|\bgame\.(?:title|steam|comment|developer|store|url)\b|\bEDITOR['’]?S PICK\b|\b(?:STORE PAGE|DEVELOPER)\b[\s\S]*[?:]/i.test(String(value));
 }
 
 function stripHtml(html=''){
@@ -18,7 +20,6 @@ function stripHtml(html=''){
     .replace(/<style[\s\S]*?<\/style>/gi,' ')
     .replace(/<noscript[\s\S]*?<\/noscript>/gi,' ')
     .replace(/<template[\s\S]*?<\/template>/gi,' ')
-    .replace(/<svg[\s\S]*?<\/svg>/gi,' ')
     .replace(/<br\s*\/?\s*>/gi,'\n')
     .replace(/<[^>]+>/g,' ')
     .replace(/[\t\r ]+/g,' ')
@@ -27,51 +28,40 @@ function stripHtml(html=''){
     .trim());
 }
 
-function cleanTextBlock(value=''){
-  const text=String(value)
+function cleanReadableText(value=''){
+  const text=String(value).trim();
+  if(!text||hasTemplateGarbage(text))return '';
+  if(/^\s*(STORE PAGE|DEVELOPER|EDITOR['’]?S PICK)\s*$/i.test(text))return '';
+  return text
     .replace(/\$\{[^}]*\}/g,' ')
-    .replace(/escapeHTML\s*\([^)]*\)/gi,' ')
-    .replace(/[\t\r ]+/g,' ')
-    .replace(/\s+([、。！？,.!?])/g,'$1')
+    .replace(/\s+/g,' ')
     .trim();
-  if(!text || hasTemplateGarbage(text)) return '';
-  if(/^(STORE PAGE|DEVELOPER|EDITOR['’]?S PICK)$/i.test(text)) return '';
-  return text;
 }
 
-function extractReadableText(html=''){
-  const raw=String(html);
-  const articleMatch=raw.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i);
-  const mainMatch=raw.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i);
-  let scope=articleMatch?.[1]||mainMatch?.[1]||raw;
-  scope=scope
-    .replace(/<script[\s\S]*?<\/script>/gi,' ')
-    .replace(/<style[\s\S]*?<\/style>/gi,' ')
-    .replace(/<noscript[\s\S]*?<\/noscript>/gi,' ')
-    .replace(/<template[\s\S]*?<\/template>/gi,' ')
-    .replace(/<svg[\s\S]*?<\/svg>/gi,' ');
-
-  const blocks=[];
+function extractReadableBlocks(html=''){
+  const raw=String(html||'');
+  const article=raw.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i)?.[1];
+  const main=raw.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i)?.[1];
+  const scope=article||main||raw;
+  const out=[];
   const seen=new Set();
-  const blockRe=/<(p|h[1-6]|blockquote|li)\b[^>]*>([\s\S]*?)<\/\1>/gi;
-  for(const match of scope.matchAll(blockRe)){
-    const text=cleanTextBlock(stripHtml(match[2]));
-    if(!text || text.length<2) continue;
-    const key=text.normalize('NFKC').replace(/\s+/g,' ').trim();
-    if(seen.has(key)) continue;
+  for(const m of scope.matchAll(/<(p|h[2-6]|li|blockquote)\b[^>]*>([\s\S]*?)<\/\1>/gi)){
+    const block=m[0];
+    if(hasTemplateGarbage(block))continue;
+    const text=cleanReadableText(stripHtml(m[2]));
+    if(!text||text.length<2)continue;
+    const key=text.normalize('NFKC');
+    if(seen.has(key))continue;
     seen.add(key);
-    blocks.push(text);
-    if(blocks.length>=800) break;
+    out.push(text);
   }
-
-  if(blocks.length) return blocks.join('\n\n');
-  return cleanTextBlock(stripHtml(scope));
+  return out.join('\n\n').slice(0,150000);
 }
 
-function pickPlain(html,patterns){
+function pick(html,patterns){
   for(const re of patterns){
     const m=String(html).match(re);
-    if(m?.[1]) return cleanTextBlock(stripHtml(m[1]));
+    if(m?.[1])return stripHtml(m[1]);
   }
   return '';
 }
@@ -87,15 +77,15 @@ function absoluteUrl(src,base){
 
 function cleanCandidate(value=''){
   const text=stripHtml(value)
-    .replace(/\$\{[^}]*\}/g,' ')
+    .replace(/\$\{[^}]+\}/g,' ')
     .replace(/escapeHTML\s*\([^)]*\)/gi,' ')
     .replace(/\s*[|｜]\s*HARF[- ]?WAY.*$/i,'')
     .replace(/\s*[–—-]\s*(Steam|itch\.io|BOOTH|DLsite|Nintendo.*|PlayStation.*|Xbox.*)$/i,'')
     .replace(/^(Steam|itch\.io|BOOTH|DLsite)[:：\s-]*/i,'')
     .replace(/\s+/g,' ')
     .trim();
-  if(!text || hasTemplateGarbage(text)) return '';
-  if(/\b(const|let|var|function|return|escapehtml|game\.)\b/i.test(text)) return '';
+  if(!text||hasTemplateGarbage(text))return '';
+  if(/\b(const|let|var|function|return|escapehtml|game\.)\b/i.test(text))return '';
   return text;
 }
 
@@ -212,12 +202,9 @@ function addStoreHint(items,href,text=''){
 
 function extractScriptGameHints(html,items){
   const raw=String(html).replace(/\\\//g,'/').replace(/&quot;/gi,'"').replace(/&#39;/gi,"'");
-  for(const m of raw.matchAll(/https?:\/\/store\.steampowered\.com\/app\/\d+\/[^\s"'<>\\)]+/gi)){
-    addStoreHint(items,m[0],'');
-  }
+  for(const m of raw.matchAll(/https?:\/\/store\.steampowered\.com\/app\/\d+\/[^\s"'<>\\)]+/gi))addStoreHint(items,m[0],'');
   for(const m of raw.matchAll(/(?:title|name)\s*:\s*(["'`])([^"'`]{2,120})\1[\s\S]{0,500}?(?:steam|storeUrl|store_url)\s*:\s*(["'`])(https?:\/\/[^"'`]+)\3/gi)){
-    const href=m[4];
-    let host='';try{host=new URL(href).hostname}catch{}
+    const href=m[4];let host='';try{host=new URL(href).hostname}catch{}
     if(isStoreHost(host))items.push({name:m[2],source:'script-game-title',url:href,confidence:98});
     addStoreHint(items,href,m[2]);
   }
@@ -236,35 +223,92 @@ function extractNameHints(html,baseUrl,pageTitle){
   for(const m of scope.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)){
     const rawHref=decodeEntities(m[1]);
     if(hasTemplateGarbage(rawHref))continue;
-    const href=absoluteUrl(rawHref,baseUrl);
-    addStoreHint(items,href,m[2]);
+    addStoreHint(items,absoluteUrl(rawHref,baseUrl),m[2]);
   }
   extractScriptGameHints(html,items);
   return uniqueHints(items);
 }
 
 function extractImages(html,baseUrl){
-  const result=[];
-  const seen=new Set();
-  const featuredRaw=String(html).match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)?.[1]||'';
+  const result=[];const seen=new Set();
+  const raw=String(html||'');
+  const featuredRaw=raw.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)?.[1]||'';
   const featured=!hasTemplateGarbage(featuredRaw)?absoluteUrl(decodeEntities(featuredRaw),baseUrl):'';
   if(featured){seen.add(featured);result.push({url:featured,alt:'',featured:true})}
-
-  const article=String(html).match(/<article[^>]*>([\s\S]*?)<\/article>/i)?.[1]||html;
+  const article=raw.match(/<article[^>]*>([\s\S]*?)<\/article>/i)?.[1]||raw;
   for(const m of article.matchAll(/<img\b[^>]*>/gi)){
     const tag=m[0];
     if(hasTemplateGarbage(tag))continue;
-    const raw=attr(tag,'data-src')||attr(tag,'data-lazy-src')||attr(tag,'src');
-    if(!raw||hasTemplateGarbage(raw))continue;
-    const url=absoluteUrl(raw,baseUrl);
+    const rawSrc=attr(tag,'data-src')||attr(tag,'data-lazy-src')||attr(tag,'src');
+    if(!rawSrc||hasTemplateGarbage(rawSrc))continue;
+    const url=absoluteUrl(rawSrc,baseUrl);
     if(!url||seen.has(url)||/^data:/i.test(url)||/%24%7B/i.test(url))continue;
     const alt=attr(tag,'alt');
     if(hasTemplateGarbage(alt))continue;
-    seen.add(url);
-    result.push({url,alt,featured:false});
+    seen.add(url);result.push({url,alt,featured:false});
     if(result.length>=100)break;
   }
   return result;
+}
+
+async function fetchJson(url){
+  try{
+    const r=await fetch(url,{headers:{'user-agent':'HARF-WAY Archive Salvager/0.8','accept':'application/json'},redirect:'follow'});
+    if(!r.ok)return null;
+    return await r.json();
+  }catch{return null}
+}
+
+async function fetchWordPressRecord(pageUrl){
+  const u=new URL(pageUrl);
+  const parts=u.pathname.split('/').filter(Boolean);
+  const slug=parts.at(-1)||'';
+  const route=parts[0]||'';
+  if(!slug)return null;
+
+  const typeData=await fetchJson(`${u.origin}/wp-json/wp/v2/types`);
+  const candidates=[];
+  if(typeData&&typeof typeData==='object'){
+    const types=Object.values(typeData);
+    types.sort((a,b)=>{
+      const am=(a?.rest_base===route||a?.slug===route)?0:1;
+      const bm=(b?.rest_base===route||b?.slug===route)?0:1;
+      return am-bm;
+    });
+    for(const t of types){
+      const base=String(t?.rest_base||'').trim();
+      if(base)candidates.push(base);
+    }
+  }
+  if(route)candidates.unshift(route);
+  candidates.push('posts','pages');
+
+  for(const restBase of [...new Set(candidates)]){
+    if(!/^[a-z0-9_-]+$/i.test(restBase))continue;
+    const endpoint=`${u.origin}/wp-json/wp/v2/${restBase}?slug=${encodeURIComponent(slug)}&per_page=1&_fields=id,date,link,slug,title,content,excerpt,featured_media`;
+    const rows=await fetchJson(endpoint);
+    if(!Array.isArray(rows)||!rows[0])continue;
+    const row=rows[0];
+    const rendered=String(row?.content?.rendered||'');
+    const text=extractReadableBlocks(rendered);
+    const images=extractImages(rendered,pageUrl);
+    if(row.featured_media){
+      const media=await fetchJson(`${u.origin}/wp-json/wp/v2/media/${row.featured_media}?_fields=source_url,alt_text`);
+      const src=String(media?.source_url||'');
+      if(src&&!images.some(x=>x.url===src))images.unshift({url:src,alt:String(media?.alt_text||''),featured:true});
+    }
+    return {
+      id:row.id,
+      restBase,
+      title:stripHtml(row?.title?.rendered||''),
+      date:String(row?.date||''),
+      rendered,
+      text,
+      images,
+      link:String(row?.link||pageUrl)
+    };
+  }
+  return null;
 }
 
 export default async function handler(req,res){
@@ -276,29 +320,36 @@ export default async function handler(req,res){
     const url=new URL(raw);
     if(!/(^|\.)harf-way\.com$/i.test(url.hostname))return res.status(400).json({ok:false,error:'harf_way_url_only'});
 
-    const response=await fetch(url.toString(),{
-      headers:{'user-agent':'HARF-WAY Archive Salvager/0.8'},
-      redirect:'follow'
-    });
+    const response=await fetch(url.toString(),{headers:{'user-agent':'HARF-WAY Archive Salvager/0.8'},redirect:'follow'});
     if(!response.ok)return res.status(502).json({ok:false,error:`source_${response.status}`});
-
     const html=await response.text();
     const finalUrl=response.url||url.toString();
-    const title=pickPlain(html,[
+
+    const pageTitle=pick(html,[
       /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i,
       /<title[^>]*>([\s\S]*?)<\/title>/i
     ]);
-    const date=pickPlain(html,[
+    const pageDate=pick(html,[
       /<meta[^>]+property=["']article:published_time["'][^>]+content=["']([^"']+)["']/i,
       /<time[^>]+datetime=["']([^"']+)["']/i
     ]);
-    const body=extractReadableText(html);
-    const images=extractImages(html,finalUrl);
-    const featuredImage=images.find(x=>x.featured)?.url||'';
+
+    const wp=await fetchWordPressRecord(finalUrl);
+    const fallbackText=extractReadableBlocks(html);
+    const body=wp?.text||fallbackText||'';
+    const title=wp?.title||pageTitle;
+    const date=wp?.date||pageDate;
+
+    const pageImages=extractImages(html,finalUrl);
+    const images=[];const seen=new Set();
+    for(const img of [...(wp?.images||[]),...pageImages]){
+      if(!img?.url||seen.has(img.url))continue;
+      seen.add(img.url);images.push(img);
+    }
+    const featuredImage=images.find(x=>x.featured)?.url||images[0]?.url||'';
+
     const nameHints=extractNameHints(html,finalUrl,title);
-    const storeLinks=nameHints.filter(x=>x.url).map(x=>({
-      name:x.name,url:x.url,source:x.source,sources:x.sources,confidence:x.confidence
-    }));
+    const storeLinks=nameHints.filter(x=>x.url).map(x=>({name:x.name,url:x.url,source:x.source,sources:x.sources,confidence:x.confidence}));
 
     return res.status(200).json({
       ok:true,
@@ -307,11 +358,13 @@ export default async function handler(req,res){
         title,
         date,
         text:body.slice(0,150000),
+        textSource:wp?.text?'wordpress-rest':'html-readable-blocks',
+        wpRestBase:wp?.restBase||null,
+        wpPostId:wp?.id||null,
         featuredImage,
         images,
         nameHints,
-        storeLinks,
-        extractionMode:'readable-text-blocks'
+        storeLinks
       }
     });
   }catch(error){
