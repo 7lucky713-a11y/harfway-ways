@@ -10,7 +10,7 @@
 </style>
 </head>
 <body>
-<header class="top"><div class="brand">HARF-WAY / CONTROL CENTER <small>Preview v0.3</small></div><div class="actions"><nav class="nav"><button data-view="system" class="active">SYSTEM</button><button data-view="analytics">ANALYTICS</button><button data-view="ops">OPS</button></nav><a class="linkbtn" href="https://harfway-vercel-hub.vercel.app/" target="_blank" rel="noreferrer">OLD HUB ↗</a></div></header>
+<header class="top"><div class="brand">HARF-WAY / CONTROL CENTER <small>Production v0.3</small></div><div class="actions"><nav class="nav"><button data-view="system" class="active">SYSTEM</button><button data-view="analytics">ANALYTICS</button><button data-view="ops">OPS</button></nav><a class="linkbtn" href="https://harfway-vercel-hub.vercel.app/" target="_blank" rel="noreferrer">OLD HUB ↗</a></div></header>
 <main class="wrap">
 <section class="hero"><div><div class="ey">HARF-WAY OPERATING SYSTEM</div><h1>ONE<br>PLACE.</h1></div><div><p>現役システムを整理しつつ、これから追加されるHARF-WAYツールは自動同期。役割・入口・稼働状態・計測を1箇所で追える管理センターです。</p><div id="state" class="state">SYSTEM / ANALYTICS / OPS を読み込み中…</div></div></section>
 <section class="kpis"><div class="kpi"><small>ACTIVE SYSTEMS</small><b id="activeCount">16</b><i>手動整理＋自動同期</i></div><div class="kpi"><small>AUTO SYNC</small><b id="autoCount">0</b><i>基準点以降の新規ツール</i></div><div class="kpi"><small>LIVE HEALTH</small><b id="healthCount">—</b><i>主要16サービス</i></div><div class="kpi"><small>GA4 COLLECTION</small><b id="gaCount">—</b><i>主要5サービス</i></div><div class="kpi"><small>GA4 REPORTING</small><b id="reportCount">—</b><i>Data API</i></div></section>
@@ -31,7 +31,7 @@
 <section class="panel"><h2>LIVE HEALTH CHECK / ACTIVE SYSTEMS</h2><div id="ops" class="ops"><div class="state">主要サービスを確認中…</div></div></section>
 <div class="twocol"><section class="panel"><h2>OPS v0.1 — NOW</h2><div class="todo"><div class="todoitem"><strong>LIVE</strong><span>各システムのHTTP疎通と応答時間をリアルタイム確認。</span></div><div class="todoitem"><strong>LIVE</strong><span>新規HUB登録をAUTO SYNCし、現役システムへの入口を統合。</span></div><div class="todoitem"><strong>LIVE</strong><span>5サービスのGA4計測状態を同時表示。</span></div></div></section><section class="panel"><h2>OPS v0.2 — NEXT</h2><div class="todo"><div class="todoitem"><strong>NEXT</strong><span>最新Production deployment・commit・更新時刻。</span></div><div class="todoitem"><strong>NEXT</strong><span>Rollback候補と最後に正常だったProduction。</span></div><div class="todoitem"><strong>NEXT</strong><span>DB / R2 / Backupの最終成功時刻と容量。</span></div></div></section></div>
 </section>
-<div class="foot">Preview v0.3 — Productionは変更していません。今後のHARF-WAY関連ツールはHUB新規ID＋harfway-tool.jsonを標準にし、CONTROL CENTERへ自動同期します。</div>
+<div class="foot">Production v0.3 — AUTO SYNC稼働中。今後のHARF-WAY関連ツールはHUB新規ID＋harfway-tool.jsonを標準にし、CONTROL CENTERへ自動同期します。</div>
 </main>
 <script is:inline>
 const $=s=>document.querySelector(s),n=v=>Number(v||0).toLocaleString('ja-JP');
