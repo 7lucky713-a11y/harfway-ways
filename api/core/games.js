@@ -61,34 +61,6 @@ export default async function handler(req, res) {
   const q = String(req.query?.q || '').trim();
   const limit = clampLimit(req.query?.limit);
 
-  const baseSelect = sql`
-    SELECT
-      c.id,
-      c.title,
-      c.description,
-      c.store_url,
-      c.article_url,
-      c.category,
-      c.status,
-      c.source_of_truth,
-      c.tags,
-      COALESCE((
-        SELECT jsonb_agg(
-          jsonb_build_object(
-            'service', r.service,
-            'externalId', r.external_id,
-            'externalUrl', r.external_url,
-            'metadata', r.metadata
-          ) ORDER BY r.service, r.external_id
-        )
-        FROM core.game_refs r
-        WHERE r.game_id = c.id
-      ), '[]'::jsonb) AS refs,
-      c.created_at,
-      c.updated_at
-    FROM core.game_catalog c
-  `;
-
   try {
     let rows;
     if (id) {
