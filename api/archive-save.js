@@ -61,75 +61,67 @@ export default async function handler(req, res) {
     const featuredImageUrl = cleanString(article.featuredImage || '', 4000);
     const sql = neon(databaseUrl);
 
-    await sql`BEGIN`;
-    try {
+    await sql`
+      INSERT INTO core.contents (
+        id, content_type, title, url, published_at, excerpt, body_text,
+        featured_image_url, status, source, metadata, updated_at
+      ) VALUES (
+        ${contentId}, 'article', ${title}, ${url}, ${publishedAt}, ${excerpt}, ${bodyText},
+        ${featuredImageUrl}, ${status}, 'archive-salvager',
+        ${JSON.stringify({ fetchedUrl: article.url || url, salvageVersion: '0.3' })}::jsonb, now()
+      )
+      ON CONFLICT (url) DO UPDATE SET
+        title = EXCLUDED.title,
+        published_at = EXCLUDED.published_at,
+        excerpt = EXCLUDED.excerpt,
+        body_text = EXCLUDED.body_text,
+        featured_image_url = EXCLUDED.featured_image_url,
+        status = EXCLUDED.status,
+        source = EXCLUDED.source,
+        metadata = EXCLUDED.metadata,
+        updated_at = now()
+    `;
+
+    await sql`DELETE FROM core.content_game_links WHERE content_id = ${contentId}`;
+    for (const link of links) {
+      const gameId = cleanString(link.gameId, 500);
+      if (!gameId) continue;
       await sql`
-        INSERT INTO core.contents (
-          id, content_type, title, url, published_at, excerpt, body_text,
-          featured_image_url, status, source, metadata, updated_at
+        INSERT INTO core.content_game_links (
+          content_id, game_id, relation_type, mention_text, note, confidence, source, metadata, updated_at
         ) VALUES (
-          ${contentId}, 'article', ${title}, ${url}, ${publishedAt}, ${excerpt}, ${bodyText},
-          ${featuredImageUrl}, ${status}, 'archive-salvager',
-          ${JSON.stringify({ fetchedUrl: article.url || url, salvageVersion: '0.3' })}::jsonb, now()
+          ${contentId}, ${gameId}, 'mentioned', ${cleanString(link.excerpt, 8000)}, '',
+          ${Math.max(0, Math.min(100, Number(link.score) || 0))}, 'archive-salvager',
+          ${JSON.stringify({ matchSource: link.source || '' })}::jsonb, now()
         )
-        ON CONFLICT (url) DO UPDATE SET
-          title = EXCLUDED.title,
-          published_at = EXCLUDED.published_at,
-          excerpt = EXCLUDED.excerpt,
-          body_text = EXCLUDED.body_text,
-          featured_image_url = EXCLUDED.featured_image_url,
-          status = EXCLUDED.status,
-          source = EXCLUDED.source,
+        ON CONFLICT (content_id, game_id) DO UPDATE SET
+          mention_text = EXCLUDED.mention_text,
+          confidence = EXCLUDED.confidence,
           metadata = EXCLUDED.metadata,
           updated_at = now()
       `;
+    }
 
-      await sql`DELETE FROM core.content_game_links WHERE content_id = ${contentId}`;
-      for (const link of links) {
-        const gameId = cleanString(link.gameId, 500);
-        if (!gameId) continue;
-        await sql`
-          INSERT INTO core.content_game_links (
-            content_id, game_id, relation_type, mention_text, note, confidence, source, metadata, updated_at
-          ) VALUES (
-            ${contentId}, ${gameId}, 'mentioned', ${cleanString(link.excerpt, 8000)}, '',
-            ${Math.max(0, Math.min(100, Number(link.score) || 0))}, 'archive-salvager',
-            ${JSON.stringify({ matchSource: link.source || '' })}::jsonb, now()
-          )
-          ON CONFLICT (content_id, game_id) DO UPDATE SET
-            mention_text = EXCLUDED.mention_text,
-            confidence = EXCLUDED.confidence,
-            metadata = EXCLUDED.metadata,
-            updated_at = now()
-        `;
-      }
-
-      await sql`DELETE FROM core.content_assets WHERE content_id = ${contentId}`;
-      for (let i = 0; i < assets.length; i++) {
-        const asset = assets[i] || {};
-        const sourceUrl = cleanString(asset.url || asset.sourceUrl, 4000);
-        if (!sourceUrl) continue;
-        const assetId = makeId('asset', `${url}|${sourceUrl}`);
-        await sql`
-          INSERT INTO core.content_assets (
-            id, content_id, game_id, asset_type, source_url, alt_text, sort_order, metadata
-          ) VALUES (
-            ${assetId}, ${contentId}, NULL, ${asset.featured ? 'featured_image' : 'image'},
-            ${sourceUrl}, ${cleanString(asset.alt, 2000)}, ${i},
-            ${JSON.stringify({ featured: Boolean(asset.featured) })}::jsonb
-          )
-          ON CONFLICT (content_id, source_url) DO UPDATE SET
-            asset_type = EXCLUDED.asset_type,
-            alt_text = EXCLUDED.alt_text,
-            sort_order = EXCLUDED.sort_order,
-            metadata = EXCLUDED.metadata
-        `;
-      }
-
-      await sql`COMMIT`;
-    } catch (error) {
-      await sql`ROLLBACK`;
-      throw error;
+    await sql`DELETE FROM core.content_assets WHERE content_id = ${contentId}`;
+    for (let i = 0; i < assets.length; i++) {
+      const asset = assets[i] || {};
+      const sourceUrl = cleanString(asset.url || asset.sourceUrl, 4000);
+      if (!sourceUrl) continue;
+      const assetId = makeId('asset', `${url}|${sourceUrl}`);
+      await sql`
+        INSERT INTO core.content_assets (
+          id, content_id, game_id, asset_type, source_url, alt_text, sort_order, metadata
+        ) VALUES (
+          ${assetId}, ${contentId}, NULL, ${asset.featured ? 'featured_image' : 'image'},
+          ${sourceUrl}, ${cleanString(asset.alt, 2000)}, ${i},
+          ${JSON.stringify({ featured: Boolean(asset.featured) })}::jsonb
+        )
+        ON CONFLICT (content_id, source_url) DO UPDATE SET
+          asset_type = EXCLUDED.asset_type,
+          alt_text = EXCLUDED.alt_text,
+          sort_order = EXCLUDED.sort_order,
+          metadata = EXCLUDED.metadata
+      `;
     }
 
     const rows = await sql`
