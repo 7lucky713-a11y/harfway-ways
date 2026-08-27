@@ -1,0 +1,1 @@
+export default function handler(req,res){res.status(200).json({ok:true,service:'HARF-WAY Factory Starter',environment:process.env.VERCEL_ENV||'unknown'});}
