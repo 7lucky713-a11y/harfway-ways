@@ -1,3 +1,4 @@
+// Preview redeploy marker: OIDC environment configured.
 import {getVercelOidcToken} from '@vercel/oidc';
 import {ExternalAccountClient} from 'google-auth-library';
 
