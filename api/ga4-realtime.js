@@ -31,6 +31,18 @@ async function accessToken(c){
   return token;
 }
 
+async function realtime(propertyId,token,body){
+  const response=await fetch(`${DATA_API}/properties/${encodeURIComponent(propertyId)}:runRealtimeReport`,{
+    method:'POST',
+    headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},
+    body:JSON.stringify(body),
+    cache:'no-store'
+  });
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(data?.error?.message||`ga4_${response.status}`);
+  return data;
+}
+
 export default async function handler(req,res){
   if(req.method!=='GET')return res.status(405).json({ok:false,error:'method_not_allowed'});
   try{
@@ -39,27 +51,29 @@ export default async function handler(req,res){
       return res.status(500).json({ok:false,error:'missing_env'});
     }
     const token=await accessToken(c);
-    const response=await fetch(`${DATA_API}/properties/${encodeURIComponent(c.propertyId)}:runRealtimeReport`,{
-      method:'POST',
-      headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},
-      body:JSON.stringify({
-        dimensions:[{name:'unifiedScreenName'},{name:'eventName'}],
-        metrics:[{name:'eventCount'},{name:'activeUsers'},{name:'screenPageViews'}],
+    const [pages,events]=await Promise.all([
+      realtime(c.propertyId,token,{
+        dimensions:[{name:'unifiedScreenName'}],
+        metrics:[{name:'screenPageViews'},{name:'activeUsers'}],
         limit:100
       }),
-      cache:'no-store'
-    });
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok)throw new Error(data?.error?.message||`ga4_${response.status}`);
-    const rows=(data.rows||[]).map(row=>({
+      realtime(c.propertyId,token,{
+        dimensions:[{name:'eventName'}],
+        metrics:[{name:'eventCount'}],
+        limit:100
+      })
+    ]);
+    const pageRows=(pages.rows||[]).map(row=>({
       title:String(row.dimensionValues?.[0]?.value||''),
-      event:String(row.dimensionValues?.[1]?.value||''),
-      eventCount:Number(row.metricValues?.[0]?.value||0),
-      activeUsers:Number(row.metricValues?.[1]?.value||0),
-      screenPageViews:Number(row.metricValues?.[2]?.value||0)
+      screenPageViews:Number(row.metricValues?.[0]?.value||0),
+      activeUsers:Number(row.metricValues?.[1]?.value||0)
     }));
-    console.log('[ga4-realtime-audit]',JSON.stringify(rows));
-    return res.status(200).json({ok:true,rows});
+    const eventRows=(events.rows||[]).map(row=>({
+      event:String(row.dimensionValues?.[0]?.value||''),
+      eventCount:Number(row.metricValues?.[0]?.value||0)
+    }));
+    console.log('[ga4-realtime-audit]',JSON.stringify({pages:pageRows,events:eventRows}));
+    return res.status(200).json({ok:true,pages:pageRows,events:eventRows});
   }catch(error){
     console.error('[ga4-realtime-audit]',error?.message||error);
     return res.status(500).json({ok:false,error:error?.message||'ga4_realtime_error'});
