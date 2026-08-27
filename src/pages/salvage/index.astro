@@ -1,0 +1,64 @@
+---
+---
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>HARF-WAY Archive Salvager</title>
+  <style>
+    :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#f4f2ec;background:#11110f}*{box-sizing:border-box}body{margin:0;background:#11110f;color:#f4f2ec}.shell{min-height:100vh;display:grid;grid-template-rows:auto 1fr}.top{display:flex;align-items:center;gap:18px;padding:18px 22px;border-bottom:1px solid #34332f;background:#161614;position:sticky;top:0;z-index:5}.brand{font-size:12px;letter-spacing:.16em;color:#aaa79e;white-space:nowrap}.url{display:flex;gap:8px;flex:1}.url input{flex:1}.btn,input,textarea{font:inherit}.btn{border:1px solid #4a4842;background:#23231f;color:#fff;padding:10px 14px;border-radius:8px;cursor:pointer}.btn.primary{background:#f1eee6;color:#111;border-color:#f1eee6;font-weight:700}.btn.ghost{background:transparent}.btn:disabled{opacity:.45;cursor:not-allowed}input,textarea{width:100%;border:1px solid #3b3934;background:#171715;color:#f7f5ef;border-radius:8px;padding:10px}main{display:grid;grid-template-columns:270px minmax(360px,1fr) 380px;min-height:0}.pane{min-height:0;overflow:auto;border-right:1px solid #2f2e2a}.pane:last-child{border-right:0}.pad{padding:18px}.label{font-size:11px;letter-spacing:.12em;color:#8f8c84;text-transform:uppercase;margin-bottom:9px}.stat{display:grid;grid-template-columns:1fr auto;gap:6px;padding:10px 0;border-bottom:1px solid #292824}.queue{margin-top:18px}.queue-item{padding:11px;border:1px solid #302f2a;border-radius:8px;margin-bottom:8px;color:#c9c6bd;font-size:13px}.queue-item.done{opacity:.55}.article h1{font-size:28px;line-height:1.2;margin:0 0 10px}.meta{color:#8e8b83;font-size:13px;margin-bottom:22px}.article-body{line-height:1.85;color:#d8d5cc;white-space:pre-wrap}.candidate{border:1px solid #36342f;border-radius:10px;padding:12px;margin-bottom:10px;background:#171715}.candidate-top{display:flex;gap:10px;align-items:flex-start}.candidate input[type=checkbox]{width:auto;margin-top:4px}.candidate-title{font-weight:700}.candidate-meta{font-size:12px;color:#96938b;margin-top:4px}.score{font-size:11px;padding:3px 7px;border:1px solid #4a4842;border-radius:99px;margin-left:auto;color:#bbb8af}.excerpt{margin-top:10px;font-size:12px;line-height:1.6;color:#aaa79e;border-top:1px solid #292824;padding-top:9px}.footer-actions{position:sticky;bottom:0;background:linear-gradient(transparent,#11110f 24%);padding-top:30px;display:flex;gap:8px}.empty{padding:50px 20px;text-align:center;color:#77746d}.notice{font-size:12px;line-height:1.6;padding:10px 12px;background:#20201c;border:1px solid #37352f;border-radius:8px;color:#bdb9ae;margin-bottom:14px}@media(max-width:1000px){main{grid-template-columns:220px 1fr}.pane.right{grid-column:1/-1;border-top:1px solid #2f2e2a}.pane.middle{border-right:0}}@media(max-width:720px){.top{align-items:stretch;flex-direction:column}.url{flex-direction:column}main{display:block}.pane{border-right:0;border-bottom:1px solid #2f2e2a;max-height:none}}
+  </style>
+</head>
+<body>
+<div class="shell">
+  <header class="top">
+    <div class="brand">HARF-WAY / ARCHIVE SALVAGER</div>
+    <form class="url" id="loadForm">
+      <input id="articleUrl" type="url" placeholder="https://harf-way.com/..." required />
+      <button class="btn primary" id="loadBtn">記事を読み込む</button>
+    </form>
+  </header>
+  <main>
+    <section class="pane left"><div class="pad">
+      <div class="label">Progress</div>
+      <div class="stat"><span>処理済み</span><strong id="doneCount">0</strong></div>
+      <div class="stat"><span>下書き</span><strong id="draftCount">0</strong></div>
+      <div class="stat"><span>ゲーム候補</span><strong id="gameCount">—</strong></div>
+      <div class="queue"><div class="label">Recent</div><div id="queue"></div></div>
+    </div></section>
+    <section class="pane middle"><div class="pad article" id="articlePane"><div class="empty">過去記事URLを入れると、本文とゲーム候補をここに展開します。</div></div></section>
+    <section class="pane right"><div class="pad">
+      <div class="label">DB Link Candidates</div>
+      <div class="notice">Preview版では紐付け結果をブラウザ内の下書きとして保存します。既存DBへの書き込みは、本番DB用テーブルをPreview検証してから接続します。</div>
+      <div id="candidates"><div class="empty">記事を読み込んでください。</div></div>
+      <div class="footer-actions">
+        <button class="btn ghost" id="saveDraft" disabled>下書き保存</button>
+        <button class="btn primary" id="saveNext" disabled>保存して次へ →</button>
+      </div>
+    </div></section>
+  </main>
+</div>
+<script>
+const $=s=>document.querySelector(s);const state={games:[],article:null,candidates:[]};
+const storeKey='harfway-archive-salvager-v01';
+function readStore(){try{return JSON.parse(localStorage.getItem(storeKey)||'{"items":[]}')}catch{return {items:[]}}}
+function writeStore(v){localStorage.setItem(storeKey,JSON.stringify(v))}
+function esc(v=''){return String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function norm(v=''){return String(v).normalize('NFKC').toLowerCase().replace(/[\s:：・!！?？'"“”‘’()（）\[\]【】_-]+/g,'')}
+function score(title,text){const a=norm(title),b=norm(text);if(!a||!b)return 0;if(b.includes(a))return 100;const parts=String(title).toLowerCase().split(/\s+/).filter(x=>x.length>2);if(!parts.length)return 0;const hit=parts.filter(p=>String(text).toLowerCase().includes(p)).length;return Math.round(hit/parts.length*80)}
+function refreshStats(){const db=readStore();$('#doneCount').textContent=db.items.filter(x=>x.status==='done').length;$('#draftCount').textContent=db.items.filter(x=>x.status==='draft').length;$('#gameCount').textContent=state.games.length||'—';$('#queue').innerHTML=db.items.slice(-8).reverse().map(x=>`<div class="queue-item ${x.status==='done'?'done':''}">${esc(x.title||x.url)}<br><small>${x.links?.length||0} games · ${esc(x.status)}</small></div>`).join('')||'<div class="empty">まだありません</div>'}
+async function loadGames(){try{const r=await fetch('/api/games-live',{cache:'no-store'});const j=await r.json();state.games=Array.isArray(j.entries)?j.entries:[]}catch(e){console.error(e);state.games=[]}refreshStats()}
+function renderArticle(a){$('#articlePane').innerHTML=`<h1>${esc(a.title||'Untitled')}</h1><div class="meta">${esc(a.date||'')} · <a href="${esc(a.url)}" target="_blank" rel="noreferrer" style="color:#bbb">元記事を開く ↗</a></div><div class="article-body">${esc(a.text||'本文を取得できませんでした。')}</div>`}
+function excerpt(text,title){const raw=String(text||'');const idx=raw.toLowerCase().indexOf(String(title||'').toLowerCase());if(idx<0)return '';return raw.slice(Math.max(0,idx-90),Math.min(raw.length,idx+String(title).length+170)).replace(/\s+/g,' ').trim()}
+function buildCandidates(a){state.candidates=state.games.map(g=>({...g,_score:score(g.title,a.text),_excerpt:excerpt(a.text,g.title)})).filter(g=>g._score>=60).sort((x,y)=>y._score-x._score).slice(0,30);renderCandidates()}
+function renderCandidates(){if(!state.candidates.length){$('#candidates').innerHTML='<div class="empty">既存DBとの一致候補が見つかりませんでした。手動検索は次版で追加します。</div>'}else{$('#candidates').innerHTML=state.candidates.map((g,i)=>`<label class="candidate"><div class="candidate-top"><input type="checkbox" data-i="${i}" ${g._score===100?'checked':''}><div><div class="candidate-title">${esc(g.title)}</div><div class="candidate-meta">${esc(g.category||'')} · ${esc(g.id)}</div></div><span class="score">${g._score}%</span></div>${g._excerpt?`<div class="excerpt">…${esc(g._excerpt)}…</div>`:''}</label>`).join('')}$('#saveDraft').disabled=false;$('#saveNext').disabled=false}
+function selectedLinks(){return [...document.querySelectorAll('#candidates input[type=checkbox]:checked')].map(el=>{const g=state.candidates[Number(el.dataset.i)];return {gameId:g.id,title:g.title,score:g._score,excerpt:g._excerpt}})}
+function save(status){if(!state.article)return;const db=readStore();const item={url:state.article.url,title:state.article.title,date:state.article.date,status,links:selectedLinks(),savedAt:new Date().toISOString()};const idx=db.items.findIndex(x=>x.url===item.url);if(idx>=0)db.items[idx]=item;else db.items.push(item);writeStore(db);refreshStats();return item}
+$('#loadForm').addEventListener('submit',async e=>{e.preventDefault();const url=$('#articleUrl').value.trim();if(!url)return;$('#loadBtn').disabled=true;$('#loadBtn').textContent='読み込み中…';$('#articlePane').innerHTML='<div class="empty">記事を取得しています…</div>';$('#candidates').innerHTML='<div class="empty">DBを照合しています…</div>';try{const r=await fetch('/api/archive-fetch?url='+encodeURIComponent(url));const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||'fetch_failed');state.article=j.article;renderArticle(state.article);buildCandidates(state.article)}catch(err){$('#articlePane').innerHTML=`<div class="empty">取得できませんでした。<br>${esc(err.message)}</div>`;$('#candidates').innerHTML='<div class="empty">—</div>'}finally{$('#loadBtn').disabled=false;$('#loadBtn').textContent='記事を読み込む'}})
+$('#saveDraft').addEventListener('click',()=>save('draft'));
+$('#saveNext').addEventListener('click',()=>{save('done');state.article=null;state.candidates=[];$('#articleUrl').value='';$('#articlePane').innerHTML='<div class="empty">保存しました。次の記事URLを入力してください。</div>';$('#candidates').innerHTML='<div class="empty">次の記事を待っています。</div>';$('#saveDraft').disabled=true;$('#saveNext').disabled=true;$('#articleUrl').focus()});
+loadGames();refreshStats();
+</script>
+</body>
+</html>
