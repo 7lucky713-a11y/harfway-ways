@@ -1,0 +1,119 @@
+---
+const services = [
+  {
+    name: '広告管理',
+    role: 'キャンペーン・素材・配信条件の管理',
+    url: 'https://harfway-ads-admin.vercel.app',
+    status: 'preview',
+  },
+  {
+    name: '配信API',
+    role: 'WAYS / 切れ端 / プレイリストへの広告配信',
+    url: 'https://harfway-ads-delivery.vercel.app',
+    status: 'production',
+  },
+  {
+    name: '配信面ダッシュボード',
+    role: '配信場所・配信面ごとの状況確認',
+    url: 'https://harfway-ads-placement-dashboard.vercel.app',
+    status: 'production',
+  },
+];
+
+const placements = [
+  { name: 'WAYS', state: '接続候補', note: '短尺動画フィード内の広告枠' },
+  { name: '切れ端', state: '接続候補', note: 'アーカイブ/記事導線内の広告枠' },
+  { name: 'プレイリスト', state: '接続候補', note: '視聴導線内の広告枠' },
+];
+---
+
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>HARF-WAY ADS HUB</title>
+    <style>
+      :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      body { margin:0; background:#0b0d10; color:#f6f7f9; }
+      main { max-width:1180px; margin:auto; padding:48px 24px 80px; }
+      .eyebrow { font-size:12px; letter-spacing:.16em; color:#8f98a8; text-transform:uppercase; }
+      h1 { font-size:clamp(32px,5vw,64px); margin:8px 0 12px; letter-spacing:-.04em; }
+      .lead { max-width:760px; color:#b8c0cc; line-height:1.8; }
+      .grid { display:grid; grid-template-columns:repeat(12,1fr); gap:16px; margin-top:32px; }
+      .card { grid-column:span 4; border:1px solid #222831; background:#11151a; border-radius:18px; padding:20px; }
+      .wide { grid-column:span 8; }
+      .side { grid-column:span 4; }
+      .label { color:#8d96a4; font-size:12px; }
+      .value { font-size:30px; font-weight:700; margin-top:6px; }
+      .service { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; padding:16px 0; border-top:1px solid #222831; }
+      .service:first-of-type { border-top:none; }
+      .service h3 { margin:0 0 6px; font-size:18px; }
+      .service p { margin:0; color:#99a3b1; font-size:14px; line-height:1.6; }
+      a.button { display:inline-flex; align-items:center; justify-content:center; padding:10px 14px; border-radius:999px; text-decoration:none; background:#f5f7fa; color:#111; font-size:13px; font-weight:700; white-space:nowrap; }
+      .badge { display:inline-flex; padding:5px 8px; border-radius:999px; border:1px solid #303844; color:#aeb7c5; font-size:11px; margin-top:8px; }
+      .flow { display:grid; gap:10px; margin-top:16px; }
+      .step { display:flex; gap:12px; align-items:center; padding:13px 14px; background:#0d1116; border:1px solid #20262f; border-radius:12px; }
+      .num { width:28px; height:28px; border-radius:50%; background:#f2f4f7; color:#111; display:grid; place-items:center; font-size:12px; font-weight:800; }
+      table { width:100%; border-collapse:collapse; margin-top:8px; }
+      th,td { text-align:left; padding:12px 8px; border-bottom:1px solid #222831; font-size:14px; }
+      th { color:#7e8794; font-weight:500; }
+      .note { color:#919ba9; font-size:13px; line-height:1.7; }
+      @media (max-width: 800px) { .card,.wide,.side { grid-column:1/-1; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="eyebrow">HARF-WAY / Advertising Infrastructure</div>
+      <h1>ADS HUB</h1>
+      <p class="lead">広告キャンペーン、素材、配信面、配信API、計測を1か所から扱うための統合管理HUB。既存システムを残したまま、段階的にここへ集約します。</p>
+
+      <section class="grid">
+        <div class="card"><div class="label">SYSTEM</div><div class="value">3</div><div class="note">主要サービスを統合管理</div></div>
+        <div class="card"><div class="label">DELIVERY</div><div class="value">LIVE</div><div class="note">配信APIはProduction稼働中</div></div>
+        <div class="card"><div class="label">NEXT</div><div class="value">統合</div><div class="note">管理画面・配信面・DBの一本化</div></div>
+
+        <div class="card wide">
+          <div class="label">SERVICES</div>
+          {services.map((service) => (
+            <div class="service">
+              <div>
+                <h3>{service.name}</h3>
+                <p>{service.role}</p>
+                <span class="badge">{service.status}</span>
+              </div>
+              <a class="button" href={service.url} target="_blank" rel="noreferrer">開く ↗</a>
+            </div>
+          ))}
+        </div>
+
+        <div class="card side">
+          <div class="label">STANDARD FLOW</div>
+          <div class="flow">
+            {['広告登録','素材アップロード','配信面を選択','上限imp設定','自動配信','自動停止','レポート'].map((step, index) => (
+              <div class="step"><span class="num">{index + 1}</span><span>{step}</span></div>
+            ))}
+          </div>
+        </div>
+
+        <div class="card wide">
+          <div class="label">PLACEMENTS</div>
+          <table>
+            <thead><tr><th>配信面</th><th>状態</th><th>用途</th></tr></thead>
+            <tbody>
+              {placements.map((placement) => (
+                <tr><td>{placement.name}</td><td>{placement.state}</td><td>{placement.note}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card side">
+          <div class="label">DB POLICY</div>
+          <p class="note">今後の標準系は public.ad_campaigns / public.ad_media / public.ad_events / public.ad_placement_rules に寄せます。旧 ads.* 系は動作確認後に段階的に整理します。</p>
+          <div class="label" style="margin-top:20px">STATUS FLOW</div>
+          <p class="note">下書き → 審査待ち → 配信予約 → 配信中 → 上限到達 → 終了</p>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
