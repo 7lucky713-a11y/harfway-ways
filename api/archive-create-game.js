@@ -1,7 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import { createHash } from 'node:crypto';
+import { archiveDatabaseConfig, authorizeArchiveRequest, archiveCors } from './archive-core.js';
 
-function dbUrl(){return process.env.SALVAGER_PREVIEW_DATABASE_URL||''}
 function clean(v,max=4000){return String(v||'').trim().slice(0,max)}
 function normalizeTitle(v=''){
   return String(v).normalize('NFKC').toLowerCase()
@@ -29,14 +29,15 @@ function looksSameTitle(a='',b=''){
 
 export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
-  res.setHeader('Access-Control-Allow-Origin','*');
+  archiveCors(res);
   res.setHeader('Access-Control-Allow-Methods','POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers','Content-Type');
   if(req.method==='OPTIONS')return res.status(204).end();
   if(req.method!=='POST')return res.status(405).json({ok:false,error:'method_not_allowed'});
-  if(process.env.VERCEL_ENV==='production')return res.status(403).json({ok:false,error:'preview_only'});
-  const databaseUrl=dbUrl();
-  if(!databaseUrl)return res.status(503).json({ok:false,error:'preview_database_not_configured',safeMode:true});
+
+  const auth=await authorizeArchiveRequest(req);
+  if(!auth.ok)return res.status(auth.status||401).json({ok:false,error:auth.error,authRequired:auth.authRequired});
+  const config=auth.config||archiveDatabaseConfig();
+  if(!config.url)return res.status(503).json({ok:false,error:config.production?'core_database_not_configured':'preview_database_not_configured',writeMode:config.mode});
 
   try{
     const payload=typeof req.body==='string'?JSON.parse(req.body||'{}'):(req.body||{});
@@ -45,7 +46,7 @@ export default async function handler(req,res){
     const articleUrl=clean(payload.articleUrl,4000);
     if(!title)return res.status(400).json({ok:false,error:'title_required'});
     if(articleUrl){const u=new URL(articleUrl);if(!/(^|\.)harf-way\.com$/i.test(u.hostname))return res.status(400).json({ok:false,error:'harf_way_article_only'})}
-    const sql=neon(databaseUrl);
+    const sql=neon(config.url);
     const appId=steamAppId(storeUrl);
 
     if(appId){
@@ -54,14 +55,14 @@ export default async function handler(req,res){
         FROM core.game_refs r JOIN core.games g ON g.id=r.game_id
         WHERE r.service='steam' AND r.external_id=${appId} LIMIT 1
       `;
-      if(refHit[0])return res.status(200).json({ok:true,created:false,game:refHit[0],duplicateBy:'steam_app_id',safeMode:true});
+      if(refHit[0])return res.status(200).json({ok:true,created:false,game:refHit[0],duplicateBy:'steam_app_id',writeMode:config.mode});
     }
 
     const exactTitle=await sql`
       SELECT id,title,store_url,article_url,category,status,source_of_truth
       FROM core.games WHERE lower(title)=lower(${title}) LIMIT 1
     `;
-    if(exactTitle[0])return res.status(200).json({ok:true,created:false,game:exactTitle[0],duplicateBy:'title',safeMode:true});
+    if(exactTitle[0])return res.status(200).json({ok:true,created:false,game:exactTitle[0],duplicateBy:'title',writeMode:config.mode});
 
     if(storeUrl){
       const storeHit=await sql`
@@ -70,14 +71,14 @@ export default async function handler(req,res){
       `;
       const canonical=canonicalStore(storeUrl);
       const duplicate=storeHit.find(g=>canonicalStore(g.store_url)===canonical||looksSameTitle(g.title,title));
-      if(duplicate)return res.status(200).json({ok:true,created:false,game:duplicate,duplicateBy:canonicalStore(duplicate.store_url)===canonical?'store_url':'normalized_title',safeMode:true});
+      if(duplicate)return res.status(200).json({ok:true,created:false,game:duplicate,duplicateBy:canonicalStore(duplicate.store_url)===canonical?'store_url':'normalized_title',writeMode:config.mode});
     }else{
       const titlePool=await sql`
         SELECT id,title,store_url,article_url,category,status,source_of_truth
         FROM core.games LIMIT 1000
       `;
       const duplicate=titlePool.find(g=>looksSameTitle(g.title,title));
-      if(duplicate)return res.status(200).json({ok:true,created:false,game:duplicate,duplicateBy:'normalized_title',safeMode:true});
+      if(duplicate)return res.status(200).json({ok:true,created:false,game:duplicate,duplicateBy:'normalized_title',writeMode:config.mode});
     }
 
     const base=appId?`steam-${appId}`:`${slugify(title)}-${shortHash(`${title}|${storeUrl}|${articleUrl}`)}`;
@@ -100,7 +101,7 @@ export default async function handler(req,res){
       `;
     }
 
-    return res.status(200).json({ok:true,created:true,game:rows[0],steamAppId:appId||null,safeMode:true});
+    return res.status(200).json({ok:true,created:true,game:rows[0],steamAppId:appId||null,writeMode:config.mode});
   }catch(error){
     console.error('[archive-create-game]',error);
     return res.status(500).json({ok:false,error:'archive_create_game_failed'});
