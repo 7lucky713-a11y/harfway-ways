@@ -1,18 +1,21 @@
 ---
 const services = [
   {
+    key: 'admin',
     name: '広告管理',
     role: 'キャンペーン・素材・配信条件の管理',
     url: 'https://harfway-ads-admin.vercel.app',
     status: 'preview',
   },
   {
+    key: 'delivery',
     name: '配信API',
     role: 'WAYS / 切れ端 / プレイリストへの広告配信',
     url: 'https://harfway-ads-delivery.vercel.app',
     status: 'production',
   },
   {
+    key: 'placements',
     name: '配信面ダッシュボード',
     role: '配信場所・配信面ごとの状況確認',
     url: 'https://harfway-ads-placement-dashboard.vercel.app',
@@ -42,15 +45,23 @@ const placements = [
       .grid { display:grid; grid-template-columns:repeat(12,1fr); gap:16px; margin-top:32px; }
       .card { grid-column:span 4; border:1px solid #222831; background:#11151a; border-radius:18px; padding:20px; }
       .wide { grid-column:span 8; }
+      .full { grid-column:1/-1; }
       .side { grid-column:span 4; }
-      .label { color:#8d96a4; font-size:12px; }
+      .label { color:#8d96a4; font-size:12px; letter-spacing:.04em; }
       .value { font-size:30px; font-weight:700; margin-top:6px; }
       .service { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; padding:16px 0; border-top:1px solid #222831; }
       .service:first-of-type { border-top:none; }
       .service h3 { margin:0 0 6px; font-size:18px; }
       .service p { margin:0; color:#99a3b1; font-size:14px; line-height:1.6; }
+      .service-actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
       a.button { display:inline-flex; align-items:center; justify-content:center; padding:10px 14px; border-radius:999px; text-decoration:none; background:#f5f7fa; color:#111; font-size:13px; font-weight:700; white-space:nowrap; }
-      .badge { display:inline-flex; padding:5px 8px; border-radius:999px; border:1px solid #303844; color:#aeb7c5; font-size:11px; margin-top:8px; }
+      .badge { display:inline-flex; align-items:center; gap:6px; padding:5px 8px; border-radius:999px; border:1px solid #303844; color:#aeb7c5; font-size:11px; margin-top:8px; }
+      .live-badge { margin:0; min-width:76px; justify-content:center; }
+      .live-badge[data-state="ok"] { border-color:#315844; color:#8fe0af; background:#12251a; }
+      .live-badge[data-state="protected"] { border-color:#66542f; color:#e9c879; background:#261f11; }
+      .live-badge[data-state="error"] { border-color:#6b3434; color:#ef9d9d; background:#281414; }
+      .live-badge[data-state="loading"] { color:#9da7b6; }
+      .dot { width:7px; height:7px; border-radius:50%; background:currentColor; opacity:.9; }
       .flow { display:grid; gap:10px; margin-top:16px; }
       .step { display:flex; gap:12px; align-items:center; padding:13px 14px; background:#0d1116; border:1px solid #20262f; border-radius:12px; }
       .num { width:28px; height:28px; border-radius:50%; background:#f2f4f7; color:#111; display:grid; place-items:center; font-size:12px; font-weight:800; }
@@ -58,7 +69,31 @@ const placements = [
       th,td { text-align:left; padding:12px 8px; border-bottom:1px solid #222831; font-size:14px; }
       th { color:#7e8794; font-weight:500; }
       .note { color:#919ba9; font-size:13px; line-height:1.7; }
-      @media (max-width: 800px) { .card,.wide,.side { grid-column:1/-1; } }
+      .live-head { display:flex; justify-content:space-between; gap:20px; align-items:flex-start; }
+      .live-summary { display:flex; align-items:baseline; gap:8px; margin-top:8px; }
+      .live-summary strong { font-size:34px; letter-spacing:-.04em; }
+      .live-summary span { color:#8993a1; font-size:13px; }
+      .live-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:18px; }
+      .live-item { padding:16px; border:1px solid #222a34; background:#0d1116; border-radius:14px; }
+      .live-item-top { display:flex; justify-content:space-between; gap:12px; align-items:center; }
+      .live-item h3 { margin:0; font-size:15px; }
+      .live-meta { margin-top:12px; min-height:38px; color:#87919f; font-size:12px; line-height:1.6; }
+      .metrics-box { display:flex; justify-content:space-between; gap:18px; align-items:center; padding:14px 16px; margin-top:14px; border:1px dashed #2d3540; border-radius:12px; background:#0c1014; }
+      .metrics-title { font-size:13px; font-weight:700; }
+      .metrics-copy { margin-top:4px; color:#8e98a6; font-size:12px; line-height:1.6; }
+      .metric-values { display:none; gap:18px; flex-wrap:wrap; }
+      .metric-values.is-visible { display:flex; }
+      .metric { min-width:70px; }
+      .metric span { display:block; color:#7e8997; font-size:10px; letter-spacing:.08em; }
+      .metric strong { display:block; margin-top:3px; font-size:20px; }
+      #last-checked { color:#77818e; font-size:11px; white-space:nowrap; }
+      @media (max-width: 800px) {
+        .card,.wide,.side { grid-column:1/-1; }
+        .live-grid { grid-template-columns:1fr; }
+        .live-head,.metrics-box { align-items:flex-start; flex-direction:column; }
+        .service { flex-direction:column; }
+        .service-actions { justify-content:flex-start; }
+      }
     </style>
   </head>
   <body>
@@ -69,8 +104,42 @@ const placements = [
 
       <section class="grid">
         <div class="card"><div class="label">SYSTEM</div><div class="value">3</div><div class="note">主要サービスを統合管理</div></div>
-        <div class="card"><div class="label">DELIVERY</div><div class="value">LIVE</div><div class="note">配信APIはProduction稼働中</div></div>
+        <div class="card"><div class="label">DELIVERY</div><div class="value" id="delivery-top">確認中</div><div class="note" id="delivery-top-note">Production APIを確認しています</div></div>
         <div class="card"><div class="label">NEXT</div><div class="value">統合</div><div class="note">管理画面・配信面・DBの一本化</div></div>
+
+        <div class="card full">
+          <div class="live-head">
+            <div>
+              <div class="label">LIVE SYSTEM</div>
+              <div class="live-summary"><strong id="online-count">— / 3</strong><span>services online</span></div>
+            </div>
+            <div id="last-checked">確認中…</div>
+          </div>
+
+          <div class="live-grid">
+            {services.map((service) => (
+              <div class="live-item" data-service={service.key}>
+                <div class="live-item-top">
+                  <h3>{service.name}</h3>
+                  <span class="badge live-badge" data-live-badge data-state="loading"><span class="dot"></span><span data-live-label>確認中</span></span>
+                </div>
+                <div class="live-meta" data-live-meta>接続を確認しています…</div>
+              </div>
+            ))}
+          </div>
+
+          <div class="metrics-box">
+            <div>
+              <div class="metrics-title" id="metrics-title">配信計測</div>
+              <div class="metrics-copy" id="metrics-copy">imp / click / CTR の取得可否を確認しています。</div>
+            </div>
+            <div class="metric-values" id="metric-values">
+              <div class="metric"><span>IMPRESSIONS</span><strong id="metric-impressions">0</strong></div>
+              <div class="metric"><span>CLICKS</span><strong id="metric-clicks">0</strong></div>
+              <div class="metric"><span>CTR</span><strong id="metric-ctr">0%</strong></div>
+            </div>
+          </div>
+        </div>
 
         <div class="card wide">
           <div class="label">SERVICES</div>
@@ -81,7 +150,10 @@ const placements = [
                 <p>{service.role}</p>
                 <span class="badge">{service.status}</span>
               </div>
-              <a class="button" href={service.url} target="_blank" rel="noreferrer">開く ↗</a>
+              <div class="service-actions">
+                <span class="badge live-badge" data-service-status={service.key} data-state="loading"><span class="dot"></span><span>確認中</span></span>
+                <a class="button" href={service.url} target="_blank" rel="noreferrer">開く ↗</a>
+              </div>
             </div>
           ))}
         </div>
@@ -115,5 +187,90 @@ const placements = [
         </div>
       </section>
     </main>
+
+    <script is:inline>
+      const number = (value) => new Intl.NumberFormat('ja-JP').format(Number(value || 0));
+
+      const setBadge = (element, state, label) => {
+        if (!element) return;
+        element.dataset.state = state;
+        const target = element.querySelector('[data-live-label]') || element.querySelector('span:last-child');
+        if (target) target.textContent = label;
+      };
+
+      const serviceText = (key, service) => {
+        if (!service) return '状態を取得できませんでした';
+        const latency = Number.isFinite(service.latencyMs) ? ` / ${service.latencyMs}ms` : '';
+        if (key === 'delivery' && service.ok) return `Production / 配信判定API正常${latency}`;
+        if (key === 'placements' && service.metricsAccess === 'protected') return `Production / 計測データは認証保護中${latency}`;
+        if (service.ok) return `${service.mode || ''} / HTTP ${service.status || 'OK'}${latency}`;
+        return `要確認 / HTTP ${service.status ?? '接続失敗'}${latency}`;
+      };
+
+      async function loadStatus() {
+        try {
+          const response = await fetch('/api/ads-hub-status', { cache: 'no-store' });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const data = await response.json();
+
+          document.querySelector('#online-count').textContent = `${data.online ?? 0} / ${data.total ?? 3}`;
+          document.querySelector('#last-checked').textContent = `最終確認 ${new Date(data.generatedAt).toLocaleString('ja-JP')}`;
+
+          for (const [key, service] of Object.entries(data.services || {})) {
+            const item = document.querySelector(`[data-service="${key}"]`);
+            const badge = item?.querySelector('[data-live-badge]');
+            const meta = item?.querySelector('[data-live-meta]');
+            const listBadge = document.querySelector(`[data-service-status="${key}"]`);
+            const protectedMetrics = key === 'placements' && service.metricsAccess === 'protected';
+            const state = service.ok ? (protectedMetrics ? 'protected' : 'ok') : 'error';
+            const label = service.ok ? (protectedMetrics ? '認証保護' : '正常') : '要確認';
+            setBadge(badge, state, label);
+            setBadge(listBadge, state, label);
+            if (meta) meta.textContent = serviceText(key, service);
+          }
+
+          const delivery = data.services?.delivery;
+          const deliveryTop = document.querySelector('#delivery-top');
+          const deliveryNote = document.querySelector('#delivery-top-note');
+          if (delivery?.ok) {
+            deliveryTop.textContent = 'LIVE';
+            deliveryNote.textContent = 'Production API 正常';
+          } else {
+            deliveryTop.textContent = 'CHECK';
+            deliveryNote.textContent = '配信APIを確認してください';
+          }
+
+          const metricsCopy = document.querySelector('#metrics-copy');
+          const metricValues = document.querySelector('#metric-values');
+          const overall = data.metrics?.stats?.overall || data.metrics?.overall || null;
+          if (data.metricsState === 'available' && overall) {
+            document.querySelector('#metrics-title').textContent = '直近7日 配信計測';
+            metricsCopy.textContent = '配信状況APIから読み取り専用で取得しています。';
+            document.querySelector('#metric-impressions').textContent = number(overall.impressions);
+            document.querySelector('#metric-clicks').textContent = number(overall.clicks);
+            document.querySelector('#metric-ctr').textContent = `${overall.ctr ?? 0}%`;
+            metricValues.classList.add('is-visible');
+          } else if (data.metricsState === 'login_required') {
+            document.querySelector('#metrics-title').textContent = '配信計測は認証保護中';
+            metricsCopy.textContent = 'imp / click / CTR は既存の配信状況画面でログイン後に確認できます。認証を迂回せず保護したままです。';
+          } else {
+            document.querySelector('#metrics-title').textContent = '配信計測を確認できません';
+            metricsCopy.textContent = '計測APIの状態を確認してください。';
+          }
+        } catch (error) {
+          document.querySelector('#online-count').textContent = '取得失敗';
+          document.querySelector('#last-checked').textContent = 'HUB status API error';
+          document.querySelector('#delivery-top').textContent = 'CHECK';
+          document.querySelector('#delivery-top-note').textContent = '状態取得に失敗しました';
+          document.querySelectorAll('[data-live-badge], [data-service-status]').forEach((badge) => setBadge(badge, 'error', '要確認'));
+          document.querySelectorAll('[data-live-meta]').forEach((meta) => { meta.textContent = '状態を取得できませんでした'; });
+          document.querySelector('#metrics-title').textContent = '配信計測を確認できません';
+          document.querySelector('#metrics-copy').textContent = 'ADS HUBの状態APIを確認してください。';
+          console.error('[ads-hub-status]', error);
+        }
+      }
+
+      loadStatus();
+    </script>
   </body>
 </html>
