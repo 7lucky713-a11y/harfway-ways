@@ -45,6 +45,13 @@ export default async function handler(req, res) {
 
     if (!authClient) throw new Error('failed_to_create_external_account_client');
 
+    // External-account impersonation defaults to cloud-platform only.
+    // GA4 Data API requires an Analytics OAuth scope on the impersonated token.
+    authClient.scopes = [
+      'https://www.googleapis.com/auth/cloud-platform',
+      'https://www.googleapis.com/auth/analytics.readonly',
+    ];
+
     const tokenResult = await authClient.getAccessToken();
     const accessToken = typeof tokenResult === 'string' ? tokenResult : tokenResult?.token;
     if (!accessToken) throw new Error('failed_to_get_google_access_token');
