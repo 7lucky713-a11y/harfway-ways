@@ -34,10 +34,6 @@ function providerResource(c){
   return `//iam.googleapis.com/projects/${c.projectNumber}/locations/global/workloadIdentityPools/${c.poolId}/providers/${c.providerId}`;
 }
 
-function oidcAudience(c){
-  return `https://iam.googleapis.com/projects/${c.projectNumber}/locations/global/workloadIdentityPools/${c.poolId}/providers/${c.providerId}`;
-}
-
 async function accessToken(c){
   const authClient=ExternalAccountClient.fromJSON({
     type:'external_account',
@@ -47,7 +43,9 @@ async function accessToken(c){
     service_account_impersonation_url:`https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${c.serviceAccountEmail}:generateAccessToken`,
     scopes:[SCOPE],
     subject_token_supplier:{
-      getSubjectToken:()=>getVercelOidcToken({audience:oidcAudience(c)})
+      // Google provider currently allows the Vercel team audience
+      // (https://vercel.com/harf-way), so use Vercel's default token.
+      getSubjectToken:()=>getVercelOidcToken()
     }
   });
   if(!authClient)throw new Error('gcp_external_account_client_unavailable');
