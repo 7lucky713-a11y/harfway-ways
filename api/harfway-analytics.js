@@ -6,15 +6,21 @@ const intParam=(value,fallback,min,max)=>{const n=Number.parseInt(String(value??
 const num=v=>Number(v||0);
 
 async function jsonFetch(url,options={}){
-  const r=await fetch(url,{cache:'no-store',...options});
-  const j=await r.json().catch(()=>({}));
-  return {ok:r.ok,status:r.status,data:j};
+  try{
+    const r=await fetch(url,{cache:'no-store',...options});
+    const text=await r.text();
+    let data={};
+    try{data=text?JSON.parse(text):{}}catch{data={error:'invalid_json',preview:text.slice(0,160)}}
+    return {ok:r.ok,status:r.status,data};
+  }catch(error){
+    return {ok:false,status:0,data:{error:error?.message||'fetch_failed'}};
+  }
 }
 
 function showcaseTotal(data,event){return num(data?.totals?.find?.(x=>x.event_type===event)?.count)}
 function showcaseSessions(data){return num(data?.totals?.find?.(x=>x.event_type==='showcase_page_view')?.sessions)}
 
-module.exports=async function handler(req,res){
+export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
   if(req.method!=='GET')return res.status(405).json({ok:false,error:'method_not_allowed'});
   const days=intParam(req.query?.days,7,1,365);
@@ -36,13 +42,14 @@ module.exports=async function handler(req,res){
     return res.status(200).json({
       ok:true,generatedAt:new Date().toISOString(),
       services:{
-        ways:{connected:ways.ok,period:`last_${days}_days`,status:ways.status,summary:waysSummary,games:waysGames,devices:ways.data?.devices||[]},
+        ways:{connected:ways.ok,period:`last_${days}_days`,status:ways.status,summary:waysSummary,games:waysGames,devices:ways.data?.devices||[],error:ways.ok?null:ways.data?.error},
         showcase:{connected:showcase.ok,period:'all_time',status:showcase.status,error:showcase.ok?null:(showcase.data?.error||'showcase_unavailable'),summary:showcaseSummary,games:showcase.data?.games||[]},
-        playlist:{connected:false,period:null,status:null,reason:'tracking_not_connected'},
-        yorimichi:{connected:false,period:null,status:null,reason:'tracking_not_connected'},
-        zine:{connected:false,period:null,status:null,reason:'tracking_not_connected'}
+        playlist:{connected:false,period:null,status:null,reason:'ga4_pending'},
+        yorimichi:{connected:false,period:null,status:null,reason:'ga4_pending'},
+        zine:{connected:false,period:null,status:null,reason:'ga4_pending'}
       },
+      ga4:{connected:false,measurementIdConfigured:false,reason:'measurement_id_required'},
       core:{connected:core.ok,count:(core.data?.games||[]).length}
     });
   }catch(error){console.error('[harfway-analytics]',error);return res.status(500).json({ok:false,error:'analytics_hub_failed'})}
-};
+}
