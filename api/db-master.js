@@ -1,6 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 
 const EDITOR_URL = process.env.WAYS_EDITOR_URL || 'https://harfway-playback-editor.vercel.app';
+const PRODUCTION_BASE = 'https://harfway-playback.vercel.app';
 
 function adminKey(req) {
   return String(req.headers['x-showcase-admin-key'] || req.headers['x-admin-key'] || '').trim();
@@ -70,10 +71,95 @@ function coreDatabaseUrl() {
 
 function array(value) { return Array.isArray(value) ? value : []; }
 
-async function readCore() {
+function coreSummary(games, articles) {
+  return {
+    games: games.length,
+    articles: articles.length,
+    articleOriginGames: games.filter(g => g.sourceOfTruth === 'archive-salvager').length,
+    waysGames: games.filter(g => array(g.refs).some(r => r?.service === 'ways')).length,
+    playlistGames: games.filter(g => array(g.refs).some(r => r?.service === 'playlist')).length,
+    yorimichiGames: games.filter(g => array(g.refs).some(r => r?.service === 'yorimichi')).length
+  };
+}
+
+function normalizeCoreGame(row = {}) {
+  return {
+    id: String(row.id || ''),
+    title: String(row.title || ''),
+    description: String(row.description || ''),
+    storeUrl: String(row.storeUrl || row.store_url || ''),
+    articleUrl: String(row.articleUrl || row.article_url || ''),
+    category: String(row.category || ''),
+    status: String(row.status || ''),
+    sourceOfTruth: String(row.sourceOfTruth || row.source_of_truth || ''),
+    tags: array(row.tags),
+    refs: array(row.refs),
+    createdAt: row.createdAt || row.created_at || null,
+    updatedAt: row.updatedAt || row.updated_at || null
+  };
+}
+
+function normalizeCoreArticle(row = {}) {
+  return {
+    id: String(row.id || ''),
+    title: String(row.title || ''),
+    url: String(row.url || ''),
+    publishedAt: row.publishedAt || row.published_at || null,
+    excerpt: String(row.excerpt || ''),
+    status: String(row.status || ''),
+    source: String(row.source || 'archive-salvager'),
+    games: array(row.games),
+    assets: array(row.assets),
+    updatedAt: row.updatedAt || row.updated_at || null
+  };
+}
+
+async function readCoreViaProductionApi(key, fallbackReason = 'preview_core_fallback') {
+  try {
+    const [gamesResult, articlesResult] = await Promise.allSettled([
+      fetch(`${PRODUCTION_BASE}/api/core/games?limit=500`, { cache: 'no-store', headers: { accept: 'application/json' } }),
+      fetch(`${PRODUCTION_BASE}/api/archive-items?limit=500`, {
+        cache: 'no-store',
+        headers: {
+          accept: 'application/json',
+          'x-showcase-admin-key': key,
+          'x-admin-key': key
+        }
+      })
+    ]);
+
+    if (gamesResult.status !== 'fulfilled' || !gamesResult.value.ok) {
+      return { available: false, configured: false, games: [], articles: [], error: 'production_core_api_unavailable', fallbackReason };
+    }
+
+    const gamesPayload = await gamesResult.value.json().catch(() => ({}));
+    const games = array(gamesPayload?.games).map(normalizeCoreGame);
+
+    let articles = [];
+    if (articlesResult.status === 'fulfilled' && articlesResult.value.ok) {
+      const articlesPayload = await articlesResult.value.json().catch(() => ({}));
+      articles = array(articlesPayload?.items).map(normalizeCoreArticle);
+    }
+
+    return {
+      available: true,
+      configured: true,
+      readSource: 'production-core-api-fallback',
+      fallbackReason,
+      games,
+      articles,
+      summary: coreSummary(games, articles)
+    };
+  } catch (error) {
+    console.error('[db-master-core-fallback]', error);
+    return { available: false, configured: false, games: [], articles: [], error: 'production_core_api_failed', fallbackReason };
+  }
+}
+
+async function readCore(key) {
   const databaseUrl = coreDatabaseUrl();
   if (!databaseUrl) {
-    return { available: false, configured: false, games: [], articles: [], error: 'core_database_not_configured' };
+    return readCoreViaProductionApi(key, 'core_database_not_configured');
   }
 
   try {
@@ -106,51 +192,20 @@ async function readCore() {
       `
     ]);
 
-    const games = gameRows.map(row => ({
-      id: String(row.id || ''),
-      title: String(row.title || ''),
-      description: String(row.description || ''),
-      storeUrl: String(row.store_url || ''),
-      articleUrl: String(row.article_url || ''),
-      category: String(row.category || ''),
-      status: String(row.status || ''),
-      sourceOfTruth: String(row.source_of_truth || ''),
-      tags: array(row.tags),
-      refs: array(row.refs),
-      createdAt: row.created_at || null,
-      updatedAt: row.updated_at || null
-    }));
-
-    const articles = articleRows.map(row => ({
-      id: String(row.id || ''),
-      title: String(row.title || ''),
-      url: String(row.url || ''),
-      publishedAt: row.published_at || null,
-      excerpt: String(row.excerpt || ''),
-      status: String(row.status || ''),
-      source: String(row.source || ''),
-      games: array(row.games),
-      assets: array(row.assets),
-      updatedAt: row.updated_at || null
-    }));
+    const games = gameRows.map(normalizeCoreGame);
+    const articles = articleRows.map(normalizeCoreArticle);
 
     return {
       available: true,
       configured: true,
+      readSource: 'direct-core-database',
       games,
       articles,
-      summary: {
-        games: games.length,
-        articles: articles.length,
-        articleOriginGames: games.filter(g => g.sourceOfTruth === 'archive-salvager').length,
-        waysGames: games.filter(g => g.refs.some(r => r?.service === 'ways')).length,
-        playlistGames: games.filter(g => g.refs.some(r => r?.service === 'playlist')).length,
-        yorimichiGames: games.filter(g => g.refs.some(r => r?.service === 'yorimichi')).length
-      }
+      summary: coreSummary(games, articles)
     };
   } catch (error) {
-    console.error('[db-master-core]', error);
-    return { available: false, configured: true, games: [], articles: [], error: 'core_unavailable' };
+    console.warn('[db-master-core] direct Core read failed; using production API fallback', error?.code || error?.message || error);
+    return readCoreViaProductionApi(key, error?.code || 'direct_core_query_failed');
   }
 }
 
@@ -163,7 +218,7 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const [data, core] = await Promise.all([editorRequest('state', key), readCore()]);
+      const [data, core] = await Promise.all([editorRequest('state', key), readCore(key)]);
       const state = data?.state || { games: [], showcases: [] };
       return res.status(200).json({
         ok: true,
