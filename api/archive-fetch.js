@@ -7,12 +7,17 @@ function decodeEntities(value=''){
     .replace(/&lt;/gi,'<')
     .replace(/&gt;/gi,'>');
 }
+function hasTemplateGarbage(value=''){
+  return /\$\{|escapeHTML\s*\(|\bgame\.(?:title|steam|comment|developer|store|url)\b|\b(?:STORE PAGE|DEVELOPER)\b[\s\S]*[?:]/i.test(String(value));
+}
 function stripHtml(html=''){
   return decodeEntities(String(html)
     .replace(/<script[\s\S]*?<\/script>/gi,' ')
     .replace(/<style[\s\S]*?<\/style>/gi,' ')
     .replace(/<noscript[\s\S]*?<\/noscript>/gi,' ')
     .replace(/<template[\s\S]*?<\/template>/gi,' ')
+    .replace(/<img\b[^>]*(?:\$\{|escapeHTML\s*\(|\bgame\.)[^>]*>/gi,' ')
+    .replace(/<a\b[^>]*(?:\$\{|escapeHTML\s*\(|\bgame\.)[^>]*>[\s\S]*?<\/a>/gi,' ')
     .replace(/<br\s*\/?\s*>/gi,'\n')
     .replace(/<\/(p|h[1-6]|div|section|article)>/gi,'\n\n')
     .replace(/<\/li>/gi,'\n')
@@ -27,10 +32,13 @@ function cleanBodyText(value=''){
     .split(/\n+/)
     .map(x=>x.trim())
     .filter(Boolean)
-    .filter(line=>!(/\$\{[^}]*\}|escapeHTML\s*\(|\bgame\.(title|steam|comment|developer|store|url)\b|\bEDITOR['’]?S PICK\b|\bEDITOR.?S PICK\b.*(?:\$\{|game\.)/i.test(line)))
+    .filter(line=>!hasTemplateGarbage(line))
+    .filter(line=>!(/EDITOR['’]?S PICK/i.test(line)&&/(?:\$\{|escapeHTML|game\.)/i.test(line)))
+    .filter(line=>!(/(?:STORE PAGE|DEVELOPER)/i.test(line)&&/(?:\$\{|\?|:|escapeHTML|game\.)/i.test(line)))
     .join('\n\n')
     .replace(/EDITOR['’]?S PICK\s*\$\{[^}]*\}/gi,' ')
     .replace(/\$\{\s*escapeHTML\([^)]*\)\s*\}/gi,' ')
+    .replace(/\$\{[^}]*\}/g,' ')
     .replace(/\n{3,}/g,'\n\n')
     .trim();
 }
@@ -52,6 +60,7 @@ function cleanCandidate(value=''){
     .replace(/^(Steam|itch\.io|BOOTH|DLsite)[:：\s-]*/i,'')
     .replace(/\s+/g,' ')
     .trim();
+  if(!text||hasTemplateGarbage(text))return '';
   if(/\b(const|let|var|function|return|escapehtml|game\.)\b/i.test(text))return '';
   return text;
 }
@@ -138,7 +147,7 @@ function isStoreHost(host=''){
   return /store\.steampowered\.com|itch\.io|booth\.pm|dlsite\.com|nintendo\.|playstation\.|xbox\./i.test(host);
 }
 function addStoreHint(items,href,text=''){
-  if(!href)return;
+  if(!href||hasTemplateGarbage(href))return;
   let u;try{u=new URL(href)}catch{return}
   const host=u.hostname.toLowerCase();if(!isStoreHost(host))return;
   const cleanText=cleanCandidate(text);
@@ -167,7 +176,8 @@ function extractNameHints(html,baseUrl,pageTitle){
     const name=cleanCandidate(m[2]);if(name)items.push({name,source:`heading-h${m[1]}`,url:'',confidence:78});
   }
   for(const m of scope.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)){
-    const href=absoluteUrl(decodeEntities(m[1]),baseUrl);addStoreHint(items,href,m[2]);
+    const rawHref=decodeEntities(m[1]);if(hasTemplateGarbage(rawHref))continue;
+    const href=absoluteUrl(rawHref,baseUrl);addStoreHint(items,href,m[2]);
   }
   extractScriptGameHints(html,items);
   return uniqueHints(items);
@@ -175,13 +185,19 @@ function extractNameHints(html,baseUrl,pageTitle){
 function extractImages(html,baseUrl){
   const result=[];const seen=new Set();
   const featuredRaw=String(html).match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)?.[1]||'';
-  const featured=absoluteUrl(decodeEntities(featuredRaw),baseUrl);
+  const featured=!hasTemplateGarbage(featuredRaw)?absoluteUrl(decodeEntities(featuredRaw),baseUrl):'';
   if(featured){seen.add(featured);result.push({url:featured,alt:'',featured:true})}
   const article=String(html).match(/<article[^>]*>([\s\S]*?)<\/article>/i)?.[1]||html;
   for(const m of article.matchAll(/<img\b[^>]*>/gi)){
-    const tag=m[0];const raw=attr(tag,'data-src')||attr(tag,'data-lazy-src')||attr(tag,'src');const url=absoluteUrl(raw,baseUrl);
-    if(!url||seen.has(url)||/^data:/i.test(url))continue;
-    seen.add(url);result.push({url,alt:attr(tag,'alt'),featured:false});if(result.length>=100)break;
+    const tag=m[0];
+    if(hasTemplateGarbage(tag))continue;
+    const raw=attr(tag,'data-src')||attr(tag,'data-lazy-src')||attr(tag,'src');
+    if(!raw||hasTemplateGarbage(raw))continue;
+    const url=absoluteUrl(raw,baseUrl);
+    if(!url||seen.has(url)||/^data:/i.test(url)||/%24%7B/i.test(url))continue;
+    const alt=attr(tag,'alt');
+    if(hasTemplateGarbage(alt))continue;
+    seen.add(url);result.push({url,alt,featured:false});if(result.length>=100)break;
   }
   return result;
 }
@@ -198,7 +214,7 @@ export default async function handler(req,res){
     const date=pick(html,[/<meta[^>]+property=["']article:published_time["'][^>]+content=["']([^"']+)["']/i,/<time[^>]+datetime=["']([^"']+)["']/i]);
     const rawBody=pick(html,[/<article[^>]*>([\s\S]*?)<\/article>/i,/<main[^>]*>([\s\S]*?)<\/main>/i])||stripHtml(html);
     const body=cleanBodyText(rawBody);
-    const images=extractImages(html,finalUrl);const featuredImage=images.find(x=>x.featured)?.url||'';
+    const images=extractImages(html,finalUrl);const featuredImage=images.find(x=>x.featureured)?.url||images.find(x=>x.featured)?.url||'';
     const nameHints=extractNameHints(html,finalUrl,title);const storeLinks=nameHints.filter(x=>x.url).map(x=>({name:x.name,url:x.url,source:x.source,sources:x.sources,confidence:x.confidence}));
     return res.status(200).json({ok:true,article:{url:finalUrl,title,date,text:body.slice(0,150000),featuredImage,images,nameHints,storeLinks}});
   }catch(error){console.error('[archive-fetch]',error);return res.status(500).json({ok:false,error:'archive_fetch_failed'});}
