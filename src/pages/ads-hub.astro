@@ -55,6 +55,7 @@ const placements = [
       .service p { margin:0; color:#99a3b1; font-size:14px; line-height:1.6; }
       .service-actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
       a.button { display:inline-flex; align-items:center; justify-content:center; padding:10px 14px; border-radius:999px; text-decoration:none; background:#f5f7fa; color:#111; font-size:13px; font-weight:700; white-space:nowrap; }
+      a.button.secondary { border:1px solid #303844; background:#161b21; color:#d9dee6; }
       .badge { display:inline-flex; align-items:center; gap:6px; padding:5px 8px; border-radius:999px; border:1px solid #303844; color:#aeb7c5; font-size:11px; margin-top:8px; }
       .live-badge { margin:0; min-width:76px; justify-content:center; }
       .live-badge[data-state="ok"] { border-color:#315844; color:#8fe0af; background:#12251a; }
@@ -87,12 +88,34 @@ const placements = [
       .metric span { display:block; color:#7e8997; font-size:10px; letter-spacing:.08em; }
       .metric strong { display:block; margin-top:3px; font-size:20px; }
       #last-checked { color:#77818e; font-size:11px; white-space:nowrap; }
+      .performance-head { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; }
+      .performance-title { margin:5px 0 0; font-size:24px; letter-spacing:-.02em; }
+      .performance-actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+      .performance-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-top:20px; }
+      .performance-metric { min-width:0; padding:15px; border:1px solid #222a34; background:#0d1116; border-radius:14px; }
+      .performance-metric span { display:block; color:#7e8997; font-size:10px; letter-spacing:.08em; }
+      .performance-metric strong { display:block; margin-top:6px; font-size:25px; letter-spacing:-.03em; overflow-wrap:anywhere; }
+      .performance-state { margin-top:16px; padding:14px 16px; border:1px dashed #3a3323; border-radius:12px; background:#15130e; color:#c9b77f; font-size:13px; line-height:1.7; }
+      .performance-state[data-state="available"] { border-color:#264c37; background:#0f1b14; color:#92d8ad; }
+      .performance-state[data-state="error"] { border-color:#5c3232; background:#1c1111; color:#e3a0a0; }
+      .table-wrap { overflow-x:auto; margin-top:14px; }
+      .performance-table { min-width:860px; }
+      .performance-table td { color:#c5ccd6; }
+      .performance-table .empty-row td { padding:24px 8px; color:#87919f; text-align:center; }
+      .campaign-name { font-weight:700; color:#f2f4f7; }
+      .campaign-sub { display:block; margin-top:3px; color:#737e8d; font-size:11px; }
+      @media (max-width: 900px) {
+        .performance-grid { grid-template-columns:repeat(2,1fr); }
+      }
       @media (max-width: 800px) {
         .card,.wide,.side { grid-column:1/-1; }
         .live-grid { grid-template-columns:1fr; }
-        .live-head,.metrics-box { align-items:flex-start; flex-direction:column; }
+        .live-head,.metrics-box,.performance-head { align-items:flex-start; flex-direction:column; }
         .service { flex-direction:column; }
-        .service-actions { justify-content:flex-start; }
+        .service-actions,.performance-actions { justify-content:flex-start; }
+      }
+      @media (max-width: 520px) {
+        .performance-grid { grid-template-columns:1fr; }
       }
     </style>
   </head>
@@ -134,10 +157,45 @@ const placements = [
               <div class="metrics-copy" id="metrics-copy">imp / click / CTR の取得可否を確認しています。</div>
             </div>
             <div class="metric-values" id="metric-values">
-              <div class="metric"><span>IMPRESSIONS</span><strong id="metric-impressions">0</strong></div>
-              <div class="metric"><span>CLICKS</span><strong id="metric-clicks">0</strong></div>
-              <div class="metric"><span>CTR</span><strong id="metric-ctr">0%</strong></div>
+              <div class="metric"><span>IMPRESSIONS</span><strong id="metric-impressions">—</strong></div>
+              <div class="metric"><span>CLICKS</span><strong id="metric-clicks">—</strong></div>
+              <div class="metric"><span>CTR</span><strong id="metric-ctr">—</strong></div>
             </div>
+          </div>
+        </div>
+
+        <div class="card full">
+          <div class="performance-head">
+            <div>
+              <div class="label">AD PERFORMANCE</div>
+              <h2 class="performance-title">キャンペーン配信実績</h2>
+              <p class="note" style="margin:7px 0 0">広告Adminの正式データを読み取り専用で集約します。認証が必要なデータは保護したまま表示します。</p>
+            </div>
+            <div class="performance-actions">
+              <span class="badge live-badge" id="performance-badge" data-state="loading"><span class="dot"></span><span>確認中</span></span>
+              <a class="button secondary" href="https://harfway-ads-admin.vercel.app" target="_blank" rel="noreferrer">広告Adminを開く ↗</a>
+            </div>
+          </div>
+
+          <div class="performance-grid">
+            <div class="performance-metric"><span>ACTIVE CAMPAIGNS</span><strong id="performance-active">—</strong></div>
+            <div class="performance-metric"><span>IMPRESSIONS</span><strong id="performance-impressions">—</strong></div>
+            <div class="performance-metric"><span>CLICKS</span><strong id="performance-clicks">—</strong></div>
+            <div class="performance-metric"><span>CTR</span><strong id="performance-ctr">—</strong></div>
+            <div class="performance-metric"><span>REMAINING IMP</span><strong id="performance-remaining">—</strong></div>
+          </div>
+
+          <div class="performance-state" id="performance-state" data-state="loading">キャンペーン実績の取得可否を確認しています。</div>
+
+          <div class="table-wrap">
+            <table class="performance-table">
+              <thead>
+                <tr><th>キャンペーン</th><th>状態</th><th>配信面</th><th>目標imp</th><th>配信imp</th><th>残imp</th><th>click</th><th>CTR</th></tr>
+              </thead>
+              <tbody id="performance-body">
+                <tr class="empty-row"><td colspan="8">確認中…</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -190,6 +248,9 @@ const placements = [
 
     <script is:inline>
       const number = (value) => new Intl.NumberFormat('ja-JP').format(Number(value || 0));
+      const displayNumber = (value) => value === null || value === undefined ? '—' : number(value);
+      const displayCtr = (value) => value === null || value === undefined ? '—' : `${Number(value).toFixed(2).replace(/\.00$/, '')}%`;
+      const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
 
       const setBadge = (element, state, label) => {
         if (!element) return;
@@ -246,9 +307,9 @@ const placements = [
           if (data.metricsState === 'available' && overall) {
             document.querySelector('#metrics-title').textContent = '直近7日 配信計測';
             metricsCopy.textContent = '配信状況APIから読み取り専用で取得しています。';
-            document.querySelector('#metric-impressions').textContent = number(overall.impressions);
-            document.querySelector('#metric-clicks').textContent = number(overall.clicks);
-            document.querySelector('#metric-ctr').textContent = `${overall.ctr ?? 0}%`;
+            document.querySelector('#metric-impressions').textContent = displayNumber(overall.impressions);
+            document.querySelector('#metric-clicks').textContent = displayNumber(overall.clicks);
+            document.querySelector('#metric-ctr').textContent = displayCtr(overall.ctr);
             metricValues.classList.add('is-visible');
           } else if (data.metricsState === 'login_required') {
             document.querySelector('#metrics-title').textContent = '配信計測は認証保護中';
@@ -270,7 +331,70 @@ const placements = [
         }
       }
 
+      function renderCampaigns(campaigns) {
+        const body = document.querySelector('#performance-body');
+        if (!campaigns.length) {
+          body.innerHTML = '<tr class="empty-row"><td colspan="8">キャンペーンはまだありません。</td></tr>';
+          return;
+        }
+
+        body.innerHTML = campaigns.map((campaign) => `
+          <tr>
+            <td><span class="campaign-name">${escapeHtml(campaign.name)}</span><span class="campaign-sub">${escapeHtml(campaign.advertiser)}</span></td>
+            <td>${escapeHtml(campaign.status)}</td>
+            <td>${escapeHtml(campaign.placement)}</td>
+            <td>${displayNumber(campaign.impressionsTarget)}</td>
+            <td>${displayNumber(campaign.impressionsServed)}</td>
+            <td>${displayNumber(campaign.remainingImpressions)}</td>
+            <td>${displayNumber(campaign.clicks)}</td>
+            <td>${displayCtr(campaign.ctr)}</td>
+          </tr>
+        `).join('');
+      }
+
+      async function loadPerformance() {
+        const badge = document.querySelector('#performance-badge');
+        const state = document.querySelector('#performance-state');
+        const body = document.querySelector('#performance-body');
+
+        try {
+          const response = await fetch('/api/ads-performance', { cache: 'no-store' });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const data = await response.json();
+
+          if (data.status === 'available') {
+            setBadge(badge, 'ok', '取得済み');
+            state.dataset.state = 'available';
+            state.textContent = `広告Adminの正式データを読み取り専用で取得しています。最終確認 ${new Date(data.generatedAt).toLocaleString('ja-JP')}`;
+            document.querySelector('#performance-active').textContent = displayNumber(data.summary?.activeCampaigns);
+            document.querySelector('#performance-impressions').textContent = displayNumber(data.summary?.impressions);
+            document.querySelector('#performance-clicks').textContent = displayNumber(data.summary?.clicks);
+            document.querySelector('#performance-ctr').textContent = displayCtr(data.summary?.ctr);
+            document.querySelector('#performance-remaining').textContent = displayNumber(data.summary?.remainingImpressions);
+            renderCampaigns(data.campaigns || []);
+            return;
+          }
+
+          if (data.status === 'protected') {
+            setBadge(badge, 'protected', '認証保護');
+            state.dataset.state = 'protected';
+            state.textContent = 'キャンペーン名・imp・click・CTRは広告Adminの認証で保護されています。ADS HUBから認証を迂回せず、数値は未取得のままです。広告Adminへログインすると正式データを確認できます。';
+            body.innerHTML = '<tr class="empty-row"><td colspan="8">広告Adminの認証後に確認できます。未取得値を 0 として表示していません。</td></tr>';
+            return;
+          }
+
+          throw new Error(`performance ${data.status || 'unknown'}`);
+        } catch (error) {
+          setBadge(badge, 'error', '要確認');
+          state.dataset.state = 'error';
+          state.textContent = 'キャンペーン実績APIへ接続できませんでした。広告Admin本体のデータや認証には変更を加えていません。';
+          body.innerHTML = '<tr class="empty-row"><td colspan="8">実績を取得できませんでした。</td></tr>';
+          console.error('[ads-performance]', error);
+        }
+      }
+
       loadStatus();
+      loadPerformance();
     </script>
   </body>
 </html>
