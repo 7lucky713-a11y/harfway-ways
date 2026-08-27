@@ -1,5 +1,6 @@
 const ADMIN_CAMPAIGNS_URL = 'https://harfway-ads-admin.vercel.app/api/admin/campaigns';
 const ADMIN_URL = 'https://harfway-ads-admin.vercel.app';
+const COOKIE_NAME = '__Host-hw_ads_session';
 
 const toNumber = (value) => {
   if (value === null || value === undefined || value === '') return null;
@@ -8,6 +9,22 @@ const toNumber = (value) => {
 };
 
 const firstValue = (...values) => values.find((value) => value !== undefined && value !== null && value !== '');
+
+function getCookie(req, name) {
+  const source = String(req.headers.cookie || '');
+  for (const part of source.split(';')) {
+    const index = part.indexOf('=');
+    if (index < 0) continue;
+    const key = part.slice(0, index).trim();
+    if (key !== name) continue;
+    try { return decodeURIComponent(part.slice(index + 1)); } catch { return ''; }
+  }
+  return '';
+}
+
+function clearSessionCookie(res) {
+  res.setHeader('Set-Cookie', `${COOKIE_NAME}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`);
+}
 
 function extractCampaigns(payload) {
   if (Array.isArray(payload)) return payload;
@@ -31,26 +48,58 @@ function normalizePlacement(value) {
   return value || '—';
 }
 
+function statusLabel(value) {
+  const status = String(value || '');
+  const labels = {
+    draft: '下書き',
+    scheduled: '配信予約',
+    active: '配信中',
+    paused: '一時停止',
+    completed: '配信終了',
+  };
+  return labels[status] || status || '—';
+}
+
 function normalizeCampaign(campaign) {
-  const target = toNumber(firstValue(campaign.impressionsTarget, campaign.impressionTarget, campaign.targetImpressions, campaign.target));
-  const served = toNumber(firstValue(campaign.impressionsServed, campaign.impressions, campaign.servedImpressions, campaign.delivered));
+  const target = toNumber(firstValue(
+    campaign.impression_limit,
+    campaign.impressionsTarget,
+    campaign.impressionTarget,
+    campaign.targetImpressions,
+    campaign.target,
+  ));
+  const served = toNumber(firstValue(
+    campaign.impressions,
+    campaign.impressionsServed,
+    campaign.servedImpressions,
+    campaign.delivered,
+  ));
   const clicks = toNumber(firstValue(campaign.clicks, campaign.clickCount));
-  const explicitRemaining = toNumber(firstValue(campaign.remainingImpressions, campaign.impressionsRemaining, campaign.remaining));
+  const explicitRemaining = toNumber(firstValue(
+    campaign.remaining_impressions,
+    campaign.remainingImpressions,
+    campaign.impressionsRemaining,
+    campaign.remaining,
+  ));
   const remaining = explicitRemaining ?? (target !== null && served !== null ? Math.max(target - served, 0) : null);
   const explicitCtr = toNumber(firstValue(campaign.ctr, campaign.clickThroughRate));
   const ctr = explicitCtr ?? (served && clicks !== null ? (clicks / served) * 100 : served === 0 ? 0 : null);
 
   return {
     id: String(firstValue(campaign.id, campaign.campaignId, campaign.slug, '')),
-    name: String(firstValue(campaign.campaignName, campaign.name, campaign.title, '名称未設定')),
-    advertiser: String(firstValue(campaign.advertiserName, campaign.advertiser, campaign.clientName, '—')),
-    status: String(firstValue(campaign.campaignStatus, campaign.status, '—')),
-    placement: normalizePlacement(firstValue(campaign.placements, campaign.placement, campaign.placementName)),
+    name: String(firstValue(campaign.name, campaign.campaignName, campaign.title, '名称未設定')),
+    advertiser: String(firstValue(campaign.advertiser_name, campaign.advertiserName, campaign.advertiser, campaign.clientName, '—')),
+    status: statusLabel(firstValue(campaign.status, campaign.campaignStatus)),
+    statusRaw: String(firstValue(campaign.status, campaign.campaignStatus, '')),
+    placement: normalizePlacement(firstValue(campaign.placement_keys, campaign.placements, campaign.placement, campaign.placementName)),
     impressionsTarget: target,
     impressionsServed: served,
     remainingImpressions: remaining,
     clicks,
     ctr,
+    storeVisits: toNumber(firstValue(campaign.store_visits, campaign.storeVisits)),
+    startsAt: firstValue(campaign.starts_at, campaign.startsAt, null),
+    endsAt: firstValue(campaign.ends_at, campaign.endsAt, null),
   };
 }
 
@@ -63,8 +112,7 @@ function buildSummary(campaigns) {
   const impressions = sum('impressionsServed');
   const clicks = sum('clicks');
   const remaining = sum('remainingImpressions');
-  const activePattern = /active|running|delivering|live|配信中|配信予約/i;
-  const activeCampaigns = campaigns.filter((campaign) => activePattern.test(campaign.status)).length;
+  const activeCampaigns = campaigns.filter((campaign) => /^(active|running|delivering|live)$/i.test(campaign.statusRaw) || campaign.status === '配信中').length;
 
   return {
     activeCampaigns,
@@ -83,6 +131,17 @@ export default async function handler(req, res) {
     return res.status(405).json({ ok: false, status: 'error', error: 'method_not_allowed' });
   }
 
+  const sessionToken = getCookie(req, COOKIE_NAME);
+  if (!sessionToken) {
+    return res.status(200).json({
+      ok: true,
+      status: 'protected',
+      reason: 'admin_auth_required',
+      adminUrl: ADMIN_URL,
+      generatedAt: new Date().toISOString(),
+    });
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 5000);
 
@@ -94,15 +153,17 @@ export default async function handler(req, res) {
       signal: controller.signal,
       headers: {
         accept: 'application/json',
+        'x-harfway-admin-session': sessionToken,
         'user-agent': 'HARF-WAY-ADS-HUB/1.0',
       },
     });
 
     if (response.status === 401 || response.status === 403) {
+      clearSessionCookie(res);
       return res.status(200).json({
         ok: true,
         status: 'protected',
-        reason: 'admin_auth_required',
+        reason: 'session_expired',
         adminUrl: ADMIN_URL,
         generatedAt: new Date().toISOString(),
       });
@@ -124,6 +185,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       status: 'available',
+      authenticated: true,
       generatedAt: new Date().toISOString(),
       adminUrl: ADMIN_URL,
       summary: buildSummary(campaigns),
