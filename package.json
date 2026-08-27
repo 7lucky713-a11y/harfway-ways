@@ -9,6 +9,8 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.0",
-    "astro": "^5.0.0"
+    "@vercel/oidc": "^2.0.0",
+    "astro": "^5.0.0",
+    "google-auth-library": "^9.15.1"
   }
 }
