@@ -15,21 +15,15 @@ function cleanHeaders(source) {
 }
 
 function patchPortalJs(text) {
-  let out = text;
-  out = out.replaceAll(
-    'if(e.size>3145728)return void h("素材は3MBまでです。");',
-    'if(e.type.startsWith("video/")&&e.size>10485760)return void h("動画は10MBまでです。");if(e.type.startsWith("image/")&&e.size>3145728)return void h("画像は3MBまでです。");'
-  );
-  out = out.replaceAll(
-    'JPG / PNG / WebP / MP4 / WebM・3MBまで',
-    'JPG / PNG / WebP：3MBまで ／ MP4 / WebM：10MBまで'
-  );
-  return out;
-}
-
-function patchRootHtml(text) {
-  const bootstrap = '<script>try{history.replaceState(null,"","/")}catch(e){}</script><script src="/ads-portal-10mb-shim.js"></script>';
-  return text.replace('<head>', `<head>${bootstrap}`);
+  return text
+    .replaceAll(
+      'if(e.size>3145728)return void h("素材は3MBまでです。");',
+      'if(e.type.startsWith("video/")&&e.size>10485760)return void h("動画は10MBまでです。");if(e.type.startsWith("image/")&&e.size>3145728)return void h("画像は3MBまでです。");'
+    )
+    .replaceAll(
+      'JPG / PNG / WebP / MP4 / WebM・3MBまで',
+      'JPG / PNG / WebP：3MBまで ／ MP4 / WebM：10MBまで'
+    );
 }
 
 export default async function handler(req, res) {
@@ -55,12 +49,11 @@ export default async function handler(req, res) {
     const headers = cleanHeaders(upstream.headers);
     for (const [key, value] of Object.entries(headers)) res.setHeader(key, value);
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
-    res.setHeader('X-HARFWAY-ADS-PORTAL', '10mb-r2');
+    res.setHeader('X-HARFWAY-ADS-PORTAL', 'video-10mb-image-3mb');
 
     if (path === '/') {
-      const html = patchRootHtml(await upstream.text());
       res.setHeader('Cache-Control', 'no-store');
-      res.status(200).send(html);
+      res.status(200).send(await upstream.text());
       return;
     }
 
