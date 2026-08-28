@@ -1,8 +1,10 @@
-import { getSteamPrices, steamSaleCacheTtlSeconds } from './_steam-sale-core.js';
+const PRODUCTION_PRICE_API = 'https://harfway-playback.vercel.app/api/steam-prices-public';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('X-Robots-Tag', 'noindex');
+  res.setHeader('X-HARFWAY-Preview-Price-Source', 'production-cache');
+
   if (req.method !== 'GET') {
     res.setHeader('Cache-Control', 'no-store');
     return res.status(405).json({ ok: false, error: 'method_not_allowed' });
@@ -11,33 +13,34 @@ export default async function handler(req, res) {
   const raw = String(req.query?.appids || '');
   const appids = [...new Set(raw.split(',').map(v => v.trim()).filter(v => /^\d+$/.test(v)))].slice(0, 8);
   const forceRefresh = String(req.query?.refresh || '') === '1';
+
   if (!appids.length) {
-    res.setHeader('Cache-Control', forceRefresh ? 'no-store' : 'public, s-maxage=60');
-    return res.status(200).json({ ok: true, appids: [], prices: {} });
+    res.setHeader('Cache-Control', 'public, s-maxage=60');
+    return res.status(200).json({ ok: true, appids: [], prices: {}, previewPriceSource: 'production-cache' });
   }
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
   try {
-    const map = await getSteamPrices(appids, forceRefresh);
-    const prices = {};
-    for (const appid of appids) prices[appid] = map.get(appid) || { appid, ok: false, error: 'price_missing' };
-    const values = Object.values(prices);
-    const incomplete = values.some(v => !v?.ok || !v?.priceAvailable);
-    if (forceRefresh) res.setHeader('Cache-Control', 'no-store');
-    else if (incomplete) res.setHeader('Cache-Control', 'public, s-maxage=90, stale-while-revalidate=180');
-    else res.setHeader('Cache-Control', `public, s-maxage=${steamSaleCacheTtlSeconds}, stale-while-revalidate=1800`);
-    return res.status(200).json({
-      ok: true,
-      country: 'JP',
-      currency: 'JPY',
-      updatedAt: new Date().toISOString(),
-      forced: forceRefresh,
-      incomplete,
-      appids,
-      prices
+    const upstream = new URL(PRODUCTION_PRICE_API);
+    upstream.searchParams.set('appids', appids.join(','));
+    if (forceRefresh) upstream.searchParams.set('refresh', '1');
+
+    const response = await fetch(upstream, {
+      headers: { accept: 'application/json' },
+      signal: controller.signal,
+      cache: 'no-store'
     });
+    const payload = await response.json();
+
+    const upstreamCache = response.headers.get('cache-control');
+    res.setHeader('Cache-Control', upstreamCache || 'public, s-maxage=300, stale-while-revalidate=900');
+    return res.status(response.status).json({ ...payload, previewPriceSource: 'production-cache' });
   } catch (error) {
-    console.error('[steam-prices-public]', error?.message || error);
-    res.setHeader('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=120');
-    return res.status(503).json({ ok: false, error: 'steam_prices_unavailable' });
+    console.error('[preview-price-proxy]', error?.message || error);
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(502).json({ ok: false, error: 'production_price_proxy_failed' });
+  } finally {
+    clearTimeout(timeout);
   }
 }
