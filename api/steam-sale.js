@@ -107,8 +107,10 @@ function priceFromSteam(appid, payload) {
   const finalMinor = Number(p.final);
   const discountPercent = Number(p.discount_percent || 0);
   const isJpy = currency === 'JPY';
-  const initialYen = isJpy && Number.isFinite(initialMinor) ? initialMinor : null;
-  const finalYen = isJpy && Number.isFinite(finalMinor) ? finalMinor : null;
+  // Steam Store API returns integer prices in hundredths even for JPY.
+  // e.g. 120000 represents ¥1,200, while formatted fields remain display-safe.
+  const initialYen = isJpy && Number.isFinite(initialMinor) ? initialMinor / 100 : null;
+  const finalYen = isJpy && Number.isFinite(finalMinor) ? finalMinor / 100 : null;
 
   return {
     appid,
