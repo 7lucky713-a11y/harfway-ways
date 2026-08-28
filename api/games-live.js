@@ -20,6 +20,15 @@ function fallbackPayload() {
   return payload;
 }
 
+function shuffleEntries(entries) {
+  const shuffled = [...entries];
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 function normalizeGame(game, index) {
   const sortRaw = game?.sortOrder ?? game?.sort_order;
   const sortOrder = Number.isFinite(Number(sortRaw)) ? Number(sortRaw) : index;
@@ -137,12 +146,13 @@ export default async function handler(req, res) {
   try {
     const editorEntries = await fetchEditorGames();
     const { entries, core } = await mergeCoreMetadata(editorEntries);
+    const shuffledEntries = shuffleEntries(entries);
     return res.status(200).json({
       ok: true,
       source: core.ok ? 'playback-editor-live+shared-content-core' : 'playback-editor-live',
       core,
-      entries,
-      count: entries.length
+      entries: shuffledEntries,
+      count: shuffledEntries.length
     });
   } catch (error) {
     console.warn('[ways-games-live] editor unavailable; using Git fallback:', error?.message || error);
@@ -150,6 +160,7 @@ export default async function handler(req, res) {
       const fallback = fallbackPayload();
       return res.status(200).json({
         ...fallback,
+        entries: shuffleEntries(fallback.entries),
         source: 'playback-editor-fallback',
         stale: true,
         core: { ok: false, skipped: true }
