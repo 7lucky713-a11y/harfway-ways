@@ -34,3 +34,4 @@ inject('src/pages/sales.astro','<script is:inline src="/sale-watch-ways-deeplink
 inject('src/pages/salvage/store-edit.astro','<script is:inline src="/game-links-unlinked-filter.js"></script>','GAME LINKS unlinked filter');
 inject('src/pages/salvage/index.astro','<script is:inline src="/salvage-candidate-exclusions.js"></script>','Archive Salvager candidate exclusions');
 inject('src/pages/salvage/index.astro','<script is:inline src="/salvage-hide-completed.js"></script>','Archive Salvager completed-item filter');
+inject('src/pages/salvage/index.astro','<script is:inline src="/salvage-game-delete.js"></script>','Archive Salvager mistaken-game delete control');
