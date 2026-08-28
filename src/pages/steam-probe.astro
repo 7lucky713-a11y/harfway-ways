@@ -1,0 +1,17 @@
+---
+export const prerender = true;
+const tests = [
+  ['single','https://store.steampowered.com/api/appdetails?appids=620&cc=JP&l=japanese&filters=basic,price_overview'],
+  ['multi','https://store.steampowered.com/api/appdetails?appids=620,400&cc=JP&l=japanese&filters=basic,price_overview']
+];
+for (const [name,url] of tests) {
+  try {
+    const r = await fetch(url, { headers: { accept:'application/json', 'user-agent':'Mozilla/5.0 HARF-WAY-Steam-Build-Probe' }, cache:'no-store' });
+    const text = await r.text();
+    console.log(`[steam-build-probe] ${name} status=${r.status} ok=${r.ok} body=${text.slice(0,300).replace(/\n/g,' ')}`);
+  } catch (e) {
+    console.log(`[steam-build-probe] ${name} error=${e?.message || e}`);
+  }
+}
+---
+<!doctype html><html><body>probe</body></html>
