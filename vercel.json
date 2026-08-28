@@ -2,6 +2,14 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
+      "source": "/ads-portal",
+      "destination": "/api/ads-portal-proxy?path=/"
+    },
+    {
+      "source": "/ads-portal/",
+      "destination": "/api/ads-portal-proxy?path=/"
+    },
+    {
       "source": "/_next/static/:path*",
       "destination": "/api/ads-portal-proxy?path=/_next/static/:path*"
     }
