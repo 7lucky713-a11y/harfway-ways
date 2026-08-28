@@ -1,3 +1,5 @@
+import { classifyGameLink, GAME_LINK_LABELS, isKnownGamePlatformUrl } from './game-link-utils.js';
+
 function decodeEntities(value=''){
   return String(value)
     .replace(/&nbsp;/gi,' ')
@@ -191,19 +193,18 @@ function addPageSlugHint(items,baseUrl){
   }catch{}
 }
 
-function isStoreHost(host=''){return /store\.steampowered\.com|itch\.io|booth\.pm|dlsite\.com|nintendo\.|playstation\.|xbox\./i.test(host)}
-
 function addStoreHint(items,href,text=''){
-  if(!href||hasTemplateGarbage(href))return;
-  let u;try{u=new URL(href)}catch{return}
-  const host=u.hostname.toLowerCase();if(!isStoreHost(host))return;
+  if(!href||hasTemplateGarbage(href)||!isKnownGamePlatformUrl(href))return;
+  const classified=classifyGameLink(href);if(!classified)return;
   const clean=cleanCandidate(text);
-  if(clean&&!/^(store page|steam|store|official|公式|購入|販売ページ)$/i.test(clean))items.push({name:clean,source:'store-link-text',url:href,confidence:98});
-  if(host==='store.steampowered.com'){
+  if(clean&&!/^(store page|steam|store|official|公式|購入|販売ページ|website|site)$/i.test(clean))items.push({name:clean,source:'store-link-text',url:classified.url,platform:classified.service,confidence:98});
+  if(classified.service==='steam'){
+    let u;try{u=new URL(href)}catch{return}
     const seg=u.pathname.split('/').filter(Boolean),i=seg.findIndex(x=>x==='app'),slug=i>=0?seg[i+2]||'':'';
-    if(slug)items.push({name:decodeURIComponent(slug).replace(/_/g,' '),source:'steam-slug',url:href,confidence:96});
-  }else if(host.endsWith('itch.io')){
-    const slug=host.split('.')[0];if(slug&&slug!=='www')items.push({name:slug.replace(/-/g,' '),source:'itch-slug',url:href,confidence:96});
+    if(slug)items.push({name:decodeURIComponent(slug).replace(/_/g,' '),source:'steam-slug',url:classified.url,platform:'steam',confidence:96});
+  }else if(classified.service==='itch'){
+    let u;try{u=new URL(href)}catch{return}
+    const slug=u.hostname.split('.')[0];if(slug&&slug!=='www')items.push({name:slug.replace(/-/g,' '),source:'itch-slug',url:classified.url,platform:'itch',confidence:96});
   }
 }
 
@@ -221,6 +222,30 @@ function extractNameHints(html,baseUrl,pageTitle){
   }
   for(const m of scope.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi))addStoreHint(items,absoluteUrl(decodeEntities(m[1]),baseUrl),m[2]);
   extractScriptGameHints(html,items);return uniqueHints(items);
+}
+
+function ignoredExternalHost(host=''){
+  return /(^|\.)(twitter\.com|x\.com|youtube\.com|youtu\.be|facebook\.com|instagram\.com|tiktok\.com|amazon\.|amzn\.to|note\.com|discord\.|discordapp\.com)$/i.test(host);
+}
+
+function extractPlatformLinks(html,baseUrl){
+  const scope=String(html).match(/<article[^>]*>([\s\S]*?)<\/article>/i)?.[1]||html;
+  const out=[],seen=new Set();
+  let baseHost='';try{baseHost=new URL(baseUrl).hostname.toLowerCase()}catch{}
+  for(const m of scope.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)){
+    const raw=absoluteUrl(decodeEntities(m[1]),baseUrl);if(!raw||hasTemplateGarbage(raw))continue;
+    let u;try{u=new URL(raw)}catch{continue}
+    const host=u.hostname.toLowerCase();if(host===baseHost||host.endsWith(`.${baseHost}`)||ignoredExternalHost(host))continue;
+    const anchor=cleanCandidate(m[2]);
+    let classified=classifyGameLink(raw);if(!classified)continue;
+    const officialText=/公式|official|website|web site|公式サイト|ホームページ/i.test(anchor);
+    if(classified.service==='web'&&!officialText)continue;
+    if(classified.service==='web'&&officialText)classified=classifyGameLink(raw,'official');
+    const key=`${classified.service}:${classified.externalId}`;if(seen.has(key))continue;seen.add(key);
+    out.push({name:anchor||'',platform:classified.service,label:GAME_LINK_LABELS[classified.service]||classified.label,url:classified.url,externalId:classified.externalId,source:officialText?'official-link':'article-link'});
+    if(out.length>=40)break;
+  }
+  return out;
 }
 
 function extractImages(html,baseUrl){
@@ -361,8 +386,9 @@ export default async function handler(req,res){
     const featuredImage=images.find(x=>x.featured)?.url||images[0]?.url||'';
     const hintsSource=[wp?.rendered||'',html].join('\n');
     const nameHints=extractNameHints(hintsSource,finalUrl,title);
-    const storeLinks=nameHints.filter(x=>x.url).map(x=>({name:x.name,url:x.url,source:x.source,sources:x.sources,confidence:x.confidence}));
-    return res.status(200).json({ok:true,article:{url:wp?.link||finalUrl,title,date,text:body.slice(0,150000),featuredImage,images,nameHints,storeLinks,contentSource,wp:{id:wp?.id||null,restBase:wp?.restBase||null,fieldCandidates:wp?.fieldCandidates||[]}}});
+    const platformLinks=extractPlatformLinks(hintsSource,finalUrl);
+    const storeLinks=platformLinks.map(x=>({name:x.name,url:x.url,source:x.source,platform:x.platform,label:x.label,externalId:x.externalId,confidence:98}));
+    return res.status(200).json({ok:true,article:{url:wp?.link||finalUrl,title,date,text:body.slice(0,150000),featuredImage,images,nameHints,storeLinks,platformLinks,contentSource,wp:{id:wp?.id||null,restBase:wp?.restBase||null,fieldCandidates:wp?.fieldCandidates||[]}}});
   }catch(error){
     console.error('[archive-fetch]',error);
     return res.status(500).json({ok:false,error:'archive_fetch_failed'});
