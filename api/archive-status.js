@@ -6,7 +6,7 @@ export default function handler(req, res) {
   const config = archiveDatabaseConfig();
   return res.status(200).json({
     ok: true,
-    version: '0.7',
+    version: '0.8',
     environment: process.env.VERCEL_ENV || 'unknown',
     configured: Boolean(config.url),
     previewDatabaseConfigured: Boolean(process.env.SALVAGER_PREVIEW_DATABASE_URL),
