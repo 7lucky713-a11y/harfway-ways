@@ -2,6 +2,7 @@ import { neon } from '@neondatabase/serverless';
 
 const MAX_LIMIT = 500;
 const DEFAULT_LIMIT = 100;
+const STORE_SERVICES = ['steam','nintendo','playstation','xbox','itch','dlsite','booth','google_play','app_store','epic','gog','gamejolt','unityroom','novelgame','freem','official','web'];
 
 function getDatabaseUrl() {
   return (
@@ -43,9 +44,7 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
 
   if (req.method === 'OPTIONS') return res.status(204).end();
-  if (req.method !== 'GET') {
-    return res.status(405).json({ ok: false, error: 'method_not_allowed' });
-  }
+  if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'method_not_allowed' });
 
   const databaseUrl = getDatabaseUrl();
   if (!databaseUrl) {
@@ -66,15 +65,7 @@ export default async function handler(req, res) {
     if (id) {
       rows = await sql`
         SELECT
-          c.id,
-          c.title,
-          c.description,
-          c.store_url,
-          c.article_url,
-          c.category,
-          c.status,
-          c.source_of_truth,
-          c.tags,
+          c.id,c.title,c.description,c.store_url,c.article_url,c.category,c.status,c.source_of_truth,c.tags,
           COALESCE((
             SELECT jsonb_agg(
               jsonb_build_object(
@@ -85,10 +76,9 @@ export default async function handler(req, res) {
               ) ORDER BY r.service, r.external_id
             )
             FROM core.game_refs r
-            WHERE r.game_id = c.id
+            WHERE r.game_id = c.id AND r.service = ANY(${STORE_SERVICES}::text[])
           ), '[]'::jsonb) AS refs,
-          c.created_at,
-          c.updated_at
+          c.created_at,c.updated_at
         FROM core.game_catalog c
         WHERE c.status = 'active' AND c.id = ${id}
         LIMIT 1
@@ -97,15 +87,7 @@ export default async function handler(req, res) {
       const pattern = `%${q}%`;
       rows = await sql`
         SELECT
-          c.id,
-          c.title,
-          c.description,
-          c.store_url,
-          c.article_url,
-          c.category,
-          c.status,
-          c.source_of_truth,
-          c.tags,
+          c.id,c.title,c.description,c.store_url,c.article_url,c.category,c.status,c.source_of_truth,c.tags,
           COALESCE((
             SELECT jsonb_agg(
               jsonb_build_object(
@@ -116,10 +98,9 @@ export default async function handler(req, res) {
               ) ORDER BY r.service, r.external_id
             )
             FROM core.game_refs r
-            WHERE r.game_id = c.id
+            WHERE r.game_id = c.id AND r.service = ANY(${STORE_SERVICES}::text[])
           ), '[]'::jsonb) AS refs,
-          c.created_at,
-          c.updated_at
+          c.created_at,c.updated_at
         FROM core.game_catalog c
         WHERE c.status = 'active'
           AND (
@@ -133,6 +114,7 @@ export default async function handler(req, res) {
             OR EXISTS (
               SELECT 1 FROM core.game_refs gr
               WHERE gr.game_id = c.id
+                AND gr.service = ANY(${STORE_SERVICES}::text[])
                 AND (gr.external_id ILIKE ${pattern} OR gr.external_url ILIKE ${pattern})
             )
           )
@@ -142,15 +124,7 @@ export default async function handler(req, res) {
     } else {
       rows = await sql`
         SELECT
-          c.id,
-          c.title,
-          c.description,
-          c.store_url,
-          c.article_url,
-          c.category,
-          c.status,
-          c.source_of_truth,
-          c.tags,
+          c.id,c.title,c.description,c.store_url,c.article_url,c.category,c.status,c.source_of_truth,c.tags,
           COALESCE((
             SELECT jsonb_agg(
               jsonb_build_object(
@@ -161,10 +135,9 @@ export default async function handler(req, res) {
               ) ORDER BY r.service, r.external_id
             )
             FROM core.game_refs r
-            WHERE r.game_id = c.id
+            WHERE r.game_id = c.id AND r.service = ANY(${STORE_SERVICES}::text[])
           ), '[]'::jsonb) AS refs,
-          c.created_at,
-          c.updated_at
+          c.created_at,c.updated_at
         FROM core.game_catalog c
         WHERE c.status = 'active'
         ORDER BY c.updated_at DESC, c.title ASC
@@ -175,7 +148,7 @@ export default async function handler(req, res) {
     const games = normalizeRows(rows);
     return res.status(200).json({
       ok: true,
-      version: '0.2',
+      version: '0.3',
       source: 'shared-content-core',
       query: { id: id || null, q: q || null, limit },
       count: games.length,
