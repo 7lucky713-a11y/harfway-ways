@@ -1,6 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import { archiveDatabaseConfig, authorizeArchiveRequest, archiveCors } from './archive-core.js';
-import { GAME_LINK_SERVICES, normalizeGameLinks, choosePrimaryLink } from './game-link-utils.js';
+import { normalizeGameLinks, choosePrimaryLink } from './game-link-utils.js';
 
 function clean(value,max=4000){return String(value||'').trim().slice(0,max)}
 
@@ -21,14 +21,13 @@ export default async function handler(req,res){
     if(!gameId)return res.status(400).json({ok:false,error:'game_id_required'});
     const links=normalizeGameLinks(payload.links||[]);
     const explicitPrimary=clean(payload.primaryUrl,4000);
-    let primary=links.find(x=>x.url===explicitPrimary)||choosePrimaryLink(links);
+    const primary=links.find(x=>x.url===explicitPrimary)||choosePrimaryLink(links);
     if(primary)links.forEach(x=>x.primary=x.url===primary.url);
 
     if(!config.url&&!config.production){
       return res.status(200).json({
         ok:true,updated:true,simulated:true,previewOnly:true,writeMode:'preview-dry-run',
-        game:{id:gameId,store_url:primary?.url||''},
-        links
+        game:{id:gameId,store_url:primary?.url||''},links
       });
     }
     if(!config.url)return res.status(503).json({ok:false,error:'core_database_not_configured',writeMode:config.mode});
@@ -52,7 +51,8 @@ export default async function handler(req,res){
 
     await sql`
       DELETE FROM core.game_refs
-      WHERE game_id=${gameId} AND service = ANY(${GAME_LINK_SERVICES}::text[])
+      WHERE game_id=${gameId}
+        AND service IN ('steam','nintendo','playstation','xbox','itch','dlsite','booth','google_play','app_store','epic','gog','gamejolt','unityroom','novelgame','freem','official','web')
     `;
 
     for(const link of links){
