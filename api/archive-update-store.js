@@ -23,13 +23,38 @@ export default async function handler(req,res){
   const auth=await authorizeArchiveRequest(req);
   if(!auth.ok)return res.status(auth.status||401).json({ok:false,error:auth.error,authRequired:auth.authRequired});
   const config=auth.config||archiveDatabaseConfig();
-  if(!config.url)return res.status(503).json({ok:false,error:config.production?'core_database_not_configured':'preview_database_not_configured',writeMode:config.mode});
 
   try{
     const payload=typeof req.body==='string'?JSON.parse(req.body||'{}'):(req.body||{});
     const gameId=clean(payload.gameId,500);
     const inputUrl=clean(payload.storeUrl,4000);
     if(!gameId)return res.status(400).json({ok:false,error:'game_id_required'});
+
+    let appId='';
+    let canonical='';
+    if(inputUrl){
+      appId=steamAppId(inputUrl);
+      if(!appId)return res.status(400).json({ok:false,error:'invalid_steam_url',message:'Steamの /app/123456/ 形式のURLを入力してください。'});
+      canonical=canonicalSteamUrl(appId);
+    }
+
+    // Preview dry-run: verify the edit flow without writing to Production.
+    if(!config.url&&!config.production){
+      return res.status(200).json({
+        ok:true,
+        updated:true,
+        simulated:true,
+        previewOnly:true,
+        writeMode:'preview-dry-run',
+        authRequired:false,
+        game:{id:gameId,store_url:canonical},
+        steamAppId:appId||null,
+        previous:{storeUrl:null,refs:[]},
+        cleared:!appId
+      });
+    }
+
+    if(!config.url)return res.status(503).json({ok:false,error:'core_database_not_configured',writeMode:config.mode});
 
     const sql=neon(config.url);
     const gameRows=await sql`
@@ -39,12 +64,7 @@ export default async function handler(req,res){
     const game=gameRows[0];
     if(!game)return res.status(404).json({ok:false,error:'game_not_found'});
 
-    let appId='';
-    let canonical='';
-    if(inputUrl){
-      appId=steamAppId(inputUrl);
-      if(!appId)return res.status(400).json({ok:false,error:'invalid_steam_url',message:'Steamの /app/123456/ 形式のURLを入力してください。'});
-      canonical=canonicalSteamUrl(appId);
+    if(appId){
       const collision=await sql`
         SELECT r.game_id,g.title,g.store_url
         FROM core.game_refs r
