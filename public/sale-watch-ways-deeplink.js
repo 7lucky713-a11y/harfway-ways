@@ -13,8 +13,6 @@
     sourceMap.set(appid,prev);
   };
   const appIdFromStore=url=>String(url||'').match(/store\.steampowered\.com\/app\/(\d+)/i)?.[1]||'';
-  const chunks=(a,n)=>{const out=[];for(let i=0;i<a.length;i+=n)out.push(a.slice(i,i+n));return out};
-  const wait=ms=>new Promise(r=>setTimeout(r,ms));
   const waysUrl=appid=>{
     const url=new URL('/',location.origin);
     url.searchParams.set('steam',appid);
@@ -37,9 +35,46 @@
     return a;
   };
 
+  function findGame(appid){
+    try{return Array.isArray(games)?games.find(g=>String(g?.appid||'')===String(appid)):null}catch{return null}
+  }
+  function imageCandidates(appid){
+    const game=findGame(appid);
+    return [
+      game?.price?.headerImage,
+      game?.thumbnail,
+      `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appid}/header.jpg`,
+      `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/header.jpg`
+    ].map(x=>String(x||'').trim()).filter(Boolean).filter((x,i,a)=>a.indexOf(x)===i);
+  }
+  function fallbackImage(img,appid){
+    const tried=img._hwTried||(img._hwTried=new Set());
+    if(img.currentSrc)tried.add(img.currentSrc);
+    if(img.src)tried.add(img.src);
+    const next=imageCandidates(appid).find(url=>!tried.has(url));
+    if(next){
+      tried.add(next);
+      img.style.opacity='1';
+      img.src=next;
+      return;
+    }
+    img.style.opacity='.14';
+  }
+  function repairImage(card,appid){
+    const img=card.querySelector('.media img');
+    if(!img)return;
+    if(!img.dataset.hwFallback){
+      img.dataset.hwFallback='1';
+      img._hwTried=new Set([img.currentSrc||img.src].filter(Boolean));
+      img.onerror=()=>fallbackImage(img,appid);
+    }
+    if(img.complete&&img.naturalWidth===0)fallbackImage(img,appid);
+  }
+
   function repairCard(card){
     const appid=String(card.dataset.gameId||'').trim();
     if(!/^\d+$/.test(appid))return;
+    repairImage(card,appid);
     const row=actionRow(card);
     if(!row)return;
     const meta=sourceMap.get(appid);
@@ -72,61 +107,6 @@
     if(scrap?.nextSibling)quick.insertBefore(btn,scrap.nextSibling);else quick.appendChild(btn);
   }
 
-  async function waitForGames(){
-    for(let i=0;i<60;i++){
-      try{if(Array.isArray(games)&&games.length)return games}catch{}
-      await wait(100);
-    }
-    return [];
-  }
-
-  async function fetchPriceIds(ids,refresh=false){
-    if(!ids.length)return {};
-    const q=new URLSearchParams();
-    q.set('appids',ids.join(','));
-    if(refresh)q.set('refresh','1');
-    try{
-      const r=await fetch('/api/steam-prices-public?'+q.toString(),{cache:'no-store'}),j=await r.json();
-      return r.ok&&j?.ok?(j.prices||{}):{};
-    }catch{return {}}
-  }
-
-  async function primeSourcePrices(){
-    const liveGames=await waitForGames();
-    if(!liveGames.length)return;
-    const priority=[...sourceMap.entries()]
-      .filter(([,meta])=>meta.sources.has('scrap')||meta.sources.has('ways'))
-      .map(([appid])=>appid)
-      .filter(appid=>liveGames.some(g=>String(g?.appid||'')===appid));
-    if(!priority.length)return;
-
-    let resolved=0;
-    const missing=[];
-    for(const group of chunks(priority,8)){
-      const prices=await fetchPriceIds(group,false);
-      for(const appid of group){
-        const game=liveGames.find(g=>String(g?.appid||'')===appid);
-        const hit=prices[appid];
-        if(game&&hit?.ok){game.price=hit;resolved++}else missing.push(appid);
-      }
-      try{render()}catch{}
-    }
-
-    for(const group of chunks(missing,2)){
-      const prices=await fetchPriceIds(group,true);
-      for(const appid of group){
-        const game=liveGames.find(g=>String(g?.appid||'')===appid);
-        const hit=prices[appid];
-        if(game&&hit?.ok){game.price=hit;resolved++}
-      }
-      try{render()}catch{}
-    }
-
-    const salePriority=liveGames.filter(g=>g?.price?.ok&&g?.price?.onSale&&(sourceMap.get(String(g.appid))?.sources.has('scrap')||sourceMap.get(String(g.appid))?.sources.has('ways')));
-    window.HW_SALE_WATCH_PRIORITY_PRICE={requested:priority.length,resolved,onSale:salePriority.length,completed:true};
-    repair();
-  }
-
   async function loadSources(){
     try{
       const r=await fetch('/api/sales-catalog',{cache:'no-store'}),j=await r.json();
@@ -141,9 +121,9 @@
     window.HW_SALE_WATCH_SOURCE_HEALTH={
       ways:[...sourceMap.values()].filter(x=>x.sources.has('ways')).length,
       scrap:[...sourceMap.values()].filter(x=>x.sources.has('scrap')).length,
-      loaded:true
+      loaded:true,
+      priceMode:'single-main-pipeline'
     };
-    primeSourcePrices();
   }
 
   const grid=document.querySelector('#grid');
@@ -151,5 +131,5 @@
   repair();
   if(grid)new MutationObserver(repair).observe(grid,{childList:true,subtree:true});
   loadSources();
-  window.HW_SALE_WATCH_WAYS_DEEPLINK={enabled:true,rewrite:repair,repair,sourceMap,primeSourcePrices};
+  window.HW_SALE_WATCH_WAYS_DEEPLINK={enabled:true,rewrite:repair,repair,sourceMap};
 })();
