@@ -1,0 +1,32 @@
+---
+---
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>HARF-WAY Core Content Setup</title>
+<style>
+:root{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;background:#0d0e0c;color:#f4f1e8}*{box-sizing:border-box}body{margin:0}.wrap{width:min(920px,calc(100% - 32px));margin:auto;padding:56px 0 90px}.ey{font:800 11px/1.2 ui-monospace,monospace;letter-spacing:.16em;color:#a9aa93}.title{font-size:clamp(42px,8vw,78px);line-height:.88;letter-spacing:-.055em;margin:16px 0 20px}.lead{max-width:720px;color:#aaa99f;line-height:1.8}.card{margin-top:28px;border:1px solid #363832;border-radius:15px;background:#151613;padding:22px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.item{border:1px solid #34362f;border-radius:10px;padding:14px;background:#11120f}.item small{display:block;color:#87897f;font-size:10px;margin-bottom:7px}.item b{font-size:15px}.ok{color:#b8efbd}.ng{color:#f1c88a}.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.btn{border:1px solid #44463f;border-radius:9px;background:#1d1e1a;color:#fff;padding:11px 14px;font-weight:800;cursor:pointer;text-decoration:none}.btn.primary{background:#eeecdf;color:#111;border-color:#eeecdf}.btn:disabled{opacity:.4;cursor:not-allowed}.key{width:100%;margin-top:14px;height:44px;border:1px solid #40423a;border-radius:9px;background:#0f100e;color:#fff;padding:0 12px}.msg{margin-top:15px;padding:12px;border:1px solid #34362f;border-radius:9px;color:#aaa99f;font:12px/1.6 ui-monospace,monospace}.note{font-size:12px;color:#8b8c84;line-height:1.7;margin-top:18px}@media(max-width:650px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main class="wrap">
+<div class="ey">HARF-WAY / SHARED CONTENT CORE</div>
+<h1 class="title">CONTENT<br>REGISTRY SETUP</h1>
+<p class="lead">過去記事をLibraryのローカル保存ではなく、Shared Content Coreの正式コンテンツとして保存するためのセットアップです。ゲーム・WAYS・切れ端・Playlistと記事を同じDB上で結びます。</p>
+<section class="card">
+<div id="status" class="grid"><div class="item"><small>STATUS</small><b>確認中…</b></div></div>
+<input id="key" class="key" type="password" placeholder="WAYSと同じ管理キー（本番初期化時のみ）" autocomplete="current-password">
+<div class="row"><button id="reload" class="btn">状態を再確認</button><button id="bootstrap" class="btn primary" disabled>Core記事DBを初期化</button><a class="btn" href="/salvage/">Salvagerへ</a><a class="btn" href="/db-master/">DB MASTERへ</a></div>
+<div id="msg" class="msg">Previewでは状態確認のみ。本番DBへの書き込みは行いません。</div>
+<p class="note">初期化で既存のゲーム・動画・切れ端・Playlistは変更しません。記事用レジストリとゲーム↔記事の関連層だけを追加します。初期化後、Salvagerの「ローカル保存をCoreへ同期」で既存LOCAL記事を移せます。</p>
+</section>
+</main>
+<script>
+const $=s=>document.querySelector(s);let current=null;
+const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+function render(data){current=data;const s=data?.schema||{};const rows=[['GAMES',s.games],['GAME REFS',s.game_refs],['CONTENTS',s.contents],['CONTENT ↔ GAME',s.content_game_links],['ASSETS',s.content_assets],['CONTENT CATALOG',s.content_catalog]];$('#status').innerHTML=rows.map(([a,b])=>`<div class="item"><small>${a}</small><b class="${b?'ok':'ng'}">${b?esc(b):'MISSING'}</b></div>`).join('');const prod=data?.environment==='production';$('#bootstrap').disabled=!prod||Boolean(data?.ready);$('#msg').textContent=data?.ready?`Core Content Registry READY / contents ${data?.counts?.contents??0} / links ${data?.counts?.links??0}`:prod?'記事DBが未作成です。管理キーを入力して初期化できます。':'Preview確認中：記事DBは未作成。Productionへはまだ書き込みません。'}
+async function load(){try{const r=await fetch('/api/core-content-status',{cache:'no-store'}),j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||`HTTP ${r.status}`);render(j)}catch(e){$('#msg').textContent='状態確認失敗: '+e.message}}
+$('#reload').onclick=load;$('#bootstrap').onclick=async()=>{const key=$('#key').value.trim();if(!key)return $('#msg').textContent='管理キーを入力してください。';$('#bootstrap').disabled=true;$('#msg').textContent='初期化中…';try{const r=await fetch('/api/core-content-bootstrap',{method:'POST',headers:{'content-type':'application/json','x-admin-key':key},body:JSON.stringify({confirm:'CREATE_CORE_CONTENT_REGISTRY'})}),j=await r.json().catch(()=>({}));if(!r.ok||!j.ok)throw new Error(j.error||`HTTP ${r.status}`);$('#msg').textContent='Core Content Registryを初期化しました。SalvagerからLOCAL記事を同期できます。';await load()}catch(e){$('#msg').textContent='初期化失敗: '+e.message;$('#bootstrap').disabled=false}};load();
+</script>
+</body></html>
