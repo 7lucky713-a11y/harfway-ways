@@ -125,9 +125,15 @@ export default async function handler(req, res) {
           AND (
             c.title ILIKE ${pattern}
             OR c.category ILIKE ${pattern}
+            OR c.store_url ILIKE ${pattern}
             OR EXISTS (
               SELECT 1 FROM core.game_tags gt
               WHERE gt.game_id = c.id AND gt.tag ILIKE ${pattern}
+            )
+            OR EXISTS (
+              SELECT 1 FROM core.game_refs gr
+              WHERE gr.game_id = c.id
+                AND (gr.external_id ILIKE ${pattern} OR gr.external_url ILIKE ${pattern})
             )
           )
         ORDER BY c.updated_at DESC, c.title ASC
@@ -169,7 +175,7 @@ export default async function handler(req, res) {
     const games = normalizeRows(rows);
     return res.status(200).json({
       ok: true,
-      version: '0.1',
+      version: '0.2',
       source: 'shared-content-core',
       query: { id: id || null, q: q || null, limit },
       count: games.length,
