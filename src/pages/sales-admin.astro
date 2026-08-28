@@ -1,0 +1,184 @@
+---
+export const prerender = true;
+---
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="robots" content="noindex,nofollow" />
+<title>HARF-WAY / SALE WATCH ADMIN</title>
+<style>
+:root{color-scheme:dark;--bg:#090a0c;--panel:#111318;--line:#2c3139;--muted:#919aa6;--text:#f4f4ef;--lime:#efff35;--green:#72e796;--amber:#ffcc69;--red:#ff7777;--blue:#7eb9ff;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text)}a{color:inherit}.top{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid var(--line);background:#090a0cf2}.brand{font-weight:950;letter-spacing:.08em}.brand small{display:block;color:var(--muted);font-size:9px;margin-top:2px}.actions{display:flex;gap:7px;flex-wrap:wrap}.btn{border:1px solid #3a414b;border-radius:9px;background:#15181d;color:#fff;min-height:38px;padding:8px 11px;font:900 10px/1 inherit;text-decoration:none;cursor:pointer}.btn.primary{background:var(--lime);border-color:var(--lime);color:#090a0c}.wrap{max-width:1500px;margin:auto;padding:26px 20px 70px}.hero{display:flex;justify-content:space-between;align-items:flex-end;gap:28px;margin-bottom:18px}.ey{color:var(--lime);font-size:10px;font-weight:950;letter-spacing:.15em}.hero h1{margin:7px 0 0;font-size:clamp(44px,7vw,84px);line-height:.88;letter-spacing:-.06em}.hero p{max-width:650px;margin:0;color:var(--muted);font-size:11px;line-height:1.75}.state{margin-top:7px;font:10px/1.5 ui-monospace,monospace;color:var(--muted)}.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:14px}.kpi{border:1px solid var(--line);border-radius:13px;background:var(--panel);padding:14px;min-height:98px}.kpi small{font-size:8px;color:var(--muted);letter-spacing:.08em}.kpi b{display:block;font-size:29px;margin-top:8px;letter-spacing:-.04em}.panel{border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:14px;margin-bottom:14px}.sourcegrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.sourcebox{border:1px solid var(--line);border-radius:10px;background:#0d0f13;padding:10px}.sourcebox small{font-size:8px;color:var(--muted)}.sourcebox b{display:block;font-size:20px;margin-top:5px}.toolbar{display:grid;grid-template-columns:minmax(220px,1fr) repeat(3,minmax(130px,180px)) auto;gap:8px}.toolbar input,.toolbar select{min-height:40px;border:1px solid var(--line);border-radius:9px;background:#14171c;color:#fff;padding:8px 10px;font-size:10px}.progress{height:5px;margin-top:11px;background:#1d2228;border-radius:999px;overflow:hidden}.progress span{display:block;height:100%;width:0;background:var(--lime);transition:width .2s}.count{margin-top:7px;color:var(--muted);font-size:9px}.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:13px}.table{width:100%;border-collapse:collapse;min-width:1080px}.table th{position:sticky;top:64px;background:#111318;border-bottom:1px solid var(--line);padding:10px;text-align:left;color:var(--muted);font-size:8px;letter-spacing:.08em}.table td{padding:10px;border-bottom:1px solid #22272e;vertical-align:top;font-size:10px}.title{font-weight:950;font-size:12px}.sub{margin-top:4px;color:var(--muted);font-size:8px}.chips{display:flex;gap:4px;flex-wrap:wrap}.chip,.status{display:inline-block;border:1px solid #3c444e;border-radius:999px;padding:5px 6px;font:850 8px/1 ui-monospace,monospace}.chip.ways{color:var(--blue);border-color:#3d5d78}.chip.playlist{color:var(--lime);border-color:#5b6423}.chip.article{color:var(--amber);border-color:#6b572c}.chip.yorimichi{color:#f298c7;border-color:#71465d}.status.ok{color:var(--green);border-color:#356548}.status.warn{color:var(--amber);border-color:#6b582d}.status.bad{color:var(--red);border-color:#703d3d}.discount{font-size:15px;font-weight:950;color:var(--lime)}.price{font-weight:900}.links{display:flex;gap:5px;flex-wrap:wrap}.links a{border:1px solid #363d47;border-radius:7px;padding:5px 7px;background:#13161b;text-decoration:none;font-size:8px;font-weight:900}.empty{text-align:center;color:var(--muted);padding:42px}@media(max-width:1050px){.kpis{grid-template-columns:repeat(3,1fr)}.sourcegrid{grid-template-columns:repeat(2,1fr)}.toolbar{grid-template-columns:1fr 1fr}}@media(max-width:650px){.top{align-items:flex-start;flex-direction:column}.hero{display:block}.hero p{margin-top:16px}.kpis,.sourcegrid,.toolbar{grid-template-columns:1fr 1fr}.wrap{padding:18px 12px 50px}.table th{top:102px}}@media(max-width:430px){.kpis,.sourcegrid,.toolbar{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="top"><div class="brand">HARF-WAY / SALE WATCH ADMIN<small>Shared Content Core → Steam Monitor</small></div><div class="actions"><a class="btn" href="/db-master-core" target="_blank">CORE DB ↗</a><a class="btn" href="/sales" target="_blank">公開SALE PICKS ↗</a><button class="btn primary" id="reload">再読み込み</button></div></header>
+<main class="wrap">
+<section class="hero"><div><div class="ey">SALE OPERATIONS / CORE v2</div><h1>ONE<br>CATALOG.</h1></div><div><p>WAYS・PLAYLIST・記事・ヨリミチを含むShared Content Core全体を母集団にしたSALE WATCH管理画面。Steam紐付けの抜け、セール、500円以下、価格取得エラーをまとめて確認できます。</p><div id="state" class="state">Coreを読み込み中…</div></div></section>
+<section class="kpis"><div class="kpi"><small>CORE TOTAL</small><b id="total">—</b></div><div class="kpi"><small>STEAM LINKED</small><b id="linked">—</b></div><div class="kpi"><small>NO STEAM</small><b id="missing">—</b></div><div class="kpi"><small>ON SALE</small><b id="onsale">—</b></div><div class="kpi"><small>UNDER ¥500</small><b id="under500">—</b></div><div class="kpi"><small>PRICE ERRORS</small><b id="errors">—</b></div></section>
+<section class="panel"><div class="sourcegrid"><div class="sourcebox"><small>WAYS</small><b id="srcWays">—</b></div><div class="sourcebox"><small>PLAYLIST</small><b id="srcPlaylist">—</b></div><div class="sourcebox"><small>ARTICLE</small><b id="srcArticle">—</b></div><div class="sourcebox"><small>YORIMICHI</small><b id="srcYorimichi">—</b></div></div></section>
+<section class="panel"><div class="toolbar"><input id="q" placeholder="作品名 / AppID / タグで検索"/><select id="source"><option value="all">全紹介元</option><option value="ways">WAYS</option><option value="playlist">PLAYLIST</option><option value="article">ARTICLE</option><option value="yorimichi">YORIMICHI</option></select><select id="link"><option value="all">Steam状態すべて</option><option value="linked">Steamあり</option><option value="missing">Steamなし</option><option value="article-missing">記事あり / Steamなし</option></select><select id="sale"><option value="all">価格状態すべて</option><option value="sale">セール中</option><option value="regular">通常価格</option><option value="unchecked">未取得 / エラー</option></select><button class="btn" id="resolve">記事からSteam探索</button></div><div class="progress"><span id="bar"></span></div><div id="count" class="count"></div></section>
+<div class="tablewrap"><table class="table"><thead><tr><th>作品</th><th>紹介元</th><th>Steam</th><th>価格</th><th>Playlist</th><th>リンク</th></tr></thead><tbody id="rows"><tr><td colspan="6" class="empty">読み込み中…</td></tr></tbody></table></div>
+</main>
+<script>
+const $ = (s) => document.querySelector(s);
+let catalog = [];
+let prices = {};
+let resolved = {};
+let busy = false;
+
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const chunk = (arr, size) => {
+  const out = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+};
+const appidOf = (row) => String(row.appid || resolved[row.articleUrl]?.appid || '');
+const priceOf = (row) => prices[appidOf(row)] || null;
+const countSource = (name) => catalog.filter((row) => (row.sources || []).includes(name)).length;
+
+function updateStats() {
+  const linked = catalog.filter((row) => appidOf(row)).length;
+  const checked = catalog.map(priceOf).filter(Boolean);
+  $('#total').textContent = catalog.length;
+  $('#linked').textContent = linked;
+  $('#missing').textContent = catalog.length - linked;
+  $('#onsale').textContent = checked.filter((p) => p.ok && p.onSale).length;
+  $('#under500').textContent = checked.filter((p) => p.ok && Number.isFinite(p.finalYen) && p.finalYen <= 500).length;
+  $('#errors').textContent = checked.filter((p) => !p.ok).length;
+  $('#srcWays').textContent = countSource('ways');
+  $('#srcPlaylist').textContent = countSource('playlist');
+  $('#srcArticle').textContent = countSource('article');
+  $('#srcYorimichi').textContent = countSource('yorimichi');
+}
+
+function filteredRows() {
+  const q = $('#q').value.trim().toLowerCase();
+  const source = $('#source').value;
+  const link = $('#link').value;
+  const sale = $('#sale').value;
+  return catalog.filter((row) => {
+    const appid = appidOf(row);
+    const price = priceOf(row);
+    const hay = [row.title, row.category, appid, ...(row.tags || []), ...(row.playlists || [])].join(' ').toLowerCase();
+    if (q && !hay.includes(q)) return false;
+    if (source !== 'all' && !(row.sources || []).includes(source)) return false;
+    if (link === 'linked' && !appid) return false;
+    if (link === 'missing' && appid) return false;
+    if (link === 'article-missing' && (!row.articleUrl || appid)) return false;
+    if (sale === 'sale' && !(price?.ok && price?.onSale)) return false;
+    if (sale === 'regular' && !(price?.ok && !price?.onSale)) return false;
+    if (sale === 'unchecked' && price?.ok) return false;
+    return true;
+  });
+}
+
+function render() {
+  updateStats();
+  const rows = filteredRows();
+  $('#count').textContent = `${rows.length} / ${catalog.length}作品を表示`;
+  if (!rows.length) {
+    $('#rows').innerHTML = '<tr><td colspan="6" class="empty">条件に合う作品はありません。</td></tr>';
+    return;
+  }
+  $('#rows').innerHTML = rows.map((row) => {
+    const appid = appidOf(row);
+    const price = priceOf(row);
+    const articleFound = !row.appid && Boolean(appid);
+    const sourceChips = (row.sources || []).map((s) => `<span class="chip ${esc(s)}">${esc(String(s).toUpperCase())}</span>`).join('');
+    const steamState = appid
+      ? `<span class="status ok">${articleFound ? 'ARTICLE FOUND' : 'LINKED'} / ${esc(appid)}</span>${articleFound ? '<div class="sub">記事本文から発見・Core未保存</div>' : ''}`
+      : '<span class="status warn">NO STEAM</span>';
+    let priceHtml = '<span class="status warn">UNCHECKED</span>';
+    if (price) {
+      if (!price.ok) priceHtml = '<span class="status bad">ERROR</span>';
+      else if (price.onSale) priceHtml = `<div class="discount">-${Number(price.discountPercent || 0)}%</div><div class="price">${esc(price.finalFormatted || '')}</div><div class="sub"><s>${esc(price.initialFormatted || '')}</s></div>`;
+      else priceHtml = `<span class="status ok">REGULAR</span><div class="price">${esc(price.finalFormatted || '')}</div>`;
+    }
+    const steamUrl = appid ? `https://store.steampowered.com/app/${appid}/` : '';
+    const playlistHtml = (row.playlists || []).length
+      ? row.playlists.map((v) => `<span class="chip playlist">${esc(v)}</span>`).join(' ')
+      : '<span class="sub">—</span>';
+    const links = [
+      row.articleUrl ? `<a href="${esc(row.articleUrl)}" target="_blank" rel="noopener">記事 ↗</a>` : '',
+      steamUrl ? `<a href="${esc(steamUrl)}" target="_blank" rel="noopener">Steam ↗</a>` : '',
+      row.storeUrl && !steamUrl ? `<a href="${esc(row.storeUrl)}" target="_blank" rel="noopener">Store ↗</a>` : ''
+    ].filter(Boolean).join('');
+    return `<tr><td><div class="title">${esc(row.title)}</div><div class="sub">${esc(row.sourceOfTruth || 'core')} / ${esc(row.id)}</div></td><td><div class="chips">${sourceChips}</div></td><td>${steamState}</td><td>${priceHtml}</td><td>${playlistHtml}</td><td><div class="links">${links}</div></td></tr>`;
+  }).join('');
+}
+
+async function loadPrices() {
+  const ids = [...new Set(catalog.map(appidOf).filter(Boolean))];
+  let done = 0;
+  for (const group of chunk(ids, 8)) {
+    try {
+      const response = await fetch(`/api/steam-prices-public?appids=${encodeURIComponent(group.join(','))}`);
+      const data = await response.json();
+      if (data.ok) Object.assign(prices, data.prices || {});
+    } catch {}
+    done += group.length;
+    $('#bar').style.width = `${ids.length ? Math.min(100, done / ids.length * 100) : 100}%`;
+    $('#state').textContent = `Core ${catalog.length}作品 / Steam価格 ${done}/${ids.length}件取得中…`;
+    render();
+  }
+  $('#state').textContent = `Core ${catalog.length}作品 / 価格取得完了`;
+  busy = false;
+}
+
+async function load() {
+  if (busy) return;
+  busy = true;
+  catalog = [];
+  prices = {};
+  resolved = {};
+  $('#bar').style.width = '0%';
+  $('#state').textContent = 'Shared Content Coreを読み込み中…';
+  try {
+    const response = await fetch('/api/sales-catalog', {cache:'no-store'});
+    const data = await response.json();
+    if (!response.ok || !data.ok) throw new Error(data.error || 'catalog_failed');
+    catalog = data.rows || [];
+    render();
+    await loadPrices();
+  } catch (error) {
+    busy = false;
+    $('#state').textContent = `ERROR: ${error.message}`;
+    $('#rows').innerHTML = '<tr><td colspan="6" class="empty">SALE WATCHデータを取得できませんでした。</td></tr>';
+  }
+}
+
+async function resolveArticles() {
+  const targets = catalog.filter((row) => !appidOf(row) && row.articleUrl).slice(0, 80);
+  if (!targets.length) {
+    $('#state').textContent = 'Steam未紐付けの記事はありません。';
+    return;
+  }
+  $('#state').textContent = `記事 ${targets.length}件からSteam候補を探索中…`;
+  let done = 0;
+  for (const group of chunk(targets, 4)) {
+    const query = group.map((row) => `u=${encodeURIComponent(row.articleUrl)}`).join('&');
+    try {
+      const response = await fetch(`/api/article-steam-public?${query}`);
+      const data = await response.json();
+      for (const hit of data.rows || []) if (hit?.url) resolved[hit.url] = hit;
+    } catch {}
+    done += group.length;
+    $('#bar').style.width = `${Math.min(100, done / targets.length * 100)}%`;
+    render();
+  }
+  prices = {};
+  await loadPrices();
+}
+
+$('#q').addEventListener('input', render);
+$('#source').addEventListener('change', render);
+$('#link').addEventListener('change', render);
+$('#sale').addEventListener('change', render);
+$('#reload').addEventListener('click', load);
+$('#resolve').addEventListener('click', resolveArticles);
+load();
+</script>
+</body>
+</html>
