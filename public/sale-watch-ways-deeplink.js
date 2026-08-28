@@ -1,18 +1,8 @@
 (()=>{
   const shareToken=new URLSearchParams(location.search).get('_vercel_share')||'';
-  const sourceMap=new Map();
-  const normSources=v=>Array.isArray(v)?v.map(x=>String(x||'').toLowerCase()):[];
-  const remember=(appid,patch={})=>{
-    appid=String(appid||'').trim();
-    if(!/^\d+$/.test(appid))return;
-    const prev=sourceMap.get(appid)||{sources:new Set(),scrapUrl:''};
-    for(const s of normSources(patch.sources))prev.sources.add(s);
-    if(patch.ways)prev.sources.add('ways');
-    if(patch.scrap)prev.sources.add('scrap');
-    if(!prev.scrapUrl&&patch.scrapUrl)prev.scrapUrl=String(patch.scrapUrl);
-    sourceMap.set(appid,prev);
-  };
-  const appIdFromStore=url=>String(url||'').match(/store\.steampowered\.com\/app\/(\d+)/i)?.[1]||'';
+  const waysIds=new Set();
+  const wait=ms=>new Promise(r=>setTimeout(r,ms));
+
   const waysUrl=appid=>{
     const url=new URL('/',location.origin);
     url.searchParams.set('steam',appid);
@@ -20,75 +10,16 @@
     if(shareToken)url.searchParams.set('_vercel_share',shareToken);
     return url.pathname+url.search;
   };
-  const actionRow=card=>[...card.querySelectorAll('.kvRow')].find(row=>row.querySelector('.kvLabel')?.textContent?.includes('HARF-WAYコンテンツ'))?.querySelector('.links')||null;
-  const makeLink=(kind,appid,url,label)=>{
-    const a=document.createElement('a');
-    a.className=`action ${kind}`;
-    a.dataset.track='content_click';
-    a.dataset.kind=kind;
-    a.dataset.gameId=appid;
-    a.dataset.deeplink=kind==='ways'?'steam-appid':'source-repair';
-    a.href=url;
-    a.target='_blank';
-    a.rel='noopener';
-    a.textContent=label;
-    return a;
-  };
 
-  function findGame(appid){
-    try{return Array.isArray(games)?games.find(g=>String(g?.appid||'')===String(appid)):null}catch{return null}
+  function rewriteWaysLinks(){
+    document.querySelectorAll('a[data-kind="ways"][data-game-id]').forEach(link=>{
+      const appid=String(link.dataset.gameId||'').trim();
+      if(!waysIds.has(appid))return;
+      link.href=waysUrl(appid);
+      link.textContent='WAYSで再生 ↗';
+      link.dataset.deeplink='steam-appid';
+    });
   }
-  function imageCandidates(appid){
-    const game=findGame(appid);
-    return [
-      game?.price?.headerImage,
-      game?.thumbnail,
-      `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appid}/header.jpg`,
-      `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/header.jpg`
-    ].map(x=>String(x||'').trim()).filter(Boolean).filter((x,i,a)=>a.indexOf(x)===i);
-  }
-  function fallbackImage(img,appid){
-    const tried=img._hwTried||(img._hwTried=new Set());
-    if(img.currentSrc)tried.add(img.currentSrc);
-    if(img.src)tried.add(img.src);
-    const next=imageCandidates(appid).find(url=>!tried.has(url));
-    if(next){
-      tried.add(next);
-      img.style.opacity='1';
-      img.src=next;
-      return;
-    }
-    img.style.opacity='.14';
-  }
-  function repairImage(card,appid){
-    const img=card.querySelector('.media img');
-    if(!img)return;
-    if(!img.dataset.hwFallback){
-      img.dataset.hwFallback='1';
-      img._hwTried=new Set([img.currentSrc||img.src].filter(Boolean));
-      img.onerror=()=>fallbackImage(img,appid);
-    }
-    if(img.complete&&img.naturalWidth===0)fallbackImage(img,appid);
-  }
-
-  function repairCard(card){
-    const appid=String(card.dataset.gameId||'').trim();
-    if(!/^\d+$/.test(appid))return;
-    repairImage(card,appid);
-    const row=actionRow(card);
-    if(!row)return;
-    const meta=sourceMap.get(appid);
-    if(meta?.sources.has('scrap')&&!row.querySelector('a[data-kind="scrap"]')){
-      row.appendChild(makeLink('scrap',appid,meta.scrapUrl||'https://harf-way-game-scrapbook.vercel.app/','切れ端 ↗'));
-    }
-    if(meta?.sources.has('ways')&&!row.querySelector('a[data-kind="ways"]')){
-      row.appendChild(makeLink('ways',appid,waysUrl(appid),'WAYSで再生 ↗'));
-    }
-    const ways=row.querySelector('a[data-kind="ways"]');
-    if(ways){ways.href=waysUrl(appid);ways.textContent='WAYSで再生 ↗';ways.dataset.deeplink='steam-appid'}
-    if(row.querySelector('a'))row.querySelector('.nothing')?.remove();
-  }
-  const repair=()=>document.querySelectorAll('article.card[data-game-id]').forEach(repairCard);
 
   function addWaysQuickButton(){
     const quick=document.querySelector('.quick');
@@ -97,7 +28,8 @@
     btn.dataset.quick='ways';
     btn.textContent='WAYS';
     btn.addEventListener('click',()=>{
-      const source=document.querySelector('#source'),filter=document.querySelector('#filter');
+      const source=document.querySelector('#source');
+      const filter=document.querySelector('#filter');
       if(source)source.value='ways';
       if(filter)filter.value='all';
       document.querySelectorAll('[data-quick]').forEach(b=>b.classList.toggle('active',b===btn));
@@ -107,29 +39,41 @@
     if(scrap?.nextSibling)quick.insertBefore(btn,scrap.nextSibling);else quick.appendChild(btn);
   }
 
-  async function loadSources(){
+  async function applyWaysFlags(){
+    for(let i=0;i<60;i++){
+      try{
+        if(Array.isArray(games)&&games.length){
+          let matched=0;
+          for(const game of games){
+            const appid=String(game?.appid||'');
+            if(!waysIds.has(appid))continue;
+            game.sources=[...new Set([...(game.sources||[]),'ways'])];
+            matched++;
+          }
+          try{render()}catch{}
+          rewriteWaysLinks();
+          window.HW_SALE_WATCH_WAYS_INDEX={loaded:true,indexed:waysIds.size,matched};
+          return;
+        }
+      }catch{}
+      await wait(100);
+    }
+  }
+
+  async function loadWaysIndex(){
     try{
-      const r=await fetch('/api/sales-catalog',{cache:'no-store'}),j=await r.json();
-      if(r.ok&&j?.ok)for(const x of j.rows||[])remember(x.appid,{sources:x.sources,scrapUrl:x.scrapUrl});
+      const res=await fetch('/api/ways-index');
+      const json=await res.json();
+      if(!res.ok||!json?.ok)return;
+      for(const id of json.appids||[])waysIds.add(String(id));
+      addWaysQuickButton();
+      await applyWaysFlags();
     }catch{}
-    try{
-      const r=await fetch('/api/games-live',{cache:'no-store'}),j=await r.json();
-      if(r.ok&&j?.ok)for(const x of j.entries||[])remember(appIdFromStore(x.storeUrl),{ways:true});
-    }catch{}
-    addWaysQuickButton();
-    repair();
-    window.HW_SALE_WATCH_SOURCE_HEALTH={
-      ways:[...sourceMap.values()].filter(x=>x.sources.has('ways')).length,
-      scrap:[...sourceMap.values()].filter(x=>x.sources.has('scrap')).length,
-      loaded:true,
-      priceMode:'single-main-pipeline'
-    };
   }
 
   const grid=document.querySelector('#grid');
+  if(grid)new MutationObserver(rewriteWaysLinks).observe(grid,{childList:true,subtree:true});
   addWaysQuickButton();
-  repair();
-  if(grid)new MutationObserver(repair).observe(grid,{childList:true,subtree:true});
-  loadSources();
-  window.HW_SALE_WATCH_WAYS_DEEPLINK={enabled:true,rewrite:repair,repair,sourceMap};
+  if('requestIdleCallback' in window)requestIdleCallback(loadWaysIndex,{timeout:1200});
+  else setTimeout(loadWaysIndex,350);
 })();
