@@ -1,21 +1,9 @@
 import {getVercelOidcToken} from '@vercel/oidc';
 import {ExternalAccountClient} from 'google-auth-library';
+import {DEFAULT_ANALYTICS_SERVICES} from './analytics-registry-lib.js';
 
 const SCOPE='https://www.googleapis.com/auth/analytics.readonly';
 const DATA_API='https://analyticsdata.googleapis.com/v1beta';
-
-const HOST_SERVICE=new Map([
-  ['harfway-playback.vercel.app','ways'],
-  ['harfway-playback-harf-way.vercel.app','ways'],
-  ['harfway-showcase-ui-v4.vercel.app','showcase'],
-  ['harfway-showcase-ui-v4-harf-way.vercel.app','showcase'],
-  ['harfway-playlist-tv.vercel.app','playlist'],
-  ['harfway-playlist-tv-harf-way.vercel.app','playlist'],
-  ['weekly-yorimichi-editor.vercel.app','yorimichi'],
-  ['weekly-yorimichi-editor-harf-way.vercel.app','yorimichi'],
-  ['harfway-zine-editor.vercel.app','zine'],
-  ['harfway-zine-editor-harf-way.vercel.app','zine']
-]);
 
 const empty=()=>({pageViews:0,sessions:0,activeUsers:0,eventCount:0,events:{}});
 const number=v=>Number(v||0);
@@ -42,9 +30,7 @@ async function accessToken(c){
     token_url:'https://sts.googleapis.com/v1/token',
     service_account_impersonation_url:`https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${c.serviceAccountEmail}:generateAccessToken`,
     scopes:[SCOPE],
-    subject_token_supplier:{
-      getSubjectToken:()=>getVercelOidcToken()
-    }
+    subject_token_supplier:{getSubjectToken:()=>getVercelOidcToken()}
   });
   if(!authClient)throw new Error('gcp_external_account_client_unavailable');
   const access=await authClient.getAccessToken();
@@ -70,6 +56,24 @@ async function runReport(propertyId,token,body){
   return data;
 }
 
+function normalizeDefinitions(serviceDefinitions){
+  const source=Array.isArray(serviceDefinitions)&&serviceDefinitions.length?serviceDefinitions:DEFAULT_ANALYTICS_SERVICES;
+  const names=new Set();
+  const hostService=new Map();
+  const definitions=[];
+  for(const raw of source){
+    const serviceName=String(raw?.serviceName||'').trim().toLowerCase();
+    if(!serviceName||names.has(serviceName))continue;
+    const hosts=Array.isArray(raw?.hosts)?raw.hosts.map(x=>String(x||'').trim().toLowerCase()).filter(Boolean):[];
+    if(!hosts.length)continue;
+    const def={...raw,serviceName,hosts:[...new Set(hosts)]};
+    definitions.push(def);
+    names.add(serviceName);
+    def.hosts.forEach(host=>{if(!hostService.has(host))hostService.set(host,serviceName)});
+  }
+  return {definitions,hostService};
+}
+
 export function ga4ConfigStatus(){
   const c=credentials();
   return {
@@ -82,21 +86,23 @@ export function ga4ConfigStatus(){
   };
 }
 
-export async function getGa4Summary(days=7){
+export async function getGa4Summary(days=7,serviceDefinitions=DEFAULT_ANALYTICS_SERVICES){
   const c=credentials();
-  if(!c.configured)return {ok:false,reason:'ga4_data_api_oidc_config_required',config:ga4ConfigStatus(),services:{}};
+  const {definitions,hostService}=normalizeDefinitions(serviceDefinitions);
+  if(!c.configured)return {ok:false,reason:'ga4_data_api_oidc_config_required',config:ga4ConfigStatus(),services:{},definitions};
   try{
     const token=await accessToken(c);
-    const dateRanges=[{startDate:`${Math.max(1,Math.min(365,Number(days)||7))}daysAgo`,endDate:'today'}];
+    const safeDays=Math.max(1,Math.min(365,Number(days)||7));
+    const dateRanges=[{startDate:`${safeDays}daysAgo`,endDate:'today'}];
     const [traffic,eventReport]=await Promise.all([
-      runReport(c.propertyId,token,{dateRanges,dimensions:[{name:'hostName'}],metrics:[{name:'screenPageViews'},{name:'sessions'},{name:'activeUsers'}],limit:100}),
-      runReport(c.propertyId,token,{dateRanges,dimensions:[{name:'hostName'},{name:'eventName'}],metrics:[{name:'eventCount'}],limit:10000})
+      runReport(c.propertyId,token,{dateRanges,dimensions:[{name:'hostName'}],metrics:[{name:'screenPageViews'},{name:'sessions'},{name:'activeUsers'}],limit:500}),
+      runReport(c.propertyId,token,{dateRanges,dimensions:[{name:'hostName'},{name:'eventName'}],metrics:[{name:'eventCount'}],limit:25000})
     ]);
-    const services={ways:empty(),showcase:empty(),playlist:empty(),yorimichi:empty(),zine:empty()};
+    const services=Object.fromEntries(definitions.map(def=>[def.serviceName,empty()]));
     for(const row of traffic.rows||[]){
       const host=String(row.dimensionValues?.[0]?.value||'').toLowerCase();
-      const service=HOST_SERVICE.get(host);
-      if(!service)continue;
+      const service=hostService.get(host);
+      if(!service||!services[service])continue;
       const s=services[service];
       s.pageViews+=number(row.metricValues?.[0]?.value);
       s.sessions+=number(row.metricValues?.[1]?.value);
@@ -105,15 +111,15 @@ export async function getGa4Summary(days=7){
     for(const row of eventReport.rows||[]){
       const host=String(row.dimensionValues?.[0]?.value||'').toLowerCase();
       const eventName=String(row.dimensionValues?.[1]?.value||'');
-      const service=HOST_SERVICE.get(host);
-      if(!service||!eventName)continue;
+      const service=hostService.get(host);
+      if(!service||!eventName||!services[service])continue;
       const count=number(row.metricValues?.[0]?.value);
       services[service].eventCount+=count;
       services[service].events[eventName]=(services[service].events[eventName]||0)+count;
     }
-    return {ok:true,reason:null,config:ga4ConfigStatus(),period:`last_${Math.max(1,Math.min(365,Number(days)||7))}_days`,services};
+    return {ok:true,reason:null,config:ga4ConfigStatus(),period:`last_${safeDays}_days`,services,definitions};
   }catch(error){
     console.error('[ga4-data-api]',error?.message||error);
-    return {ok:false,reason:'ga4_data_api_error',message:error?.message||'ga4_data_api_error',status:error?.status||0,config:ga4ConfigStatus(),services:{}};
+    return {ok:false,reason:'ga4_data_api_error',message:error?.message||'ga4_data_api_error',status:error?.status||0,config:ga4ConfigStatus(),services:{},definitions};
   }
 }
