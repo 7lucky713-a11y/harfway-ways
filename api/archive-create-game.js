@@ -37,7 +37,6 @@ export default async function handler(req,res){
   const auth=await authorizeArchiveRequest(req);
   if(!auth.ok)return res.status(auth.status||401).json({ok:false,error:auth.error,authRequired:auth.authRequired});
   const config=auth.config||archiveDatabaseConfig();
-  if(!config.url)return res.status(503).json({ok:false,error:config.production?'core_database_not_configured':'preview_database_not_configured',writeMode:config.mode});
 
   try{
     const payload=typeof req.body==='string'?JSON.parse(req.body||'{}'):(req.body||{});
@@ -46,8 +45,37 @@ export default async function handler(req,res){
     const articleUrl=clean(payload.articleUrl,4000);
     if(!title)return res.status(400).json({ok:false,error:'title_required'});
     if(articleUrl){const u=new URL(articleUrl);if(!/(^|\.)harf-way\.com$/i.test(u.hostname))return res.status(400).json({ok:false,error:'harf_way_article_only'})}
-    const sql=neon(config.url);
+
     const appId=steamAppId(storeUrl);
+
+    // Preview deployments intentionally have no writable DB unless a dedicated
+    // SALVAGER_PREVIEW_DATABASE_URL is configured. In that case, simulate the
+    // write so the full UI flow can be verified without touching Production.
+    if(!config.url&&!config.production){
+      const base=appId?`steam-${appId}`:`${slugify(title)}-${shortHash(`${title}|${storeUrl}|${articleUrl}`)}`;
+      const gameId=`preview-game-salvage-${base}`;
+      return res.status(200).json({
+        ok:true,
+        created:true,
+        simulated:true,
+        previewOnly:true,
+        steamAppId:appId||null,
+        writeMode:'preview-dry-run',
+        game:{
+          id:gameId,
+          title,
+          store_url:storeUrl,
+          article_url:articleUrl,
+          category:'',
+          status:'active',
+          source_of_truth:'archive-salvager-preview'
+        }
+      });
+    }
+
+    if(!config.url)return res.status(503).json({ok:false,error:'core_database_not_configured',writeMode:config.mode});
+
+    const sql=neon(config.url);
 
     if(appId){
       const refHit=await sql`
