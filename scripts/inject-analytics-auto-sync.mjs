@@ -30,6 +30,8 @@ function stripPreviewLabelsForProduction(){
 stripPreviewLabelsForProduction();
 inject('src/pages/analytics.astro','<script is:inline src="/analytics-auto-sync.js"></script>','Analytics AUTO SYNC client');
 inject('src/pages/sales.astro','<script is:inline src="/ga4-sale-watch.js"></script>','SALE WATCH GA4 client');
+inject('src/pages/sales.astro','<script is:inline src="/sale-watch-ways-deeplink.js"></script>','SALE WATCH → WAYS deep-link client');
+inject('src/pages/index.astro','<script is:inline src="/ways-deeplink.js"></script>','WAYS Steam deep-link client');
 inject('src/pages/salvage/store-edit.astro','<script is:inline src="/game-links-unlinked-filter.js"></script>','GAME LINKS unlinked filter');
 inject('src/pages/salvage/index.astro','<script is:inline src="/salvage-candidate-exclusions.js"></script>','Archive Salvager candidate exclusions');
 inject('src/pages/salvage/index.astro','<script is:inline src="/salvage-hide-completed.js"></script>','Archive Salvager completed-item filter');
