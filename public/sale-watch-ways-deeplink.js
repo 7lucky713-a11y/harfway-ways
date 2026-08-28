@@ -1,4 +1,5 @@
 (()=>{
+  const shareToken=new URLSearchParams(location.search).get('_vercel_share')||'';
   const rewrite=()=>{
     document.querySelectorAll('a[data-kind="ways"][data-game-id]').forEach(link=>{
       const appid=String(link.dataset.gameId||'').trim();
@@ -6,6 +7,7 @@
       const url=new URL('/',location.origin);
       url.searchParams.set('steam',appid);
       url.searchParams.set('from','sale-watch');
+      if(shareToken)url.searchParams.set('_vercel_share',shareToken);
       link.href=url.pathname+url.search;
       link.textContent='WAYSで再生 ↗';
       link.dataset.deeplink='steam-appid';
