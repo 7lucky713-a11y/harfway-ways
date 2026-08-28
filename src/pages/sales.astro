@@ -36,7 +36,7 @@ export const prerender = true;
       <select id="filter"><option value="all">価格条件：すべて</option><option value="under500">500円以下</option><option value="half">50%以上OFF</option><option value="deep">70%以上OFF</option></select>
       <select id="sort"><option value="discount">割引率が高い順</option><option value="price">価格が安い順</option><option value="title">ゲーム名順</option></select>
     </div>
-    <div class="quick"><button class="active" data-quick="all">すべて</button><button data-quick="under500">500円以下</button><button data-quick="half">50%以上OFF</button><button data-quick="scrap">切れ端</button><button data-quick="article">記事あり</button><button data-quick="playlist">プレイリスト</button></div>
+    <div class="quick"><button class="active" data-quick="all">すべて</button><button data-quick="under500">500円以下</button><button data-quick="half">50%以上OFF</button><button data-quick="scrap">切れ端</button><button data-quick="ways">WAYS</button><button data-quick="article">記事あり</button><button data-quick="playlist">プレイリスト</button></div>
   </section>
   <div class="resultbar"><div><b id="resultCount">0件</b> を表示</div><div class="progress"><span id="progressText">準備中…</span><div class="track"><i id="progressBar"></i></div></div></div>
   <main id="grid" class="grid"><div class="empty">セール情報を読み込んでいます…</div></main>
@@ -71,7 +71,7 @@ async function resolveArticles(rows){
   await pool(groups,2,async group=>{const q=new URLSearchParams();group.forEach(r=>q.append('u',r.articleUrl));try{const res=await fetch('/api/article-steam-public?'+q.toString()),j=await res.json();if(!res.ok||!j.ok)return;const byUrl=new Map((j.rows||[]).map(x=>[x.url,x]));group.forEach(r=>{const hit=byUrl.get(r.articleUrl);if(hit?.appid){r.appid=String(hit.appid);r.steamUrl=hit.steamUrl}})}catch{}})
 }
 function saleGames(){return games.filter(g=>g.price?.ok&&g.price?.onSale)}
-function imageOf(r){return r.price?.headerImage||r.thumbnail||`https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${r.appid}/header.jpg`}
+function imageOf(r){return r.thumbnail||r.price?.headerImage||`https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${r.appid}/header.jpg`}
 function steamUrl(r){return r.steamUrl||`https://store.steampowered.com/app/${r.appid}/`}
 function playlistUrl(v){const m=String(v||'').match(/(\d+)/);return m?`https://harf-way.com/weekly/digames_playlist/vo${Number(m[1])}/`:''}
 function contentLinks(r){
@@ -90,22 +90,42 @@ function filtered(){
 }
 function filterSnapshot(via){return {via,source_filter:$('#source').value,price_filter:$('#filter').value,sort:$('#sort').value,result_count:filtered().length}}
 function renderStats(){const s=saleGames();$('#statTotal').textContent=Number(catalogSummary.total||catalog.length||0).toLocaleString('ja-JP');$('#statLinked').textContent=games.length.toLocaleString('ja-JP');$('#statSale').textContent=s.length.toLocaleString('ja-JP');$('#statCheap').textContent=s.filter(r=>Number.isFinite(r.price?.finalYen)&&r.price.finalYen<=500).length.toLocaleString('ja-JP')}
-function progress(){const pct=totalPrice?Math.round(donePrice/totalPrice*100):(loading?0:100);$('#progressBar').style.width=pct+'%';$('#progressText').textContent=loading?`価格確認 ${donePrice}/${totalPrice}`:`更新完了${priceErrors?` / 未取得 ${priceErrors}`:''}`}
+function progress(){const pct=totalPrice?Math.round(donePrice/totalPrice*100):(loading?0:100);$('#progressBar').style.width=pct+'%';$('#progressText').textContent=loading?`価格情報を取得中…`:`更新完了${priceErrors?` / 未取得 ${priceErrors}`:''}`}
 function card(r){
   const p=r.price||{},hw=contentLinks(r),tags=(r.tags||[]).slice(0,4),title=r.title||p.steamName||'タイトルなし';
   const hwHtml=hw.length?hw.map(x=>`<a class="action ${esc(x.kind)}" data-track="content_click" data-kind="${esc(x.kind)}" data-game-id="${esc(r.appid)}" data-title="${esc(title)}" href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label)} ↗</a>`).join(''):'<span class="nothing">関連リンクなし</span>';
-  return `<article class="card" data-game-id="${esc(r.appid)}"><div class="media"><img src="${esc(imageOf(r))}" alt="${esc(title)}" loading="lazy" onerror="this.style.opacity='.18'"><div class="saleBadge">-${Number(p.discountPercent||0)}%</div></div><div class="cardBody"><div class="kv"><div class="kvRow"><div class="kvLabel">ゲーム名</div><div class="kvValue game">${esc(title)}</div></div><div class="kvRow"><div class="kvLabel">セール率</div><div class="kvValue sale">-${Number(p.discountPercent||0)}%</div></div><div class="kvRow"><div class="kvLabel">値段</div><div class="kvValue"><span class="priceNow">${esc(p.finalFormatted||'')}</span>${p.initialFormatted?`<del class="priceOld">${esc(p.initialFormatted)}</del>`:''}</div></div><div class="kvRow"><div class="kvLabel">ストアページ</div><div class="kvValue links"><a class="action store" data-track="store_click" data-kind="steam" data-game-id="${esc(r.appid)}" data-title="${esc(title)}" href="${esc(steamUrl(r))}" target="_blank" rel="noopener">Steamで見る ↗</a></div></div><div class="kvRow"><div class="kvLabel">HARF-WAYコンテンツ</div><div class="kvValue links">${hwHtml}</div></div></div>${tags.length?`<div class="cardMeta">${tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`:''}</div></article>`
+  const fallback=`https://cdn.akamai.steamstatic.com/steam/apps/${esc(r.appid)}/header.jpg`;
+  return `<article class="card" data-game-id="${esc(r.appid)}"><div class="media"><img src="${esc(imageOf(r))}" data-fallback="${fallback}" alt="${esc(title)}" loading="lazy" onerror="if(!this.dataset.tried){this.dataset.tried='1';this.src=this.dataset.fallback}else{this.style.opacity='.18'}"><div class="saleBadge">-${Number(p.discountPercent||0)}%</div></div><div class="cardBody"><div class="kv"><div class="kvRow"><div class="kvLabel">ゲーム名</div><div class="kvValue game">${esc(title)}</div></div><div class="kvRow"><div class="kvLabel">セール率</div><div class="kvValue sale">-${Number(p.discountPercent||0)}%</div></div><div class="kvRow"><div class="kvLabel">値段</div><div class="kvValue"><span class="priceNow">${esc(p.finalFormatted||'')}</span>${p.initialFormatted?`<del class="priceOld">${esc(p.initialFormatted)}</del>`:''}</div></div><div class="kvRow"><div class="kvLabel">ストアページ</div><div class="kvValue links"><a class="action store" data-track="store_click" data-kind="steam" data-game-id="${esc(r.appid)}" data-title="${esc(title)}" href="${esc(steamUrl(r))}" target="_blank" rel="noopener">Steamで見る ↗</a></div></div><div class="kvRow"><div class="kvLabel">HARF-WAYコンテンツ</div><div class="kvValue links">${hwHtml}</div></div></div>${tags.length?`<div class="cardMeta">${tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`:''}</div></article>`
 }
 function render(){renderStats();progress();const out=filtered();$('#resultCount').textContent=`${out.length}件`;if(!out.length){$('#grid').innerHTML=`<div class="empty">${loading?'セール作品を確認しています…':'条件に合うセール作品はありません。'}</div>`;return}$('#grid').innerHTML=out.map(card).join('')}
-function syncQuick(){document.querySelectorAll('[data-quick]').forEach(b=>b.classList.remove('active'));const source=$('#source').value,f=$('#filter').value;let key='all';if(f==='under500')key='under500';else if(f==='half')key='half';else if(source==='scrap')key='scrap';else if(source==='article')key='article';else if(source==='playlist')key='playlist';document.querySelector(`[data-quick="${key}"]`)?.classList.add('active')}
+function syncQuick(){document.querySelectorAll('[data-quick]').forEach(b=>b.classList.remove('active'));const source=$('#source').value,f=$('#filter').value;let key='all';if(f==='under500')key='under500';else if(f==='half')key='half';else if(source==='scrap')key='scrap';else if(source==='ways')key='ways';else if(source==='article')key='article';else if(source==='playlist')key='playlist';document.querySelector(`[data-quick="${key}"]`)?.classList.add('active')}
+async function fetchPriceSnapshot(ids){
+  const q='/api/sale-price-snapshot?appids='+encodeURIComponent(ids.join(','));
+  let lastError=null;
+  for(let attempt=0;attempt<2;attempt++){
+    try{const r=await fetch(q,{cache:'no-store'}),j=await r.json();if(!r.ok||!j?.ok)throw Error(j?.error||'snapshot');return j}catch(e){lastError=e;if(!attempt)await new Promise(resolve=>setTimeout(resolve,450))}
+  }
+  throw lastError||Error('snapshot');
+}
 async function load(){
-  try{const res=await fetch('/api/sales-catalog'),j=await res.json();if(!res.ok||!j.ok)throw Error('catalog');catalog=j.rows||[];catalogSummary=j.summary||{};render();await resolveArticles(catalog);const map=new Map();catalog.forEach(r=>mergeCandidate(map,r));games=[...map.values()];totalPrice=games.length;render();const groups=chunks(games,8);await pool(groups,3,async group=>{const ids=group.map(x=>x.appid);try{const r=await fetch('/api/steam-prices-public?appids='+encodeURIComponent(ids.join(','))),jj=await r.json();if(!r.ok||!jj.ok)throw Error('price');for(const game of group){game.price=jj.prices?.[game.appid]||{ok:false,error:'price_missing'};if(game.price?.ok===false)priceErrors++}}catch{for(const game of group){game.price={ok:false,error:'chunk_failed'};priceErrors++}}donePrice+=group.length;render()});loading=false;render()}
-  catch(e){loading=false;$('#progressText').textContent='DBの読み込みに失敗しました';$('#grid').innerHTML='<div class="empty">セール情報を読み込めませんでした。</div>'}
+  try{
+    const res=await fetch('/api/sales-catalog'),j=await res.json();if(!res.ok||!j.ok)throw Error('catalog');
+    catalog=j.rows||[];catalogSummary=j.summary||{};render();
+    await resolveArticles(catalog);
+    const map=new Map();catalog.forEach(r=>mergeCandidate(map,r));games=[...map.values()];totalPrice=games.length;render();
+    const snap=await fetchPriceSnapshot(games.map(x=>x.appid));
+    for(const game of games)game.price=snap.prices?.[game.appid]||{appid:game.appid,ok:false,priceAvailable:false,error:'price_missing'};
+    priceErrors=games.filter(game=>!game.price?.ok||!game.price?.priceAvailable).length;
+    donePrice=totalPrice;loading=false;render();
+  }catch(e){
+    console.error('[sale-watch-load]',e);
+    loading=false;donePrice=totalPrice;progress();$('#progressText').textContent='価格情報の更新に失敗しました';$('#grid').innerHTML='<div class="empty">Steam価格を更新できませんでした。少し時間を置いて再読み込みしてください。</div>';
+  }
 }
 let searchTimer=null,lastSearch='';
-$('#search').addEventListener('input',()=>{syncQuick();render();clearTimeout(searchTimer);searchTimer=setTimeout(()=>{const query=$('#search').value.trim();if(query===lastSearch)return;if(!query&& !lastSearch)return;lastSearch=query;track('search',{metadata:{query:query.slice(0,80),result_count:filtered().length}})},800)});
+$('#search').addEventListener('input',()=>{syncQuick();render();clearTimeout(searchTimer);searchTimer=setTimeout(()=>{const query=$('#search').value.trim();if(query===lastSearch)return;if(!query&&!lastSearch)return;lastSearch=query;track('search',{metadata:{query:query.slice(0,80),result_count:filtered().length}})},800)});
 ['source','filter','sort'].forEach(id=>$('#'+id).addEventListener('change',()=>{syncQuick();render();track('filter_change',{metadata:filterSnapshot(id)})}));
-document.querySelectorAll('[data-quick]').forEach(btn=>btn.addEventListener('click',()=>{const q=btn.dataset.quick;$('#source').value='all';$('#filter').value='all';if(q==='under500')$('#filter').value='under500';if(q==='half')$('#filter').value='half';if(q==='scrap')$('#source').value='scrap';if(q==='article')$('#source').value='article';if(q==='playlist')$('#source').value='playlist';syncQuick();render();track('filter_change',{metadata:filterSnapshot(`quick:${q}`)})}));
+document.querySelectorAll('[data-quick]').forEach(btn=>btn.addEventListener('click',()=>{const q=btn.dataset.quick;$('#source').value='all';$('#filter').value='all';if(q==='under500')$('#filter').value='under500';if(q==='half')$('#filter').value='half';if(q==='scrap')$('#source').value='scrap';if(q==='ways')$('#source').value='ways';if(q==='article')$('#source').value='article';if(q==='playlist')$('#source').value='playlist';syncQuick();render();track('filter_change',{metadata:filterSnapshot(`quick:${q}`)})}));
 $('#grid').addEventListener('click',event=>{const link=event.target.closest('a[data-track]');if(!link)return;const kind=link.dataset.kind||'';track(link.dataset.track,{gameId:link.dataset.gameId||null,source:kind||ANALYTICS_SOURCE,metadata:{title:link.dataset.title||'',kind,href:link.href,source_filter:$('#source').value,price_filter:$('#filter').value,sort:$('#sort').value}})});
 track('page_view',{metadata:{path:location.pathname,referrer:document.referrer||'',title:document.title}});
 load();
