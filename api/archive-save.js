@@ -17,7 +17,6 @@ export default async function handler(req,res){
   const auth=await authorizeArchiveRequest(req);
   if(!auth.ok)return res.status(auth.status||401).json({ok:false,error:auth.error,authRequired:auth.authRequired});
   const config=auth.config||archiveDatabaseConfig();
-  if(!config.url)return res.status(503).json({ok:false,error:config.production?'core_database_not_configured':'preview_database_not_configured',writeMode:config.mode});
 
   try{
     const payload=typeof req.body==='string'?JSON.parse(req.body||'{}'):(req.body||{});const article=payload.article||{};
@@ -25,8 +24,15 @@ export default async function handler(req,res){
     const parsed=new URL(url);if(!/(^|\.)harf-way\.com$/i.test(parsed.hostname))return res.status(400).json({ok:false,error:'harf_way_url_only'});
     const contentId=makeId('content',url);const links=Array.isArray(payload.links)?payload.links.slice(0,100):[];const unresolved=(Array.isArray(payload.unresolved)?payload.unresolved:[]).slice(0,100).map(cleanCandidate).filter(x=>x.name);
     const assets=Array.isArray(article.images)?article.images.slice(0,100):[];const status=payload.status==='published'?'published':payload.status==='done'?'reviewed':'draft';const publishedAt=parseDate(article.date);
-    const bodyText=cleanString(article.text,150000),excerpt=cleanString(article.excerpt||bodyText.slice(0,500),2000),featuredImageUrl=cleanString(article.featuredImage||'',4000);const sql=neon(config.url);
-    const metadata={fetchedUrl:article.url||url,salvageVersion:'0.7',contentSource:article.contentSource||'',unresolvedGames:unresolved,nameHints:(article.nameHints||[]).slice(0,120),storeLinks:(article.storeLinks||[]).slice(0,120)};
+    const bodyText=cleanString(article.text,150000),excerpt=cleanString(article.excerpt||bodyText.slice(0,500),2000),featuredImageUrl=cleanString(article.featuredImage||'',4000);
+    const metadata={fetchedUrl:article.url||url,salvageVersion:'1.0',contentSource:article.contentSource||'',unresolvedGames:unresolved,nameHints:(article.nameHints||[]).slice(0,120),storeLinks:(article.storeLinks||[]).slice(0,120),platformLinks:(article.platformLinks||article.storeLinks||[]).slice(0,120)};
+
+    if(!config.url&&!config.production){
+      return res.status(200).json({ok:true,simulated:true,previewOnly:true,writeMode:'preview-dry-run',authRequired:false,content:{id:contentId,title,url,status,games:links,assets,metadata}});
+    }
+    if(!config.url)return res.status(503).json({ok:false,error:'core_database_not_configured',writeMode:config.mode});
+
+    const sql=neon(config.url);
     await sql`
       INSERT INTO core.contents (id,content_type,title,url,published_at,excerpt,body_text,featured_image_url,status,source,metadata,updated_at)
       VALUES (${contentId},'article',${title},${url},${publishedAt},${excerpt},${bodyText},${featuredImageUrl},${status},'archive-salvager',${JSON.stringify(metadata)}::jsonb,now())
