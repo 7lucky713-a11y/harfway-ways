@@ -9,17 +9,33 @@ export const prerender = true;
 <meta name="robots" content="noindex,nofollow" />
 <title>HARF-WAY / SALE WATCH ADMIN</title>
 <style>
-:root{color-scheme:dark;--bg:#090a0c;--panel:#111318;--line:#2c3139;--muted:#919aa6;--text:#f4f4ef;--lime:#efff35;--green:#72e796;--amber:#ffcc69;--red:#ff7777;--blue:#7eb9ff;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text)}a{color:inherit}.top{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid var(--line);background:#090a0cf2}.brand{font-weight:950;letter-spacing:.08em}.brand small{display:block;color:var(--muted);font-size:9px;margin-top:2px}.actions{display:flex;gap:7px;flex-wrap:wrap}.btn{border:1px solid #3a414b;border-radius:9px;background:#15181d;color:#fff;min-height:38px;padding:8px 11px;font:900 10px/1 inherit;text-decoration:none;cursor:pointer}.btn.primary{background:var(--lime);border-color:var(--lime);color:#090a0c}.wrap{max-width:1500px;margin:auto;padding:26px 20px 70px}.hero{display:flex;justify-content:space-between;align-items:flex-end;gap:28px;margin-bottom:18px}.ey{color:var(--lime);font-size:10px;font-weight:950;letter-spacing:.15em}.hero h1{margin:7px 0 0;font-size:clamp(44px,7vw,84px);line-height:.88;letter-spacing:-.06em}.hero p{max-width:650px;margin:0;color:var(--muted);font-size:11px;line-height:1.75}.state{margin-top:7px;font:10px/1.5 ui-monospace,monospace;color:var(--muted)}.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:14px}.kpi{border:1px solid var(--line);border-radius:13px;background:var(--panel);padding:14px;min-height:98px}.kpi small{font-size:8px;color:var(--muted);letter-spacing:.08em}.kpi b{display:block;font-size:29px;margin-top:8px;letter-spacing:-.04em}.panel{border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:14px;margin-bottom:14px}.sourcegrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.sourcebox{border:1px solid var(--line);border-radius:10px;background:#0d0f13;padding:10px}.sourcebox small{font-size:8px;color:var(--muted)}.sourcebox b{display:block;font-size:20px;margin-top:5px}.toolbar{display:grid;grid-template-columns:minmax(220px,1fr) repeat(3,minmax(130px,180px)) auto;gap:8px}.toolbar input,.toolbar select{min-height:40px;border:1px solid var(--line);border-radius:9px;background:#14171c;color:#fff;padding:8px 10px;font-size:10px}.progress{height:5px;margin-top:11px;background:#1d2228;border-radius:999px;overflow:hidden}.progress span{display:block;height:100%;width:0;background:var(--lime);transition:width .2s}.count{margin-top:7px;color:var(--muted);font-size:9px}.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:13px}.table{width:100%;border-collapse:collapse;min-width:1080px}.table th{position:sticky;top:64px;background:#111318;border-bottom:1px solid var(--line);padding:10px;text-align:left;color:var(--muted);font-size:8px;letter-spacing:.08em}.table td{padding:10px;border-bottom:1px solid #22272e;vertical-align:top;font-size:10px}.title{font-weight:950;font-size:12px}.sub{margin-top:4px;color:var(--muted);font-size:8px}.chips{display:flex;gap:4px;flex-wrap:wrap}.chip,.status{display:inline-block;border:1px solid #3c444e;border-radius:999px;padding:5px 6px;font:850 8px/1 ui-monospace,monospace}.chip.ways{color:var(--blue);border-color:#3d5d78}.chip.playlist{color:var(--lime);border-color:#5b6423}.chip.article{color:var(--amber);border-color:#6b572c}.chip.yorimichi{color:#f298c7;border-color:#71465d}.status.ok{color:var(--green);border-color:#356548}.status.warn{color:var(--amber);border-color:#6b582d}.status.bad{color:var(--red);border-color:#703d3d}.discount{font-size:15px;font-weight:950;color:var(--lime)}.price{font-weight:900}.links{display:flex;gap:5px;flex-wrap:wrap}.links a{border:1px solid #363d47;border-radius:7px;padding:5px 7px;background:#13161b;text-decoration:none;font-size:8px;font-weight:900}.empty{text-align:center;color:var(--muted);padding:42px}@media(max-width:1050px){.kpis{grid-template-columns:repeat(3,1fr)}.sourcegrid{grid-template-columns:repeat(2,1fr)}.toolbar{grid-template-columns:1fr 1fr}}@media(max-width:650px){.top{align-items:flex-start;flex-direction:column}.hero{display:block}.hero p{margin-top:16px}.kpis,.sourcegrid,.toolbar{grid-template-columns:1fr 1fr}.wrap{padding:18px 12px 50px}.table th{top:102px}}@media(max-width:430px){.kpis,.sourcegrid,.toolbar{grid-template-columns:1fr}}
+:root{color-scheme:dark;--bg:#090a0c;--panel:#111318;--panel2:#0d0f13;--line:#2b3038;--muted:#929aa6;--text:#f5f5f0;--lime:#efff35;--green:#76e89a;--amber:#ffca69;--red:#ff7777;--blue:#7ebaff;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text)}a{color:inherit}.top{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid var(--line);background:rgba(9,10,12,.96);backdrop-filter:blur(14px)}.brand{font-weight:950;letter-spacing:.06em}.brand small{display:block;color:var(--muted);font-size:9px;margin-top:2px;letter-spacing:.02em}.actions{display:flex;gap:7px;flex-wrap:wrap}.btn{border:1px solid #3a414b;border-radius:9px;background:#15181d;color:#fff;min-height:38px;padding:8px 11px;font:900 10px/1 inherit;text-decoration:none;cursor:pointer}.btn.primary{background:var(--lime);border-color:var(--lime);color:#090a0c}.wrap{max-width:1480px;margin:auto;padding:22px 20px 70px}.hero{display:flex;align-items:flex-end;justify-content:space-between;gap:28px;padding:14px 0 22px}.ey{color:var(--lime);font-size:10px;font-weight:950;letter-spacing:.14em}.hero h1{margin:6px 0 0;font-size:clamp(34px,4.8vw,62px);line-height:.95;letter-spacing:-.055em}.hero p{max-width:660px;margin:0;color:var(--muted);font-size:11px;line-height:1.75}.state{margin-top:7px;font:10px/1.5 ui-monospace,monospace;color:var(--muted)}.sectionTitle{display:flex;align-items:end;justify-content:space-between;gap:18px;margin:6px 0 10px}.sectionTitle h2{margin:0;font-size:13px;letter-spacing:.05em}.sectionTitle p{margin:0;color:var(--muted);font-size:9px}.focus{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:16px}.focusCard{appearance:none;width:100%;text-align:left;border:1px solid var(--line);border-radius:15px;background:var(--panel);padding:16px;cursor:pointer;color:inherit}.focusCard:hover{border-color:#515966}.focusCard.active{border-color:var(--lime);box-shadow:inset 0 0 0 1px rgba(239,255,53,.08)}.focusCard small{display:block;color:var(--muted);font-size:9px;font-weight:900}.focusCard b{display:block;font-size:38px;letter-spacing:-.05em;margin:8px 0 3px}.focusCard span{font-size:9px;color:var(--muted)}.focusCard.sale b{color:var(--lime)}.focusCard.cheap b{color:var(--green)}.focusCard.missing b{color:var(--amber)}.overview{display:grid;grid-template-columns:1.4fr 1fr;gap:10px;margin-bottom:16px}.panel{border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:14px}.miniStats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.mini{border:1px solid var(--line);background:var(--panel2);border-radius:10px;padding:11px}.mini small{display:block;color:var(--muted);font-size:8px}.mini b{display:block;font-size:22px;margin-top:5px}.sources{display:flex;gap:7px;flex-wrap:wrap}.sourceBtn{appearance:none;border:1px solid var(--line);border-radius:999px;background:#0d0f13;color:#d7dce3;padding:8px 10px;font:900 9px/1 inherit;cursor:pointer}.sourceBtn b{margin-left:5px}.sourceBtn.active{border-color:var(--lime);color:var(--lime)}.toolbar{display:grid;grid-template-columns:minmax(250px,1fr) minmax(150px,190px) minmax(150px,190px) auto;gap:8px;align-items:center}.toolbar input,.toolbar select{min-height:42px;border:1px solid var(--line);border-radius:9px;background:#14171c;color:#fff;padding:8px 10px;font-size:10px}.quick{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.quickBtn{appearance:none;border:1px solid #343b44;border-radius:8px;background:#11141a;color:#cfd5dc;padding:7px 9px;font:900 9px/1 inherit;cursor:pointer}.quickBtn.active{background:var(--lime);border-color:var(--lime);color:#090a0c}.progress{height:4px;margin-top:11px;background:#1d2228;border-radius:999px;overflow:hidden}.progress span{display:block;height:100%;width:0;background:var(--lime);transition:width .2s}.count{display:flex;justify-content:space-between;gap:12px;margin-top:7px;color:var(--muted);font-size:9px}.legend{display:flex;gap:12px;flex-wrap:wrap}.legend i{font-style:normal}.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:13px;margin-top:10px}.table{width:100%;border-collapse:collapse;min-width:980px}.table th{position:sticky;top:64px;z-index:3;background:#111318;border-bottom:1px solid var(--line);padding:10px;text-align:left;color:var(--muted);font-size:8px;letter-spacing:.08em}.table td{padding:11px 10px;border-bottom:1px solid #22272e;vertical-align:middle;font-size:10px}.table tr.saleRow td{background:rgba(239,255,53,.025)}.table tr.attentionRow td{background:rgba(255,202,105,.02)}.gameTitle{font-weight:950;font-size:13px;line-height:1.35}.sub{margin-top:4px;color:var(--muted);font-size:8px}.chips{display:flex;gap:4px;flex-wrap:wrap}.chip,.status{display:inline-block;border:1px solid #3c444e;border-radius:999px;padding:5px 6px;font:850 8px/1 ui-monospace,monospace}.chip.ways{color:var(--blue);border-color:#3d5d78}.chip.playlist{color:var(--lime);border-color:#5b6423}.chip.article{color:var(--amber);border-color:#6b572c}.chip.yorimichi{color:#f298c7;border-color:#71465d}.status.ok{color:var(--green);border-color:#356548}.status.warn{color:var(--amber);border-color:#6b582d}.status.bad{color:var(--red);border-color:#703d3d}.status.sale{color:#090a0c;background:var(--lime);border-color:var(--lime)}.priceNow{font-weight:950;font-size:15px}.priceOld{color:var(--muted);font-size:9px;margin-top:2px}.discount{font-size:16px;font-weight:950;color:var(--lime);margin-right:7px}.priceLine{display:flex;align-items:baseline;gap:2px}.links{display:flex;gap:5px;flex-wrap:wrap}.links a{border:1px solid #363d47;border-radius:7px;padding:6px 8px;background:#13161b;text-decoration:none;font-size:8px;font-weight:900}.links a.primaryLink{border-color:#586421;color:var(--lime)}.empty{text-align:center;color:var(--muted);padding:42px}.hint{padding:10px 12px;border:1px solid #514725;border-radius:10px;background:#17140b;color:#d8cda2;font-size:9px;line-height:1.6;margin-top:10px}@media(max-width:1050px){.focus{grid-template-columns:repeat(3,1fr)}.overview{grid-template-columns:1fr}.toolbar{grid-template-columns:1fr 1fr}.miniStats{grid-template-columns:repeat(3,1fr)}}@media(max-width:680px){.top{align-items:flex-start;flex-direction:column}.hero{display:block}.hero p{margin-top:14px}.focus,.miniStats,.toolbar{grid-template-columns:1fr}.wrap{padding:18px 12px 50px}.table th{top:102px}.count{display:block}.legend{margin-top:5px}}
 </style>
 </head>
 <body>
-<header class="top"><div class="brand">HARF-WAY / SALE WATCH ADMIN<small>Shared Content Core → Steam Monitor</small></div><div class="actions"><a class="btn" href="/db-master-core" target="_blank">CORE DB ↗</a><a class="btn" href="/sales" target="_blank">公開SALE PICKS ↗</a><button class="btn primary" id="reload">再読み込み</button></div></header>
+<header class="top"><div class="brand">HARF-WAY / SALE WATCH<small>Steamセール管理 / Shared Content Core</small></div><div class="actions"><a class="btn" href="/db-master-core" target="_blank">CORE DB ↗</a><a class="btn" href="/sales" target="_blank">読者向けページ ↗</a><button class="btn primary" id="reload">最新情報を取得</button></div></header>
 <main class="wrap">
-<section class="hero"><div><div class="ey">SALE OPERATIONS / CORE v2</div><h1>ONE<br>CATALOG.</h1></div><div><p>WAYS・PLAYLIST・記事・ヨリミチを含むShared Content Core全体を母集団にしたSALE WATCH管理画面。Steam紐付けの抜け、セール、500円以下、価格取得エラーをまとめて確認できます。</p><div id="state" class="state">Coreを読み込み中…</div></div></section>
-<section class="kpis"><div class="kpi"><small>CORE TOTAL</small><b id="total">—</b></div><div class="kpi"><small>STEAM LINKED</small><b id="linked">—</b></div><div class="kpi"><small>NO STEAM</small><b id="missing">—</b></div><div class="kpi"><small>ON SALE</small><b id="onsale">—</b></div><div class="kpi"><small>UNDER ¥500</small><b id="under500">—</b></div><div class="kpi"><small>PRICE ERRORS</small><b id="errors">—</b></div></section>
-<section class="panel"><div class="sourcegrid"><div class="sourcebox"><small>WAYS</small><b id="srcWays">—</b></div><div class="sourcebox"><small>PLAYLIST</small><b id="srcPlaylist">—</b></div><div class="sourcebox"><small>ARTICLE</small><b id="srcArticle">—</b></div><div class="sourcebox"><small>YORIMICHI</small><b id="srcYorimichi">—</b></div></div></section>
-<section class="panel"><div class="toolbar"><input id="q" placeholder="作品名 / AppID / タグで検索"/><select id="source"><option value="all">全紹介元</option><option value="ways">WAYS</option><option value="playlist">PLAYLIST</option><option value="article">ARTICLE</option><option value="yorimichi">YORIMICHI</option></select><select id="link"><option value="all">Steam状態すべて</option><option value="linked">Steamあり</option><option value="missing">Steamなし</option><option value="article-missing">記事あり / Steamなし</option></select><select id="sale"><option value="all">価格状態すべて</option><option value="sale">セール中</option><option value="regular">通常価格</option><option value="unchecked">未取得 / エラー</option></select><button class="btn" id="resolve">記事からSteam探索</button></div><div class="progress"><span id="bar"></span></div><div id="count" class="count"></div></section>
-<div class="tablewrap"><table class="table"><thead><tr><th>作品</th><th>紹介元</th><th>Steam</th><th>価格</th><th>Playlist</th><th>リンク</th></tr></thead><tbody id="rows"><tr><td colspan="6" class="empty">読み込み中…</td></tr></tbody></table></div>
+<section class="hero"><div><div class="ey">SALE WATCH ADMIN</div><h1>いま見るべき<br>セール情報。</h1></div><div><p>HARF-WAYで紹介したゲームを横断して、現在のSteamセールと「Steam情報が足りない作品」を確認します。まず上の3項目を見るだけで大丈夫です。</p><div id="state" class="state">Coreを読み込み中…</div></div></section>
+<div class="sectionTitle"><h2>今見るべきもの</h2><p>クリックすると一覧を絞り込みます</p></div>
+<section class="focus">
+<button class="focusCard sale" data-preset="sale"><small>🔥 現在セール中</small><b id="onsale">—</b><span>いま読者に出せる作品</span></button>
+<button class="focusCard cheap" data-preset="cheap"><small>💴 500円以下</small><b id="under500">—</b><span>価格訴求しやすい作品</span></button>
+<button class="focusCard missing" data-preset="missing"><small>⚠ Steam未登録</small><b id="missing">—</b><span>情報を補完したい作品</span></button>
+</section>
+<div class="sectionTitle"><h2>全体状況</h2><p>Coreの登録状態</p></div>
+<section class="overview">
+<div class="panel"><div class="miniStats"><div class="mini"><small>紹介ゲーム総数</small><b id="total">—</b></div><div class="mini"><small>Steam紐付け済み</small><b id="linked">—</b></div><div class="mini"><small>価格取得エラー</small><b id="errors">—</b></div></div></div>
+<div class="panel"><div class="sources"><button class="sourceBtn active" data-source="all">すべて <b id="srcAll">—</b></button><button class="sourceBtn" data-source="ways">WAYS <b id="srcWays">—</b></button><button class="sourceBtn" data-source="playlist">プレイリスト <b id="srcPlaylist">—</b></button><button class="sourceBtn" data-source="article">記事 <b id="srcArticle">—</b></button><button class="sourceBtn" data-source="yorimichi">ヨリミチ <b id="srcYorimichi">—</b></button></div></div>
+</section>
+<div class="sectionTitle"><h2>作品一覧</h2><p>必要なときだけ細かく絞り込み</p></div>
+<section class="panel">
+<div class="toolbar"><input id="q" placeholder="作品名 / AppID / タグで検索"/><select id="link"><option value="all">Steam状態：すべて</option><option value="linked">Steamあり</option><option value="missing">Steamなし</option><option value="article-missing">記事あり / Steamなし</option></select><select id="sale"><option value="all">価格状態：すべて</option><option value="sale">セール中</option><option value="cheap">500円以下</option><option value="regular">通常価格</option><option value="unchecked">未取得 / エラー</option></select><button class="btn" id="resolve">記事からSteamを探す</button></div>
+<div class="quick"><button class="quickBtn active" data-preset="all">すべて</button><button class="quickBtn" data-preset="sale">セール中</button><button class="quickBtn" data-preset="cheap">500円以下</button><button class="quickBtn" data-preset="missing">Steam未登録</button></div>
+<div class="progress"><span id="bar"></span></div><div class="count"><span id="count"></span><span class="legend"><i>🟢 正常</i><i>🟡 要確認</i><i>🟢黄 セール</i></span></div>
+<div id="hint" class="hint" hidden></div>
+</section>
+<div class="tablewrap"><table class="table"><thead><tr><th style="width:31%">作品</th><th style="width:19%">どこで紹介？</th><th style="width:18%">現在価格</th><th style="width:15%">状態</th><th>確認する</th></tr></thead><tbody id="rows"><tr><td colspan="5" class="empty">読み込み中…</td></tr></tbody></table></div>
 </main>
 <script>
 const $ = (s) => document.querySelector(s);
@@ -27,157 +43,159 @@ let catalog = [];
 let prices = {};
 let resolved = {};
 let busy = false;
+let activeSource = 'all';
+let activePreset = 'all';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const chunk = (arr, size) => {
-  const out = [];
-  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
-  return out;
-};
+const chunk = (arr, size) => { const out=[]; for(let i=0;i<arr.length;i+=size) out.push(arr.slice(i,i+size)); return out; };
 const appidOf = (row) => String(row.appid || resolved[row.articleUrl]?.appid || '');
 const priceOf = (row) => prices[appidOf(row)] || null;
-const countSource = (name) => catalog.filter((row) => (row.sources || []).includes(name)).length;
+const countSource = (name) => name === 'all' ? catalog.length : catalog.filter((row) => (row.sources || []).includes(name)).length;
 
-function updateStats() {
+function isCheap(price){ return Boolean(price?.ok && Number.isFinite(price.finalYen) && price.finalYen <= 500); }
+function isSale(price){ return Boolean(price?.ok && price.onSale); }
+function isMissing(row){ return !appidOf(row); }
+
+function updateStats(){
   const linked = catalog.filter((row) => appidOf(row)).length;
   const checked = catalog.map(priceOf).filter(Boolean);
   $('#total').textContent = catalog.length;
   $('#linked').textContent = linked;
   $('#missing').textContent = catalog.length - linked;
-  $('#onsale').textContent = checked.filter((p) => p.ok && p.onSale).length;
-  $('#under500').textContent = checked.filter((p) => p.ok && Number.isFinite(p.finalYen) && p.finalYen <= 500).length;
-  $('#errors').textContent = checked.filter((p) => !p.ok).length;
+  $('#onsale').textContent = checked.filter(isSale).length;
+  $('#under500').textContent = checked.filter(isCheap).length;
+  $('#errors').textContent = checked.filter((p) => !p?.ok).length;
+  $('#srcAll').textContent = countSource('all');
   $('#srcWays').textContent = countSource('ways');
   $('#srcPlaylist').textContent = countSource('playlist');
   $('#srcArticle').textContent = countSource('article');
   $('#srcYorimichi').textContent = countSource('yorimichi');
 }
 
-function filteredRows() {
+function syncControls(){
+  document.querySelectorAll('[data-source]').forEach((el) => el.classList.toggle('active', el.dataset.source === activeSource));
+  document.querySelectorAll('[data-preset]').forEach((el) => el.classList.toggle('active', el.dataset.preset === activePreset));
+  if(activePreset === 'sale') $('#sale').value = 'sale';
+  else if(activePreset === 'cheap') $('#sale').value = 'cheap';
+  else if(activePreset === 'missing'){ $('#sale').value = 'all'; $('#link').value = 'missing'; }
+  else { $('#sale').value = 'all'; if($('#link').value === 'missing') $('#link').value = 'all'; }
+}
+
+function filteredRows(){
   const q = $('#q').value.trim().toLowerCase();
-  const source = $('#source').value;
   const link = $('#link').value;
   const sale = $('#sale').value;
   return catalog.filter((row) => {
     const appid = appidOf(row);
     const price = priceOf(row);
-    const hay = [row.title, row.category, appid, ...(row.tags || []), ...(row.playlists || [])].join(' ').toLowerCase();
-    if (q && !hay.includes(q)) return false;
-    if (source !== 'all' && !(row.sources || []).includes(source)) return false;
-    if (link === 'linked' && !appid) return false;
-    if (link === 'missing' && appid) return false;
-    if (link === 'article-missing' && (!row.articleUrl || appid)) return false;
-    if (sale === 'sale' && !(price?.ok && price?.onSale)) return false;
-    if (sale === 'regular' && !(price?.ok && !price?.onSale)) return false;
-    if (sale === 'unchecked' && price?.ok) return false;
+    const hay = [row.title,row.category,appid,...(row.tags||[]),...(row.playlists||[])].join(' ').toLowerCase();
+    if(q && !hay.includes(q)) return false;
+    if(activeSource !== 'all' && !(row.sources || []).includes(activeSource)) return false;
+    if(link === 'linked' && !appid) return false;
+    if(link === 'missing' && appid) return false;
+    if(link === 'article-missing' && (!row.articleUrl || appid)) return false;
+    if(sale === 'sale' && !isSale(price)) return false;
+    if(sale === 'cheap' && !isCheap(price)) return false;
+    if(sale === 'regular' && !(price?.ok && !price.onSale)) return false;
+    if(sale === 'unchecked' && price?.ok) return false;
     return true;
+  }).sort((a,b) => {
+    const pa=priceOf(a), pb=priceOf(b);
+    const rank=(row,p)=> isSale(p)?0 : isMissing(row)?1 : isCheap(p)?2 : 3;
+    const diff=rank(a,pa)-rank(b,pb); if(diff) return diff;
+    if(isSale(pa)&&isSale(pb)){ const d=Number(pb.discountPercent||0)-Number(pa.discountPercent||0); if(d) return d; }
+    return String(a.title||'').localeCompare(String(b.title||''),'ja');
   });
 }
 
-function render() {
+function sourceChip(name){
+  const labels={ways:'WAYS',playlist:'PLAYLIST',article:'記事',yorimichi:'ヨリミチ'};
+  return `<span class="chip ${esc(name)}">${esc(labels[name] || String(name).toUpperCase())}</span>`;
+}
+
+function render(){
   updateStats();
   const rows = filteredRows();
   $('#count').textContent = `${rows.length} / ${catalog.length}作品を表示`;
-  if (!rows.length) {
-    $('#rows').innerHTML = '<tr><td colspan="6" class="empty">条件に合う作品はありません。</td></tr>';
-    return;
-  }
+  const hint = $('#hint');
+  if(activePreset === 'missing') { hint.hidden=false; hint.textContent='Steam未登録の作品です。「記事からSteamを探す」で記事本文にあるSteamリンクを候補として探せます。'; }
+  else if(activePreset === 'sale') { hint.hidden=false; hint.textContent='現在セール中の作品だけを表示しています。公開SALE PICKSに出せる候補です。'; }
+  else if(activePreset === 'cheap') { hint.hidden=false; hint.textContent='現在価格が500円以下の作品です。セール品だけでなく通常価格500円以下も含みます。'; }
+  else hint.hidden=true;
+  if(!rows.length){ $('#rows').innerHTML='<tr><td colspan="5" class="empty">条件に合う作品はありません。</td></tr>'; return; }
   $('#rows').innerHTML = rows.map((row) => {
-    const appid = appidOf(row);
-    const price = priceOf(row);
-    const articleFound = !row.appid && Boolean(appid);
-    const sourceChips = (row.sources || []).map((s) => `<span class="chip ${esc(s)}">${esc(String(s).toUpperCase())}</span>`).join('');
-    const steamState = appid
-      ? `<span class="status ok">${articleFound ? 'ARTICLE FOUND' : 'LINKED'} / ${esc(appid)}</span>${articleFound ? '<div class="sub">記事本文から発見・Core未保存</div>' : ''}`
-      : '<span class="status warn">NO STEAM</span>';
-    let priceHtml = '<span class="status warn">UNCHECKED</span>';
-    if (price) {
-      if (!price.ok) priceHtml = '<span class="status bad">ERROR</span>';
-      else if (price.onSale) priceHtml = `<div class="discount">-${Number(price.discountPercent || 0)}%</div><div class="price">${esc(price.finalFormatted || '')}</div><div class="sub"><s>${esc(price.initialFormatted || '')}</s></div>`;
-      else priceHtml = `<span class="status ok">REGULAR</span><div class="price">${esc(price.finalFormatted || '')}</div>`;
-    }
-    const steamUrl = appid ? `https://store.steampowered.com/app/${appid}/` : '';
-    const playlistHtml = (row.playlists || []).length
-      ? row.playlists.map((v) => `<span class="chip playlist">${esc(v)}</span>`).join(' ')
-      : '<span class="sub">—</span>';
-    const links = [
-      row.articleUrl ? `<a href="${esc(row.articleUrl)}" target="_blank" rel="noopener">記事 ↗</a>` : '',
-      steamUrl ? `<a href="${esc(steamUrl)}" target="_blank" rel="noopener">Steam ↗</a>` : '',
-      row.storeUrl && !steamUrl ? `<a href="${esc(row.storeUrl)}" target="_blank" rel="noopener">Store ↗</a>` : ''
-    ].filter(Boolean).join('');
-    return `<tr><td><div class="title">${esc(row.title)}</div><div class="sub">${esc(row.sourceOfTruth || 'core')} / ${esc(row.id)}</div></td><td><div class="chips">${sourceChips}</div></td><td>${steamState}</td><td>${priceHtml}</td><td>${playlistHtml}</td><td><div class="links">${links}</div></td></tr>`;
+    const appid=appidOf(row), price=priceOf(row), found=!row.appid && Boolean(appid);
+    const sourceChips=(row.sources||[]).map(sourceChip).join('');
+    let priceHtml='<span class="status warn">価格未取得</span>';
+    let statusHtml='';
+    if(!appid){ statusHtml='<span class="status warn">Steam未登録</span>'; }
+    else if(!price){ statusHtml='<span class="status warn">確認中</span>'; }
+    else if(!price.ok){ statusHtml='<span class="status bad">取得エラー</span>'; }
+    else if(price.onSale){ statusHtml=`<span class="status sale">-${Number(price.discountPercent||0)}% セール</span>`; }
+    else { statusHtml='<span class="status ok">正常</span>'; }
+    if(price?.ok){
+      if(price.onSale) priceHtml=`<div class="priceLine"><span class="discount">-${Number(price.discountPercent||0)}%</span><span class="priceNow">${esc(price.finalFormatted||'')}</span></div><div class="priceOld"><s>${esc(price.initialFormatted||'')}</s></div>`;
+      else priceHtml=`<div class="priceNow">${esc(price.finalFormatted||'')}</div><div class="priceOld">通常価格</div>`;
+    } else if(price && !price.ok) priceHtml='<span class="status bad">取得エラー</span>';
+    const steamUrl=appid?`https://store.steampowered.com/app/${appid}/`:'';
+    const links=[row.articleUrl?`<a href="${esc(row.articleUrl)}" target="_blank" rel="noopener">記事 ↗</a>`:'',steamUrl?`<a class="primaryLink" href="${esc(steamUrl)}" target="_blank" rel="noopener">Steam ↗</a>`:'',row.storeUrl&&!steamUrl?`<a href="${esc(row.storeUrl)}" target="_blank" rel="noopener">Store ↗</a>`:''].filter(Boolean).join('');
+    const playlist=(row.playlists||[]).length?`<div class="sub">Playlist: ${esc((row.playlists||[]).join(', '))}</div>`:'';
+    const idLine=appid?`AppID ${esc(appid)}${found?' / 記事から発見':''}`:'Steam情報なし';
+    const cls=price?.ok&&price.onSale?'saleRow':(!appid?'attentionRow':'');
+    return `<tr class="${cls}"><td><div class="gameTitle">${esc(row.title)}</div><div class="sub">${idLine}</div></td><td><div class="chips">${sourceChips}</div>${playlist}</td><td>${priceHtml}</td><td>${statusHtml}${found?'<div class="sub">Core未保存</div>':''}</td><td><div class="links">${links}</div></td></tr>`;
   }).join('');
 }
 
-async function loadPrices() {
-  const ids = [...new Set(catalog.map(appidOf).filter(Boolean))];
-  let done = 0;
-  for (const group of chunk(ids, 8)) {
-    try {
-      const response = await fetch(`/api/steam-prices-public?appids=${encodeURIComponent(group.join(','))}`);
-      const data = await response.json();
-      if (data.ok) Object.assign(prices, data.prices || {});
-    } catch {}
-    done += group.length;
-    $('#bar').style.width = `${ids.length ? Math.min(100, done / ids.length * 100) : 100}%`;
-    $('#state').textContent = `Core ${catalog.length}作品 / Steam価格 ${done}/${ids.length}件取得中…`;
+async function loadPrices(){
+  const ids=[...new Set(catalog.map(appidOf).filter(Boolean))];
+  let done=0;
+  for(const group of chunk(ids,8)){
+    try{ const response=await fetch(`/api/steam-prices-public?appids=${encodeURIComponent(group.join(','))}`); const data=await response.json(); if(data.ok) Object.assign(prices,data.prices||{}); }catch{}
+    done+=group.length;
+    $('#bar').style.width=`${ids.length?Math.min(100,done/ids.length*100):100}%`;
+    $('#state').textContent=`Steam価格を確認中… ${done}/${ids.length}`;
     render();
   }
-  $('#state').textContent = `Core ${catalog.length}作品 / 価格取得完了`;
-  busy = false;
+  $('#state').textContent=`更新完了 / ${catalog.length}作品を監視中`;
+  busy=false;
 }
 
-async function load() {
-  if (busy) return;
-  busy = true;
-  catalog = [];
-  prices = {};
-  resolved = {};
-  $('#bar').style.width = '0%';
-  $('#state').textContent = 'Shared Content Coreを読み込み中…';
-  try {
-    const response = await fetch('/api/sales-catalog', {cache:'no-store'});
-    const data = await response.json();
-    if (!response.ok || !data.ok) throw new Error(data.error || 'catalog_failed');
-    catalog = data.rows || [];
-    render();
-    await loadPrices();
-  } catch (error) {
-    busy = false;
-    $('#state').textContent = `ERROR: ${error.message}`;
-    $('#rows').innerHTML = '<tr><td colspan="6" class="empty">SALE WATCHデータを取得できませんでした。</td></tr>';
-  }
+async function load(){
+  if(busy) return; busy=true; catalog=[]; prices={}; resolved={}; activeSource='all'; activePreset='all'; $('#bar').style.width='0%'; syncControls(); $('#state').textContent='Shared Content Coreを読み込み中…';
+  try{
+    const response=await fetch('/api/sales-catalog',{cache:'no-store'}); const data=await response.json(); if(!response.ok||!data.ok) throw new Error(data.error||'catalog_failed');
+    catalog=data.rows||[]; render(); await loadPrices();
+  }catch(error){ busy=false; $('#state').textContent=`ERROR: ${error.message}`; $('#rows').innerHTML='<tr><td colspan="5" class="empty">SALE WATCHデータを取得できませんでした。</td></tr>'; }
 }
 
-async function resolveArticles() {
-  const targets = catalog.filter((row) => !appidOf(row) && row.articleUrl).slice(0, 80);
-  if (!targets.length) {
-    $('#state').textContent = 'Steam未紐付けの記事はありません。';
-    return;
+async function resolveArticles(){
+  const targets=catalog.filter((row)=>!appidOf(row)&&row.articleUrl).slice(0,80);
+  if(!targets.length){ $('#state').textContent='Steam未登録の記事はありません。'; return; }
+  $('#state').textContent=`記事 ${targets.length}件からSteamリンクを探索中…`; let done=0;
+  for(const group of chunk(targets,4)){
+    const query=group.map((row)=>`u=${encodeURIComponent(row.articleUrl)}`).join('&');
+    try{ const response=await fetch(`/api/article-steam-public?${query}`); const data=await response.json(); for(const hit of data.rows||[]) if(hit?.url) resolved[hit.url]=hit; }catch{}
+    done+=group.length; $('#bar').style.width=`${Math.min(100,done/targets.length*100)}%`; render();
   }
-  $('#state').textContent = `記事 ${targets.length}件からSteam候補を探索中…`;
-  let done = 0;
-  for (const group of chunk(targets, 4)) {
-    const query = group.map((row) => `u=${encodeURIComponent(row.articleUrl)}`).join('&');
-    try {
-      const response = await fetch(`/api/article-steam-public?${query}`);
-      const data = await response.json();
-      for (const hit of data.rows || []) if (hit?.url) resolved[hit.url] = hit;
-    } catch {}
-    done += group.length;
-    $('#bar').style.width = `${Math.min(100, done / targets.length * 100)}%`;
-    render();
-  }
-  prices = {};
-  await loadPrices();
+  prices={}; await loadPrices();
 }
 
-$('#q').addEventListener('input', render);
-$('#source').addEventListener('change', render);
-$('#link').addEventListener('change', render);
-$('#sale').addEventListener('change', render);
-$('#reload').addEventListener('click', load);
-$('#resolve').addEventListener('click', resolveArticles);
+function setPreset(value){
+  activePreset=value;
+  $('#link').value='all'; $('#sale').value='all';
+  if(value==='sale') $('#sale').value='sale';
+  else if(value==='cheap') $('#sale').value='cheap';
+  else if(value==='missing') $('#link').value='missing';
+  syncControls(); render();
+}
+
+document.querySelectorAll('[data-preset]').forEach((el)=>el.addEventListener('click',()=>setPreset(el.dataset.preset)));
+document.querySelectorAll('[data-source]').forEach((el)=>el.addEventListener('click',()=>{activeSource=el.dataset.source;syncControls();render();}));
+$('#q').addEventListener('input',render);
+$('#link').addEventListener('change',()=>{activePreset='all';syncControls();render();});
+$('#sale').addEventListener('change',()=>{activePreset='all';syncControls();render();});
+$('#reload').addEventListener('click',load);
+$('#resolve').addEventListener('click',resolveArticles);
 load();
 </script>
 </body>
