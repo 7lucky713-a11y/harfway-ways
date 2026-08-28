@@ -1,6 +1,6 @@
 # HARF-WAY Tool Sync Contract
 
-HARF-WAY関連ツールを新しく作るときは、CONTROL CENTER連携とAnalytics維持までを完成条件に含める。
+HARF-WAY関連ツールを新しく作るときは、CONTROL CENTER連携とAnalytics連携までを完成条件に含める。
 
 ## Standard
 
@@ -11,7 +11,8 @@ HARF-WAY関連ツールを新しく作るときは、CONTROL CENTER連携とAnal
 5. manifestが取得できる場合はmanifest情報を優先して表示する。
 6. Preview / test / staging用途はACTIVE SYSTEMSへ自動昇格させない。
 7. 公開サービスは既存Analytics計測を改良時も維持する。
-8. UI刷新・branch切替・Promote前に、GA4/独自計測コードと主要イベントが残っていることをPreviewで確認する。
+8. `analytics.enabled: true` のProductionツールはAnalytics Hubへ自動登録する。
+9. UI刷新・branch切替・Promote前に、GA4/独自計測コードと主要イベントが残っていることをPreviewで確認する。
 
 ## Manifest schema v1
 
@@ -27,19 +28,41 @@ HARF-WAY関連ツールを新しく作るときは、CONTROL CENTER連携とAnal
   "project_slug": "vercel-project-slug",
   "public_url": "https://example.vercel.app/",
   "admin_url": "https://example.vercel.app/admin",
-  "metrics_url": "https://example.vercel.app/metrics",
+  "metrics_url": "https://harfway-playback.vercel.app/analytics",
   "control_center": {
     "sync": true,
     "health_url": "https://example.vercel.app/"
   },
   "analytics": {
-    "required": true,
-    "provider": "ga4",
-    "measurement_id": "G-LQVHR07K15",
-    "verify_before_production": true
+    "enabled": true,
+    "service_name": "unique-service-name",
+    "label": "TOOL NAME",
+    "content_type": "public_tool",
+    "production_url": "https://example.vercel.app/",
+    "host_aliases": [
+      "https://example-harf-way.vercel.app/"
+    ],
+    "events": [
+      "page_view",
+      "item_select",
+      "video_start",
+      "store_click"
+    ]
   }
 }
 ```
+
+## Analytics AUTO SYNC
+
+新しいHUB IDのツールで `/harfway-tool.json` が取得でき、`analytics.enabled` が `true` の場合、Analytics Hubはmanifestから以下を自動登録する。
+
+- `service_name` — GA4内でサービスを分ける一意キー
+- `content_type` — コンテンツ種別
+- `production_url` — Productionホスト
+- `host_aliases` — 同じサービスとして集計する追加ホスト
+- `events` — そのツールで期待する主要イベント
+
+既存の WAYS / Showcase / Playlist / Yorimichi / ZINE はbuilt-inとして維持する。新規manifestはそれに追加されるため、既存計測を壊さずサービス数だけ自動で増える。
 
 ## Creation rule
 
@@ -48,8 +71,10 @@ HARF-WAY関連ツールを新しく作るときは、CONTROL CENTER連携とAnal
 - `harfway-tool.json` を同梱
 - HUB登録用メタデータを作成
 - CONTROL CENTERで同期確認
-- 公開サービスはAnalytics計測を実装または既存計測を維持
-- Previewで page_view と主要イベントの送信経路を確認
+- 公開サービスは `analytics` manifestを設定
+- 共通Measurement ID `G-LQVHR07K15` へ `service_name` / `content_type` を付けて送信
+- Analytics HubでAUTO SYNC確認
+- Previewで `page_view` と主要イベントの送信経路を確認
 - UI改良・別branchからのPromote時もAnalytics差分を確認
 - 可能なプロジェクトではbuild-time analytics guardを設置し、計測コード欠落時はbuildを失敗させる
 - Preview確認
