@@ -8,6 +8,7 @@ const BASELINE_HUB_IDS=new Set([
 
 const DEFAULT_ANALYTICS_SERVICES=[
   {serviceName:'ways',label:'WAYS',contentType:'public_discovery',productionUrl:'https://harfway-playback.vercel.app/',hosts:['harfway-playback.vercel.app','harfway-playback-harf-way.vercel.app'],source:'built_in'},
+  {serviceName:'sale-watch',label:'SALE WATCH',contentType:'public_tool',productionUrl:'https://harfway-playback.vercel.app/sales',hosts:['harfway-playback.vercel.app','harfway-playback-harf-way.vercel.app'],source:'built_in',expectedEvents:['page_view','store_click','content_click','filter_change','search']},
   {serviceName:'showcase',label:'SHOWCASE',contentType:'public_showcase',productionUrl:'https://harfway-showcase-ui-v4.vercel.app/',hosts:['harfway-showcase-ui-v4.vercel.app','harfway-showcase-ui-v4-harf-way.vercel.app'],source:'built_in'},
   {serviceName:'playlist',label:'PLAYLIST',contentType:'public_playlist',productionUrl:'https://harfway-playlist-tv.vercel.app/',hosts:['harfway-playlist-tv.vercel.app','harfway-playlist-tv-harf-way.vercel.app'],source:'built_in'},
   {serviceName:'yorimichi',label:'YORIMICHI',contentType:'editor',productionUrl:'https://weekly-yorimichi-editor.vercel.app/',hosts:['weekly-yorimichi-editor.vercel.app','weekly-yorimichi-editor-harf-way.vercel.app'],source:'built_in'},
