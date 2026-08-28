@@ -2,7 +2,7 @@ import { neon } from '@neondatabase/serverless';
 
 const ALLOWED_EVENTS = new Set([
   'page_view','view','select','play','p25','p50','p75','complete','view_end',
-  'store_click','article_click','tag_click'
+  'store_click','article_click','tag_click','content_click','filter_change','search'
 ]);
 const STAGING_TRACK_URL = 'https://ways-analytics-staging.vercel.app/api/track';
 

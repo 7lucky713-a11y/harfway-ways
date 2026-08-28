@@ -7,6 +7,7 @@ const intParam = (value, fallback, min, max) => {
   return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
 };
 
+const cleanPage = value => String(value || '').trim().slice(0, 64);
 const shouldUseProductionDb = () => process.env.VERCEL_ENV === 'production';
 
 async function proxyToStaging(req, res) {
@@ -14,6 +15,7 @@ async function proxyToStaging(req, res) {
     const params = new URLSearchParams();
     if (req.query?.days != null) params.set('days', String(req.query.days));
     if (req.query?.device != null) params.set('device', String(req.query.device));
+    if (req.query?.page != null) params.set('page', String(req.query.page));
     const url = `${STAGING_ANALYTICS_URL}${params.size ? `?${params.toString()}` : ''}`;
     const upstream = await fetch(url, { headers: { accept: 'application/json' } });
     const text = await upstream.text();
@@ -36,6 +38,7 @@ export default async function handler(req, res) {
 
   const days = intParam(req.query?.days, 7, 1, 365);
   const device = ['desktop','mobile'].includes(req.query?.device) ? req.query.device : '';
+  const page = cleanPage(req.query?.page);
 
   try {
     const sql = neon(connectionString);
@@ -45,6 +48,7 @@ export default async function handler(req, res) {
           SELECT * FROM public.ways_analytics_events
           WHERE occurred_at >= now() - (${days} * interval '1 day')
             AND (${device} = '' OR device = ${device})
+            AND (${page} = '' OR page = ${page})
         )
         SELECT
           count(*) FILTER (WHERE event_name = 'page_view')::int AS page_views,
@@ -55,7 +59,10 @@ export default async function handler(req, res) {
           count(*) FILTER (WHERE event_name = 'complete')::int AS completes,
           count(*) FILTER (WHERE event_name = 'store_click')::int AS store_clicks,
           count(*) FILTER (WHERE event_name = 'article_click')::int AS article_clicks,
-          count(*) FILTER (WHERE event_name = 'tag_click')::int AS tag_clicks
+          count(*) FILTER (WHERE event_name = 'tag_click')::int AS tag_clicks,
+          count(*) FILTER (WHERE event_name = 'content_click')::int AS content_clicks,
+          count(*) FILTER (WHERE event_name = 'filter_change')::int AS filter_changes,
+          count(*) FILTER (WHERE event_name = 'search')::int AS searches
         FROM filtered
       `,
       sql`
@@ -63,6 +70,7 @@ export default async function handler(req, res) {
           SELECT * FROM public.ways_analytics_events
           WHERE occurred_at >= now() - (${days} * interval '1 day')
             AND (${device} = '' OR device = ${device})
+            AND (${page} = '' OR page = ${page})
             AND game_id IS NOT NULL
         )
         SELECT
@@ -75,15 +83,17 @@ export default async function handler(req, res) {
           count(*) FILTER (WHERE event_name = 'store_click')::int AS store_clicks,
           count(*) FILTER (WHERE event_name = 'article_click')::int AS article_clicks,
           count(*) FILTER (WHERE event_name = 'tag_click')::int AS tag_clicks,
+          count(*) FILTER (WHERE event_name = 'content_click')::int AS content_clicks,
           round(coalesce(avg(progress) FILTER (WHERE event_name = 'view_end'), 0), 1)::text AS avg_watch_pct
         FROM filtered
         GROUP BY game_id
-        ORDER BY views DESC, plays DESC, game_id ASC
+        ORDER BY store_clicks DESC, content_clicks DESC, views DESC, game_id ASC
       `,
       sql`
         SELECT device, count(DISTINCT session_id)::int AS sessions
         FROM public.ways_analytics_events
         WHERE occurred_at >= now() - (${days} * interval '1 day')
+          AND (${page} = '' OR page = ${page})
         GROUP BY device
         ORDER BY sessions DESC
       `
@@ -98,12 +108,16 @@ export default async function handler(req, res) {
       completes: Number(raw.completes || 0),
       store_clicks: Number(raw.store_clicks || 0),
       article_clicks: Number(raw.article_clicks || 0),
-      tag_clicks: Number(raw.tag_clicks || 0)
+      tag_clicks: Number(raw.tag_clicks || 0),
+      content_clicks: Number(raw.content_clicks || 0),
+      filter_changes: Number(raw.filter_changes || 0),
+      searches: Number(raw.searches || 0)
     };
 
     return res.status(200).json({
       ok: true,
       days,
+      page: page || 'all',
       device: device || 'all',
       summary,
       devices: deviceRows,
