@@ -1,0 +1,43 @@
+---
+---
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>HARF-WAY Steam Link Editor</title>
+<style>
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#11110f;color:#f5f2eb}*{box-sizing:border-box}body{margin:0;background:#11110f;color:#f5f2eb}header{position:sticky;top:0;z-index:5;display:flex;gap:10px;align-items:center;padding:16px 20px;background:#171715;border-bottom:1px solid #302f2a}.brand{font-size:11px;letter-spacing:.15em;color:#aaa59a;margin-right:auto}a{color:#d8d1c2;text-decoration:none}.btn{border:1px solid #48463f;background:#25241f;color:#fff;padding:9px 12px;border-radius:8px;cursor:pointer;font:inherit}.btn.primary{background:#f0ede5;color:#111;border-color:#f0ede5;font-weight:700}.btn.danger{border-color:#67443d;color:#f0b4a6}.btn:disabled{opacity:.45;cursor:not-allowed}main{max-width:980px;margin:0 auto;padding:28px 20px 80px}.intro{margin-bottom:22px}.intro h1{font-size:30px;margin:0 0 8px}.intro p{color:#a8a399;line-height:1.7;margin:0}.search{display:flex;gap:8px;margin-bottom:18px}.search input,.edit input{width:100%;border:1px solid #3c3a35;background:#181816;color:#f5f2eb;padding:11px 12px;border-radius:8px;font:inherit}.status{padding:11px 12px;border:1px solid #39372f;background:#20201c;border-radius:8px;color:#bbb5aa;font-size:12px;line-height:1.6;margin-bottom:16px}.ok{color:#c9f7be}.warn{color:#f4d99a}.results{display:grid;gap:10px}.card{border:1px solid #34322d;background:#181816;border-radius:10px;padding:14px}.card:hover{border-color:#5d594f}.card .title{font-size:16px;font-weight:700}.meta{font-size:11px;color:#8f8b82;margin-top:5px;overflow-wrap:anywhere}.card button{margin-top:10px}.editor{display:none;margin-top:22px;border:1px solid #514b40;background:#191814;border-radius:12px;padding:18px}.editor.active{display:block}.edit-title{font-size:21px;font-weight:700;margin:0 0 4px}.current{font-size:11px;color:#9f9a8f;line-height:1.55;margin-bottom:16px;overflow-wrap:anywhere}.label{display:block;font-size:10px;letter-spacing:.12em;color:#8b8880;text-transform:uppercase;margin:0 0 7px}.edit-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}.help{font-size:11px;color:#817d74;line-height:1.6;margin-top:9px}.empty{padding:38px 12px;text-align:center;color:#77736b}@media(max-width:640px){header{flex-wrap:wrap}.brand{width:100%}.search{flex-direction:column}.intro h1{font-size:24px}}
+</style>
+</head>
+<body>
+<header><div class="brand">HARF-WAY / STEAM LINK EDITOR v0.8</div><a class="btn" href="/salvage/">Salvagerへ戻る</a><button id="authBtn" class="btn" type="button">管理キー</button></header>
+<main>
+<section class="intro"><h1>Steamリンクを手動修正</h1><p>誤って登録されたSteamリンクを作品単位で修正します。保存時にSteam App IDも合わせて更新し、別作品への重複登録はブロックします。</p></section>
+<form id="searchForm" class="search"><input id="query" placeholder="ゲーム名で検索" autocomplete="off"><button class="btn primary">検索</button></form>
+<div id="status" class="status">ゲーム名を入力してください。</div>
+<div id="results" class="results"></div>
+<section id="editor" class="editor">
+  <div id="editTitle" class="edit-title"></div>
+  <div id="current" class="current"></div>
+  <label class="label" for="storeUrl">Steam URL</label>
+  <input id="storeUrl" type="url" placeholder="https://store.steampowered.com/app/123456/Game_Name/">
+  <div class="help">Steamの /app/数字/ 形式を入力してください。空欄で保存するとSteamリンクを解除します。</div>
+  <div class="edit-actions"><button id="saveBtn" class="btn primary" type="button">Steamリンクを保存</button><button id="clearBtn" class="btn danger" type="button">リンクを解除</button><button id="cancelBtn" class="btn" type="button">閉じる</button></div>
+</section>
+</main>
+<script>
+const $=s=>document.querySelector(s);const ADMIN_KEY='hw_salvager_admin_key';let selectedGame=null;let runtime={authRequired:false};
+const esc=v=>String(v||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const admin=()=>sessionStorage.getItem(ADMIN_KEY)||'';
+function askAdmin(){const v=window.prompt('WAYSと同じ管理キーを入力してください',admin());if(v&&v.trim()){sessionStorage.setItem(ADMIN_KEY,v.trim());return true}return false}
+async function authFetch(url,opt={},retry=true){const headers={...(opt.headers||{})};if(admin())headers['X-Admin-Key']=admin();const r=await fetch(url,{...opt,headers});if(r.status===401&&runtime.authRequired&&retry){sessionStorage.removeItem(ADMIN_KEY);if(askAdmin())return authFetch(url,opt,false)}return r}
+function setStatus(html){$('#status').innerHTML=html}
+async function loadRuntime(){try{const r=await fetch('/api/archive-status',{cache:'no-store'}),j=await r.json();if(j.ok)runtime=j}catch{}}
+async function searchGames(q){setStatus('検索しています…');$('#results').innerHTML='';try{const r=await fetch('/api/core/games?q='+encodeURIComponent(q)+'&limit=50',{cache:'no-store'}),j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||'search_failed');const games=j.games||[];setStatus(`<span class="ok">● ${games.length}件見つかりました</span>`);$('#results').innerHTML=games.length?games.map((g,i)=>`<div class="card"><div class="title">${esc(g.title)}</div><div class="meta">ID: ${esc(g.id)}<br>Steam: ${esc(g.storeUrl||'未登録')}</div><button class="btn editGame" data-i="${i}" type="button">編集する</button></div>`).join(''):'<div class="empty">一致するゲームがありません。</div>';document.querySelectorAll('.editGame').forEach(b=>b.addEventListener('click',()=>openEditor(games[Number(b.dataset.i)])))}catch(e){setStatus(`<span class="warn">● 検索失敗</span><br>${esc(e.message)}`)}}
+function openEditor(game){selectedGame=game;$('#editTitle').textContent=game.title;$('#current').textContent='現在: '+(game.storeUrl||'Steamリンク未登録');$('#storeUrl').value=game.storeUrl||'';$('#editor').classList.add('active');$('#storeUrl').focus();$('#editor').scrollIntoView({behavior:'smooth',block:'center'})}
+function closeEditor(){selectedGame=null;$('#editor').classList.remove('active')}
+async function saveStore(url){if(!selectedGame)return;const btn=$('#saveBtn');btn.disabled=true;setStatus('保存しています…');try{const r=await authFetch('/api/archive-update-store',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({gameId:selectedGame.id,storeUrl:url})}),j=await r.json();if(!r.ok||!j.ok){const detail=j.existingGame?.title?` / 既存: ${j.existingGame.title}`:'';throw new Error((j.message||j.error||'update_failed')+detail)}selectedGame={...selectedGame,storeUrl:j.game?.store_url||''};$('#current').textContent='現在: '+(selectedGame.storeUrl||'Steamリンク未登録');$('#storeUrl').value=selectedGame.storeUrl||'';setStatus(`<span class="ok">● 更新しました</span><br>${esc(selectedGame.title)} → ${esc(selectedGame.storeUrl||'Steamリンク解除')}`);const q=$('#query').value.trim();if(q)await searchGames(q)}catch(e){setStatus(`<span class="warn">● 更新できません</span><br>${esc(e.message)}`)}finally{btn.disabled=false}}
+$('#searchForm').addEventListener('submit',e=>{e.preventDefault();const q=$('#query').value.trim();if(q)searchGames(q)});$('#saveBtn').addEventListener('click',()=>saveStore($('#storeUrl').value.trim()));$('#clearBtn').addEventListener('click',()=>{if(selectedGame&&window.confirm(`${selectedGame.title} のSteamリンクを解除しますか？`))saveStore('')});$('#cancelBtn').addEventListener('click',closeEditor);$('#authBtn').addEventListener('click',askAdmin);loadRuntime();
+</script>
+</body>
+</html>
