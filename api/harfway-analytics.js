@@ -1,13 +1,14 @@
 import {getGa4Summary} from './ga4-lib.js';
 import {getAnalyticsRegistry} from './analytics-registry-lib.js';
 
-const WAYS='https://harfway-playback.vercel.app/api/analytics';
+const PROD_ANALYTICS='https://harfway-playback.vercel.app/api/analytics';
 const SHOWCASE='https://harfway-showcase-metrics.vercel.app/api/stats';
 const CORE='https://harfway-playback.vercel.app/api/core/games?limit=500';
 const GA4_MEASUREMENT_ID='G-LQVHR07K15';
 
 const intParam=(value,fallback,min,max)=>{const n=Number.parseInt(String(value??''),10);return Number.isFinite(n)?Math.min(max,Math.max(min,n)):fallback};
 const num=v=>Number(v||0);
+const analyticsUrl=()=>process.env.VERCEL_URL?`https://${process.env.VERCEL_URL}/api/analytics`:PROD_ANALYTICS;
 const ga4Summary=s=>s?{
   pageViews:num(s.pageViews),sessions:num(s.sessions),activeUsers:num(s.activeUsers),eventCount:num(s.eventCount),
   gameViews:num(s.events?.game_view),plays:num(s.events?.video_start),completes:num(s.events?.video_complete),storeClicks:num(s.events?.store_click),
@@ -29,6 +30,7 @@ async function jsonFetch(url,options={}){
 function showcaseTotal(data,event){return num(data?.totals?.find?.(x=>x.event_type===event)?.count)}
 function showcaseSessions(data){return num(data?.totals?.find?.(x=>x.event_type==='showcase_page_view')?.sessions)}
 function collection(def){return {enabled:true,provider:'ga4',measurementId:GA4_MEASUREMENT_ID,serviceName:def.serviceName,contentType:def.contentType,productionUrl:def.productionUrl,source:def.source||'built_in'}}
+function customCollection(def){return {enabled:true,provider:'custom_event_db',serviceName:def.serviceName,contentType:def.contentType,productionUrl:def.productionUrl,source:def.source||'built_in'}}
 
 export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
@@ -36,20 +38,24 @@ export default async function handler(req,res){
   const days=intParam(req.query?.days,7,1,365);
   const key=String(req.headers['x-showcase-admin-key']||'').trim();
   try{
-    const [ways,showcase,core,registry]=await Promise.all([
-      jsonFetch(`${WAYS}?days=${days}`),
+    const base=analyticsUrl();
+    const [ways,saleWatch,showcase,core,registry]=await Promise.all([
+      jsonFetch(`${base}?days=${days}&page=ways`),
+      jsonFetch(`${base}?days=${days}&page=sale-watch`),
       key?jsonFetch(`${SHOWCASE}?showcaseId=mochikomi-02`,{headers:{'x-admin-key':key}}):Promise.resolve({ok:false,status:401,data:{error:'admin_key_required'}}),
       jsonFetch(CORE),
       getAnalyticsRegistry()
     ]);
     const definitions=Array.isArray(registry?.services)?registry.services:[];
-    const defMap=new Map(definitions.map(def=>[def.serviceName,def]));
     const ga4=await getGa4Summary(days,definitions);
 
     const titles=new Map((core.data?.games||[]).map(g=>[String(g.id||''),String(g.title||g.id||'')]));
     const waysGames=(ways.data?.games||[]).map(g=>({...g,title:titles.get(String(g.game_id||''))||String(g.game_id||'')}));
     const waysSummary=ways.ok?{
       pageViews:num(ways.data?.summary?.page_views),sessions:num(ways.data?.summary?.sessions),gameViews:num(ways.data?.summary?.game_views),plays:num(ways.data?.summary?.plays),completes:num(ways.data?.summary?.completes),storeClicks:num(ways.data?.summary?.store_clicks),articleClicks:num(ways.data?.summary?.article_clicks),tagClicks:num(ways.data?.summary?.tag_clicks)
+    }:null;
+    const saleWatchSummary=saleWatch.ok?{
+      pageViews:num(saleWatch.data?.summary?.page_views),sessions:num(saleWatch.data?.summary?.sessions),storeClicks:num(saleWatch.data?.summary?.store_clicks),contentClicks:num(saleWatch.data?.summary?.content_clicks),filterChanges:num(saleWatch.data?.summary?.filter_changes),searches:num(saleWatch.data?.summary?.searches)
     }:null;
     const showcaseSummary=showcase.ok?{
       pageViews:showcaseTotal(showcase.data,'showcase_page_view'),sessions:showcaseSessions(showcase.data),gameViews:showcaseTotal(showcase.data,'showcase_game_view'),plays:showcaseTotal(showcase.data,'showcase_video_start'),tenSeconds:showcaseTotal(showcase.data,'showcase_video_10s'),completes:showcaseTotal(showcase.data,'showcase_video_complete'),storeClicks:(showcase.data?.games||[]).reduce((a,g)=>a+num(g.store_clicks),0),picks:showcaseTotal(showcase.data,'showcase_pick_add'),shares:showcaseTotal(showcase.data,'showcase_share')
@@ -64,6 +70,10 @@ export default async function handler(req,res){
       const name=def.serviceName;
       if(name==='ways'){
         services.ways={connected:ways.ok,reportingConnected:ways.ok,reportingProvider:'custom',collection:collection(def),period:`last_${days}_days`,status:ways.status,summary:waysSummary,ga4Summary:ga4Summary(ga4For('ways')),games:waysGames,devices:ways.data?.devices||[],error:ways.ok?null:ways.data?.error,label:def.label,autoSynced:def.source==='manifest'};
+        continue;
+      }
+      if(name==='sale-watch'){
+        services['sale-watch']={connected:saleWatch.ok,reportingConnected:saleWatch.ok,reportingProvider:'custom',collection:customCollection(def),period:`last_${days}_days`,status:saleWatch.status,summary:saleWatchSummary,games:saleWatch.data?.games||[],devices:saleWatch.data?.devices||[],error:saleWatch.ok?null:saleWatch.data?.error,label:def.label,autoSynced:false,expectedEvents:def.expectedEvents||[]};
         continue;
       }
       if(name==='showcase'){
