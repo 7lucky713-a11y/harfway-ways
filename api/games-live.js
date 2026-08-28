@@ -19,6 +19,15 @@ function fallbackPayload() {
   return payload;
 }
 
+function shuffleEntries(entries) {
+  const shuffled = [...entries];
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 function normalizeGame(game, index) {
   const sortRaw = game?.sortOrder ?? game?.sort_order;
   const sortOrder = Number.isFinite(Number(sortRaw)) ? Number(sortRaw) : index;
@@ -86,7 +95,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const entries = await fetchEditorGames();
+    const entries = shuffleEntries(await fetchEditorGames());
     return res.status(200).json({
       ok: true,
       source: 'playback-editor-live',
@@ -99,6 +108,7 @@ export default async function handler(req, res) {
       const fallback = fallbackPayload();
       return res.status(200).json({
         ...fallback,
+        entries: shuffleEntries(fallback.entries),
         source: 'playback-editor-fallback',
         stale: true
       });
