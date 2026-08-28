@@ -1,6 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import { createHash } from 'node:crypto';
 import { archiveDatabaseConfig, authorizeArchiveRequest, archiveCors } from './archive-core.js';
+import { normalizeGameLinks, choosePrimaryLink } from './game-link-utils.js';
 
 function clean(v,max=4000){return String(v||'').trim().slice(0,max)}
 function normalizeTitle(v=''){
@@ -13,9 +14,6 @@ function slugify(v=''){
     .replace(/^-+|-+$/g,'').slice(0,64)||'game';
 }
 function shortHash(v=''){return createHash('sha256').update(String(v)).digest('hex').slice(0,8)}
-function steamAppId(url=''){
-  try{const u=new URL(url);if(u.hostname!=='store.steampowered.com')return '';const m=u.pathname.match(/\/app\/(\d+)/);return m?.[1]||''}catch{return ''}
-}
 function canonicalStore(url=''){
   if(!url)return '';
   try{const u=new URL(url);return `${u.origin}${u.pathname.replace(/\/$/,'')}`.toLowerCase()}catch{return String(url).trim().toLowerCase()}
@@ -41,56 +39,46 @@ export default async function handler(req,res){
   try{
     const payload=typeof req.body==='string'?JSON.parse(req.body||'{}'):(req.body||{});
     const title=clean(payload.title,500);
-    const storeUrl=clean(payload.storeUrl,4000);
     const articleUrl=clean(payload.articleUrl,4000);
+    const legacyStore=clean(payload.storeUrl,4000);
+    const rawLinks=[...(Array.isArray(payload.links)?payload.links:[]),...(legacyStore?[{url:legacyStore,primary:true,source:'legacy-store-url'}]:[])];
+    const links=normalizeGameLinks(rawLinks);
+    const explicitPrimary=clean(payload.primaryUrl,4000);
+    const primary=links.find(x=>x.url===explicitPrimary)||choosePrimaryLink(links);
+    if(primary)links.forEach(x=>x.primary=x.url===primary.url);
+    const storeUrl=primary?.url||legacyStore||'';
+    const steam=links.find(x=>x.service==='steam')||null;
+
     if(!title)return res.status(400).json({ok:false,error:'title_required'});
     if(articleUrl){const u=new URL(articleUrl);if(!/(^|\.)harf-way\.com$/i.test(u.hostname))return res.status(400).json({ok:false,error:'harf_way_article_only'})}
 
-    const appId=steamAppId(storeUrl);
-
-    // Preview deployments intentionally have no writable DB unless a dedicated
-    // SALVAGER_PREVIEW_DATABASE_URL is configured. In that case, simulate the
-    // write so the full UI flow can be verified without touching Production.
     if(!config.url&&!config.production){
-      const base=appId?`steam-${appId}`:`${slugify(title)}-${shortHash(`${title}|${storeUrl}|${articleUrl}`)}`;
+      const base=steam?`steam-${steam.externalId}`:`${slugify(title)}-${shortHash(`${title}|${storeUrl}|${articleUrl}`)}`;
       const gameId=`preview-game-salvage-${base}`;
       return res.status(200).json({
-        ok:true,
-        created:true,
-        simulated:true,
-        previewOnly:true,
-        steamAppId:appId||null,
-        writeMode:'preview-dry-run',
-        game:{
-          id:gameId,
-          title,
-          store_url:storeUrl,
-          article_url:articleUrl,
-          category:'',
-          status:'active',
-          source_of_truth:'archive-salvager-preview'
-        }
+        ok:true,created:true,simulated:true,previewOnly:true,steamAppId:steam?.externalId||null,
+        writeMode:'preview-dry-run',links,
+        game:{id:gameId,title,store_url:storeUrl,article_url:articleUrl,category:'',status:'active',source_of_truth:'archive-salvager-preview'}
       });
     }
 
     if(!config.url)return res.status(503).json({ok:false,error:'core_database_not_configured',writeMode:config.mode});
-
     const sql=neon(config.url);
 
-    if(appId){
+    for(const link of links){
       const refHit=await sql`
         SELECT g.id,g.title,g.store_url,g.article_url,g.category,g.status,g.source_of_truth
         FROM core.game_refs r JOIN core.games g ON g.id=r.game_id
-        WHERE r.service='steam' AND r.external_id=${appId} LIMIT 1
+        WHERE r.service=${link.service} AND r.external_id=${link.externalId} LIMIT 1
       `;
-      if(refHit[0])return res.status(200).json({ok:true,created:false,game:refHit[0],duplicateBy:'steam_app_id',writeMode:config.mode});
+      if(refHit[0])return res.status(200).json({ok:true,created:false,game:refHit[0],duplicateBy:`${link.service}_ref`,writeMode:config.mode,links});
     }
 
     const exactTitle=await sql`
       SELECT id,title,store_url,article_url,category,status,source_of_truth
       FROM core.games WHERE lower(title)=lower(${title}) LIMIT 1
     `;
-    if(exactTitle[0])return res.status(200).json({ok:true,created:false,game:exactTitle[0],duplicateBy:'title',writeMode:config.mode});
+    if(exactTitle[0])return res.status(200).json({ok:true,created:false,game:exactTitle[0],duplicateBy:'title',writeMode:config.mode,links});
 
     if(storeUrl){
       const storeHit=await sql`
@@ -99,17 +87,17 @@ export default async function handler(req,res){
       `;
       const canonical=canonicalStore(storeUrl);
       const duplicate=storeHit.find(g=>canonicalStore(g.store_url)===canonical||looksSameTitle(g.title,title));
-      if(duplicate)return res.status(200).json({ok:true,created:false,game:duplicate,duplicateBy:canonicalStore(duplicate.store_url)===canonical?'store_url':'normalized_title',writeMode:config.mode});
+      if(duplicate)return res.status(200).json({ok:true,created:false,game:duplicate,duplicateBy:canonicalStore(duplicate.store_url)===canonical?'store_url':'normalized_title',writeMode:config.mode,links});
     }else{
       const titlePool=await sql`
         SELECT id,title,store_url,article_url,category,status,source_of_truth
         FROM core.games LIMIT 1000
       `;
       const duplicate=titlePool.find(g=>looksSameTitle(g.title,title));
-      if(duplicate)return res.status(200).json({ok:true,created:false,game:duplicate,duplicateBy:'normalized_title',writeMode:config.mode});
+      if(duplicate)return res.status(200).json({ok:true,created:false,game:duplicate,duplicateBy:'normalized_title',writeMode:config.mode,links});
     }
 
-    const base=appId?`steam-${appId}`:`${slugify(title)}-${shortHash(`${title}|${storeUrl}|${articleUrl}`)}`;
+    const base=steam?`steam-${steam.externalId}`:`${slugify(title)}-${shortHash(`${title}|${storeUrl}|${articleUrl}`)}`;
     let gameId=`game-salvage-${base}`;
     const idHit=await sql`SELECT id FROM core.games WHERE id=${gameId} LIMIT 1`;
     if(idHit[0])gameId=`${gameId}-${shortHash(Date.now())}`;
@@ -120,16 +108,19 @@ export default async function handler(req,res){
       RETURNING id,title,store_url,article_url,category,status,source_of_truth,created_at,updated_at
     `;
 
-    if(appId){
+    for(const link of links){
       await sql`
         INSERT INTO core.game_refs (service,external_id,game_id,external_url,metadata,updated_at)
-        VALUES ('steam',${appId},${gameId},${storeUrl},${JSON.stringify({source:'archive-salvager'})}::jsonb,now())
+        VALUES (
+          ${link.service},${link.externalId},${gameId},${link.url},
+          ${JSON.stringify({source:'archive-salvager',label:link.label,name:link.name||'',primary:!!link.primary})}::jsonb,now()
+        )
         ON CONFLICT (service,external_id) DO UPDATE SET
-          game_id=EXCLUDED.game_id, external_url=EXCLUDED.external_url, metadata=EXCLUDED.metadata, updated_at=now()
+          game_id=EXCLUDED.game_id,external_url=EXCLUDED.external_url,metadata=EXCLUDED.metadata,updated_at=now()
       `;
     }
 
-    return res.status(200).json({ok:true,created:true,game:rows[0],steamAppId:appId||null,writeMode:config.mode});
+    return res.status(200).json({ok:true,created:true,game:rows[0],steamAppId:steam?.externalId||null,links,writeMode:config.mode});
   }catch(error){
     console.error('[archive-create-game]',error);
     return res.status(500).json({ok:false,error:'archive_create_game_failed'});
