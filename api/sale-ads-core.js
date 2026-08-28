@@ -1,5 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 
+// SALE WATCH uses its own Preview-only ADS_DATABASE_URL until production approval.
 export const SALE_PLACEMENT = 'sale';
 export const SALE_DEFAULT_EVERY = 6;
 export const SALE_DEFAULT_CAP = 2;
