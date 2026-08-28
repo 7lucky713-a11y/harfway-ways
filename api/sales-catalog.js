@@ -248,31 +248,27 @@ function mergeWays(baseRows, waysRows) {
   const byId = new Map(rows.filter(r => r.id).map(r => [String(r.id), r]));
   const byApp = new Map(rows.filter(r => r.appid).map(r => [String(r.appid), r]));
   const byTitle = new Map(rows.filter(r => r.title).map(r => [keyTitle(r.title), r]));
+  let matched = 0;
   for (const ways of waysRows) {
     let target = ways.waysId ? byId.get(String(ways.waysId)) : null;
     if (!target && ways.appid) target = byApp.get(String(ways.appid)) || null;
     if (!target && ways.title) target = byTitle.get(keyTitle(ways.title)) || null;
-    if (target) {
-      target.sources = [...new Set([...(target.sources || []), 'ways'])];
-      target.waysId = ways.waysId;
-      if (!target.thumbnail && ways.thumbnail) target.thumbnail = ways.thumbnail;
-      if (!target.description && ways.description) target.description = ways.description;
-      if (!target.category && ways.category) target.category = ways.category;
-      if ((!target.tags || !target.tags.length) && ways.tags?.length) target.tags = ways.tags;
-      if (!target.appid && ways.appid) {
-        target.appid = ways.appid;
-        target.steamUrl = ways.steamUrl;
-        target.storeUrl = ways.storeUrl;
-        byApp.set(String(ways.appid), target);
-      }
-      continue;
+    if (!target) continue;
+    matched += 1;
+    target.sources = [...new Set([...(target.sources || []), 'ways'])];
+    target.waysId = ways.waysId;
+    if (!target.thumbnail && ways.thumbnail) target.thumbnail = ways.thumbnail;
+    if (!target.description && ways.description) target.description = ways.description;
+    if (!target.category && ways.category) target.category = ways.category;
+    if ((!target.tags || !target.tags.length) && ways.tags?.length) target.tags = ways.tags;
+    if (!target.appid && ways.appid) {
+      target.appid = ways.appid;
+      target.steamUrl = ways.steamUrl;
+      target.storeUrl = ways.storeUrl;
+      byApp.set(String(ways.appid), target);
     }
-    rows.push(ways);
-    byId.set(String(ways.id), ways);
-    if (ways.appid) byApp.set(String(ways.appid), ways);
-    if (ways.title) byTitle.set(keyTitle(ways.title), ways);
   }
-  return rows;
+  return { rows, matched };
 }
 
 export default async function handler(req, res) {
@@ -307,7 +303,8 @@ export default async function handler(req, res) {
         playlists: playlistMeta.map(meta => String(meta?.playlist_id || '')).filter(Boolean), scrapUrl
       };
     });
-    const rows = mergeWays(mergeScraps(coreRows, scraps.rows), ways.rows);
+    const waysMerge = mergeWays(mergeScraps(coreRows, scraps.rows), ways.rows);
+    const rows = waysMerge.rows;
     const sourceCounts = {};
     for (const row of rows) for (const source of row.sources || []) sourceCounts[source] = (sourceCounts[source] || 0) + 1;
     const steamLinked = rows.filter(row => row.appid).length;
@@ -319,16 +316,16 @@ export default async function handler(req, res) {
     const waysSteamLinked = waysRows.filter(row => row.appid).length;
     return res.status(200).json({
       ok: true,
-      source: 'shared-content-core + content-refs + scraps-recovery + ways-live',
+      source: 'shared-content-core + content-refs + scraps-recovery + ways-live-overlay',
       articlePolicy: 'archive-salvager-only',
       scrapPolicy: 'scraps-recovery + core refs',
-      waysPolicy: 'games-live + core refs',
+      waysPolicy: 'games-live overlay only + core refs',
       updatedAt: new Date().toISOString(),
       summary: {
         total: rows.length, steamLinked, articleRows: articleRows.length, articleWithoutSteam,
         scrapRows: scrapRows.length, scrapSteamLinked, scrapsBackendRaw: scraps.rawCount, scrapsBackendOk: scraps.ok,
         waysRows: waysRows.length, waysSteamLinked, waysBackendRaw: ways.rawCount, waysBackendOk: ways.ok,
-        waysCoreMatched: Number(ways.core?.matched || 0), waysCoreTotal: Number(ways.core?.total || ways.rawCount || 0), sourceCounts
+        waysLiveMatched: waysMerge.matched, waysCoreMatched: Number(ways.core?.matched || 0), waysCoreTotal: Number(ways.core?.total || ways.rawCount || 0), sourceCounts
       },
       rows
     });
