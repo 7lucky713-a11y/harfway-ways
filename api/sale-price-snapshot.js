@@ -1,87 +1,62 @@
-import { getSteamPrices } from './_steam-sale-core.js';
-
-const BATCH_SIZE = 50;
+const BATCH_SIZE = 90;
 
 function formatYen(value) {
   if (!Number.isFinite(value)) return null;
   return new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY', maximumFractionDigits: 0 }).format(value);
 }
 
-function normalizeItem(appid, item) {
-  if (!item || item.success === 0) return null;
-  const option = item.best_purchase_option || item.self_purchase_option ||
-    (Array.isArray(item.purchase_options) ? item.purchase_options.find(v => v && (v.packageid || v.bundleid)) || item.purchase_options[0] : null);
-
-  const common = {
-    appid: String(appid),
-    ok: true,
-    steamName: String(item.name || ''),
-    source: 'storebrowse-batch',
-    fallbackUsed: true
-  };
-
-  if (item.is_free && !option) {
-    return {
-      ...common, isFree: true, priceAvailable: true, currency: 'JPY', initialYen: 0, finalYen: 0,
-      initialFormatted: '無料', finalFormatted: '無料', discountPercent: 0, onSale: false, availability: 'free'
-    };
-  }
-  if (!option) {
-    return {
-      ...common, isFree: Boolean(item.is_free), priceAvailable: false, currency: null,
-      initialYen: null, finalYen: null, initialFormatted: null, finalFormatted: null,
-      discountPercent: 0, onSale: false, availability: item.is_coming_soon ? 'coming_soon' : 'unpriced'
-    };
+function normalizePrice(appid, root) {
+  const data = root?.data || root;
+  const p = data?.price_overview || null;
+  if (!root?.success || !p) {
+    return { appid: String(appid), ok: false, priceAvailable: false, error: root?.success === false ? 'steam_not_available' : 'price_unavailable', source: 'appdetails-batch' };
   }
 
-  const initialMinor = Number(option.original_price_in_cents);
-  const finalMinor = Number(option.final_price_in_cents);
-  const discountPercent = Number(option.discount_pct || 0);
-  const initialYen = Number.isFinite(initialMinor) ? initialMinor / 100 : null;
-  const finalYen = Number.isFinite(finalMinor) ? finalMinor / 100 : null;
-  const activeDiscount = Array.isArray(option.active_discounts) ? option.active_discounts[0] : null;
+  const currency = String(p.currency || '');
+  const initialMinor = Number(p.initial);
+  const finalMinor = Number(p.final);
+  const discountPercent = Number(p.discount_percent || 0);
+  const isJpy = currency === 'JPY';
+  const initialYen = isJpy && Number.isFinite(initialMinor) ? initialMinor / 100 : null;
+  const finalYen = isJpy && Number.isFinite(finalMinor) ? finalMinor / 100 : null;
 
   return {
-    ...common,
-    isFree: Boolean(item.is_free),
-    priceAvailable: Number.isFinite(finalMinor),
-    currency: 'JPY',
+    appid: String(appid),
+    ok: true,
+    isFree: false,
+    priceAvailable: Number.isFinite(initialMinor) && Number.isFinite(finalMinor),
+    currency,
     initialYen,
     finalYen,
-    initialFormatted: String(option.formatted_original_price || (initialYen !== null ? formatYen(initialYen) : '')) || null,
-    finalFormatted: String(option.formatted_final_price || (finalYen !== null ? formatYen(finalYen) : '')) || null,
+    initialFormatted: String(p.initial_formatted || (initialYen !== null ? formatYen(initialYen) : '')) || null,
+    finalFormatted: String(p.final_formatted || (finalYen !== null ? formatYen(finalYen) : '')) || null,
     discountPercent: Number.isFinite(discountPercent) ? discountPercent : 0,
-    onSale: Number.isFinite(discountPercent) && discountPercent > 0 && Number.isFinite(finalMinor) && (!Number.isFinite(initialMinor) || finalMinor < initialMinor),
-    saleEndsAt: activeDiscount?.discount_end_date ? new Date(Number(activeDiscount.discount_end_date) * 1000).toISOString() : null,
-    availability: 'priced'
+    onSale: Number.isFinite(discountPercent) && discountPercent > 0 && finalMinor < initialMinor,
+    availability: 'priced',
+    source: 'appdetails-batch'
   };
 }
 
 async function fetchBatch(appids) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
+  const timeout = setTimeout(() => controller.abort(), 10000);
   try {
-    const input = {
-      ids: appids.map(appid => ({ appid: Number(appid) })),
-      context: { language: 'japanese', country_code: 'JP', steam_realm: 1 },
-      data_request: { include_all_purchase_options: true, include_assets: false, include_basic_info: true }
-    };
-    const url = `https://api.steampowered.com/IStoreBrowseService/GetItems/v1/?input_json=${encodeURIComponent(JSON.stringify(input))}`;
-    const response = await fetch(url, {
-      headers: { accept: 'application/json', 'user-agent': 'Mozilla/5.0 HARF-WAY-Sale-Watch/3.0' },
+    const params = new URLSearchParams({
+      appids: appids.join(','),
+      cc: 'JP',
+      l: 'japanese',
+      filters: 'price_overview'
+    });
+    const response = await fetch(`https://store.steampowered.com/api/appdetails?${params}`, {
+      headers: { accept: 'application/json', 'user-agent': 'Mozilla/5.0 HARF-WAY-Sale-Watch/3.1' },
       signal: controller.signal,
       cache: 'no-store'
     });
-    if (!response.ok) throw new Error(`storebrowse_http_${response.status}`);
+    if (!response.ok) throw new Error(`steam_batch_http_${response.status}`);
     const payload = await response.json();
-    const items = Array.isArray(payload?.response?.store_items) ? payload.response.store_items : [];
-    const byId = new Map(items.map(item => [String(item?.appid || ''), item]));
-    const out = new Map();
-    for (const appid of appids) {
-      const normalized = normalizeItem(appid, byId.get(String(appid)));
-      if (normalized) out.set(String(appid), normalized);
-    }
-    return out;
+    const prices = {};
+    for (const appid of appids) prices[appid] = normalizePrice(appid, payload?.[appid]);
+    return prices;
   } finally {
     clearTimeout(timeout);
   }
@@ -99,30 +74,27 @@ export default async function handler(req, res) {
   const appids = [...new Set(raw.split(',').map(v => v.trim()).filter(v => /^\d+$/.test(v)))].slice(0, 250);
   if (!appids.length) {
     res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=900');
-    return res.status(200).json({ ok: true, appids: [], prices: {}, onSale: 0 });
+    return res.status(200).json({ ok: true, appids: [], prices: {}, summary: { requested: 0, available: 0, onSale: 0, missing: 0 } });
   }
 
   try {
     const groups = [];
     for (let i = 0; i < appids.length; i += BATCH_SIZE) groups.push(appids.slice(i, i + BATCH_SIZE));
-    const batchResults = await Promise.all(groups.map(group => fetchBatch(group).catch(() => new Map())));
-    const prices = {};
-    for (const map of batchResults) for (const [appid, price] of map) prices[appid] = price;
-
-    const missing = appids.filter(appid => !prices[appid]);
-    if (missing.length) {
-      const fallback = await getSteamPrices(missing, false);
-      for (const appid of missing) prices[appid] = fallback.get(appid) || { appid, ok: false, error: 'price_missing' };
-    }
-
+    const results = await Promise.all(groups.map(fetchBatch));
+    const prices = Object.assign({}, ...results);
     const values = appids.map(appid => prices[appid]).filter(Boolean);
     const onSale = values.filter(v => v?.ok && v?.onSale).length;
     const available = values.filter(v => v?.ok && v?.priceAvailable).length;
+    const missing = values.filter(v => !v?.ok || !v?.priceAvailable).length;
     res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=900');
     return res.status(200).json({
       ok: true,
-      country: 'JP', currency: 'JPY', updatedAt: new Date().toISOString(),
-      appids, prices, summary: { requested: appids.length, available, onSale, missing: missing.length }
+      country: 'JP',
+      currency: 'JPY',
+      updatedAt: new Date().toISOString(),
+      appids,
+      prices,
+      summary: { requested: appids.length, available, onSale, missing, batches: groups.length, source: 'appdetails-batch' }
     });
   } catch (error) {
     console.error('[sale-price-snapshot]', error?.message || error);
