@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "node scripts/probe-sale-ads-db.mjs && node scripts/inject-analytics-auto-sync.mjs && astro build && node scripts/verify-analytics-auto-sync.mjs",
+    "build": "node scripts/audit-ads-portal-fields.mjs && node scripts/probe-sale-ads-db.mjs && node scripts/inject-analytics-auto-sync.mjs && astro build && node scripts/verify-analytics-auto-sync.mjs",
     "preview": "astro preview"
   },
   "dependencies": {
