@@ -2,7 +2,7 @@ import fs from 'node:fs';
 
 const file='src/pages/analytics.astro';
 let source=fs.readFileSync(file,'utf8');
-const tag='<script src="/analytics-auto-sync.js"></script>';
+const tag='<script is:inline src="/analytics-auto-sync.js"></script>';
 if(!source.includes(tag)){
   if(!source.includes('</body>'))throw new Error('Analytics page closing body tag not found');
   source=source.replace('</body>',`${tag}\n</body>`);
