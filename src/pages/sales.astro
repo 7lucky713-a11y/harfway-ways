@@ -1,0 +1,54 @@
+---
+export const prerender = true;
+---
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="HARF-WAYで紹介したゲームのうち、現在Steamでセール中の作品をまとめています。" />
+  <title>HARF-WAY SALE PICKS</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0a0a0a;--panel:#121214;--line:#2e2e31;--muted:#9b9b9f;--accent:#efff3d;--ok:#cfff8b;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:#f7f7f2}a{color:inherit}.wrap{max-width:1280px;margin:auto;padding:32px 20px 64px}.hero{padding:34px 0 28px;border-bottom:1px solid var(--line);margin-bottom:24px}.eyebrow{font-size:11px;letter-spacing:.18em;color:var(--accent);font-weight:900}.hero h1{font-size:clamp(42px,8vw,92px);line-height:.9;margin:10px 0 18px;letter-spacing:-.05em}.hero p{max-width:760px;color:#b7b7ba;line-height:1.8;margin:0}.meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px;color:var(--muted);font-size:12px}.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 18px}.toolbar input,.toolbar select{min-height:44px;border:1px solid var(--line);border-radius:11px;background:#151517;color:#fff;padding:10px 12px}.toolbar input{min-width:260px;flex:1}.count{font-size:12px;color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}.card{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--panel);display:flex;flex-direction:column;min-height:100%}.thumb{aspect-ratio:460/215;background:#1a1a1d;overflow:hidden}.thumb img{width:100%;height:100%;object-fit:cover;display:block}.body{padding:16px;display:grid;gap:12px}.title{font-size:20px;line-height:1.25;font-weight:900}.tags{display:flex;gap:6px;flex-wrap:wrap}.pill{display:inline-block;border:1px solid #3d3d42;border-radius:999px;padding:4px 8px;font-size:10px;color:#bdbdc1}.pricebox{display:flex;align-items:end;gap:10px}.discount{font-size:28px;line-height:1;font-weight:950;color:var(--accent)}.prices{display:grid;gap:2px}.prices del{font-size:11px;color:#727278}.prices b{font-size:20px}.links{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}.btn{display:inline-flex;align-items:center;justify-content:center;min-height:40px;border-radius:10px;padding:9px 12px;text-decoration:none;font-size:12px;font-weight:900;border:1px solid var(--line);background:#1a1a1d}.btn.primary{background:var(--accent);color:#111;border-color:transparent}.empty{padding:64px 16px;border:1px solid var(--line);border-radius:16px;text-align:center;color:var(--muted)}.foot{margin-top:24px;padding-top:18px;border-top:1px solid var(--line);font-size:11px;line-height:1.8;color:#85858a}@media(max-width:640px){.wrap{padding:20px 12px 48px}.hero{padding-top:20px}.toolbar{display:grid;grid-template-columns:1fr}.toolbar input,.toolbar select{width:100%;min-width:0}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div class="eyebrow">HARF-WAY / NOW ON SALE</div>
+      <h1>SALE<br>PICKS</h1>
+      <p>HARF-WAYで紹介したゲームの中から、いまSteamでセール中の作品だけを拾っています。値段から探しても、割引率から眺めてもOK。</p>
+      <div class="meta"><span id="updated">更新情報を取得中…</span><span>日本向けSteam価格</span></div>
+    </section>
+
+    <div class="toolbar">
+      <input id="search" placeholder="作品名 / タグで検索" />
+      <select id="filter"><option value="all">セール中すべて</option><option value="under500">500円以下</option><option value="half">50%以上OFF</option></select>
+      <select id="sort"><option value="discount">割引率が高い順</option><option value="price">価格が安い順</option><option value="title">作品名順</option></select>
+      <span id="count" class="count"></span>
+    </div>
+
+    <section id="grid" class="grid"></section>
+    <div class="foot">価格・割引率はSteamストアの日本向け情報をもとに表示しています。セール終了や地域差などにより、表示とSteam上の価格が異なる場合があります。購入前にSteamストアで最終価格をご確認ください。</div>
+  </main>
+<script>
+  const $=s=>document.querySelector(s); let rows=[];
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  async function load(){
+    try{
+      const r=await fetch('/api/sales-public'); const j=await r.json();
+      if(!r.ok||!j.ok) throw Error('取得できませんでした');
+      rows=j.rows||[]; $('#updated').textContent=`更新 ${new Date(j.updatedAt).toLocaleString('ja-JP')}`; render();
+    }catch(e){ $('#grid').innerHTML='<div class="empty">セール情報を取得できませんでした。時間を置いてもう一度お試しください。</div>'; $('#updated').textContent='更新情報の取得に失敗しました'; }
+  }
+  function filtered(){
+    const q=$('#search').value.trim().toLowerCase(), f=$('#filter').value, s=$('#sort').value;
+    const out=rows.filter(r=>{const p=r.price||{}; if(f==='under500'&&!(Number.isFinite(p.finalYen)&&p.finalYen<=500))return false;if(f==='half'&&Number(p.discountPercent||0)<50)return false;if(q&&!([r.title,r.category,...(r.tags||[])].join(' ').toLowerCase().includes(q)))return false;return true});
+    out.sort((a,b)=>{if(s==='price')return Number(a.price?.finalYen??Infinity)-Number(b.price?.finalYen??Infinity);if(s==='title')return a.title.localeCompare(b.title,'ja');return Number(b.price?.discountPercent||0)-Number(a.price?.discountPercent||0)});return out;
+  }
+  function render(){const out=filtered();$('#count').textContent=`${out.length}作品`;if(!out.length){$('#grid').innerHTML='<div class="empty">いま条件に合うセール作品はありません。</div>';return}$('#grid').innerHTML=out.map(r=>{const p=r.price||{};const img=p.headerImage||r.thumbnail||'';return `<article class="card"><div class="thumb">${img?`<img src="${esc(img)}" alt="" loading="lazy">`:''}</div><div class="body"><div class="title">${esc(r.title||p.steamName||'タイトルなし')}</div><div class="tags">${(r.tags||[]).slice(0,4).map(t=>`<span class="pill">${esc(t)}</span>`).join('')}</div><div class="pricebox"><div class="discount">-${Number(p.discountPercent||0)}%</div><div class="prices"><del>${esc(p.initialFormatted||'')}</del><b>${esc(p.finalFormatted||'')}</b></div></div><div class="links"><a class="btn primary" href="${esc(r.steamUrl)}" target="_blank" rel="noopener">Steamで見る</a>${r.articleUrl?`<a class="btn" href="${esc(r.articleUrl)}" target="_blank" rel="noopener">HARF-WAYの記事</a>`:''}</div></div></article>`}).join('')}
+  $('#search').addEventListener('input',render);$('#filter').addEventListener('change',render);$('#sort').addEventListener('change',render);load();
+</script>
+</body>
+</html>
