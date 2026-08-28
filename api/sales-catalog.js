@@ -4,6 +4,7 @@ import { steamAppIdFromUrl } from './_steam-sale-core.js';
 
 const SCRAPS_BACKEND_URL = process.env.SCRAPS_RECOVERY_URL || 'https://harfway-scraps-recovery.vercel.app/api/scraps';
 const SCRAPBOOK_PUBLIC_URL = process.env.SCRAPBOOK_PUBLIC_URL || 'https://harf-way-game-scrapbook.vercel.app/';
+const CONTENT_REF_SERVICES = ['playlist','ways','playback','yorimichi','scrap','scraps','scrapbook'];
 
 function getDatabaseUrl() {
   return (
@@ -30,6 +31,31 @@ async function fetchCoreGames() {
     throw new Error(payload?.error || `core_${statusCode}`);
   }
   return payload.games;
+}
+
+async function fetchContentRefs() {
+  const databaseUrl = getDatabaseUrl();
+  if (!databaseUrl) return new Map();
+  const sql = neon(databaseUrl);
+  const rows = await sql`
+    SELECT game_id, service, external_id, external_url, metadata
+    FROM core.game_refs
+    WHERE service = ANY(${CONTENT_REF_SERVICES}::text[])
+    ORDER BY game_id, service, external_id
+  `;
+  const map = new Map();
+  for (const row of rows) {
+    const gameId = String(row.game_id || '');
+    if (!gameId) continue;
+    if (!map.has(gameId)) map.set(gameId, []);
+    map.get(gameId).push({
+      service: String(row.service || ''),
+      externalId: String(row.external_id || ''),
+      externalUrl: String(row.external_url || ''),
+      metadata: row.metadata && typeof row.metadata === 'object' ? row.metadata : {}
+    });
+  }
+  return map;
 }
 
 async function fetchSalvagedArticles() {
@@ -179,25 +205,28 @@ export default async function handler(req, res) {
   res.setHeader('X-Robots-Tag', 'index, follow');
   if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'method_not_allowed' });
   try {
-    const [games, salvagedArticles, scraps] = await Promise.all([
+    const [games, contentRefs, salvagedArticles, scraps] = await Promise.all([
       fetchCoreGames(),
+      fetchContentRefs().catch(error => { console.error('[sales-catalog] content refs query failed', error?.message || error); return new Map(); }),
       fetchSalvagedArticles().catch(error => { console.error('[sales-catalog] salvaged article query failed', error?.message || error); return new Map(); }),
       fetchScraps()
     ]);
     const coreRows = games.map(game => {
-      const storeUrl = String(game.storeUrl || '');
+      const gameId = String(game.id || '');
+      const enrichedGame = { ...game, refs: [...asArray(game.refs), ...asArray(contentRefs.get(gameId))] };
+      const storeUrl = String(enrichedGame.storeUrl || '');
       const appid = steamAppIdFromUrl(storeUrl);
-      const playlistMeta = refMetadata(game, 'playlist');
-      const salvagedArticle = salvagedArticles.get(String(game.id || '')) || null;
+      const playlistMeta = refMetadata(enrichedGame, 'playlist');
+      const salvagedArticle = salvagedArticles.get(gameId) || null;
       const articleUrl = String(salvagedArticle?.url || '');
-      const scrapMeta = [...refMetadata(game, 'scrap'), ...refMetadata(game, 'scraps'), ...refMetadata(game, 'scrapbook')];
+      const scrapMeta = [...refMetadata(enrichedGame, 'scrap'), ...refMetadata(enrichedGame, 'scraps'), ...refMetadata(enrichedGame, 'scrapbook')];
       const scrapUrl = scrapMeta.map(meta => validContentUrl(meta?.url || meta?.scrap || meta?.scrap_url || meta?.scrapUrl || '')).find(Boolean) || '';
       return {
-        id: String(game.id || ''), title: String(game.title || ''), description: String(game.description || ''), storeUrl, articleUrl,
+        id: gameId, title: String(enrichedGame.title || ''), description: String(enrichedGame.description || ''), storeUrl, articleUrl,
         salvagedArticle: salvagedArticle ? { title: salvagedArticle.title, status: salvagedArticle.status, url: articleUrl } : null,
-        category: String(game.category || ''), tags: Array.isArray(game.tags) ? game.tags.map(String).filter(Boolean) : [], appid,
-        steamUrl: appid ? `https://store.steampowered.com/app/${appid}/` : '', sources: contentSources(game, Boolean(salvagedArticle)),
-        sourceOfTruth: String(game.sourceOfTruth || ''), thumbnail: thumbnailFromRefs(game),
+        category: String(enrichedGame.category || ''), tags: Array.isArray(enrichedGame.tags) ? enrichedGame.tags.map(String).filter(Boolean) : [], appid,
+        steamUrl: appid ? `https://store.steampowered.com/app/${appid}/` : '', sources: contentSources(enrichedGame, Boolean(salvagedArticle)),
+        sourceOfTruth: String(enrichedGame.sourceOfTruth || ''), thumbnail: thumbnailFromRefs(enrichedGame),
         playlists: playlistMeta.map(meta => String(meta?.playlist_id || '')).filter(Boolean), scrapUrl
       };
     });
@@ -210,7 +239,7 @@ export default async function handler(req, res) {
     const scrapRows = rows.filter(row => (row.sources || []).includes('scrap'));
     const scrapSteamLinked = scrapRows.filter(row => row.appid).length;
     return res.status(200).json({
-      ok: true, source: 'shared-content-core + scraps-recovery', articlePolicy: 'archive-salvager-only', scrapPolicy: 'scraps-recovery + core refs',
+      ok: true, source: 'shared-content-core + content-refs + scraps-recovery', articlePolicy: 'archive-salvager-only', scrapPolicy: 'scraps-recovery + core refs',
       updatedAt: new Date().toISOString(),
       summary: {
         total: rows.length, steamLinked, articleRows: articleRows.length, articleWithoutSteam,
