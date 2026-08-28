@@ -1,0 +1,44 @@
+---
+export const prerender = true;
+---
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="index,follow" />
+  <meta name="description" content="HARF-WAYで紹介したゲームのSteamセール情報。現在価格、割引率、500円以下の作品をまとめてチェックできます。" />
+  <title>SALE WATCH | HARF-WAY</title>
+  <style>
+    :root{color-scheme:dark;--bg:#080808;--panel:#111112;--panel2:#171719;--line:#2e2e31;--muted:#96969a;--accent:#eaff37;--ok:#caff8e;--danger:#ff9ba5;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:#f7f7f2}a{color:inherit}.wrap{width:min(1380px,calc(100% - 32px));margin:auto}.hero{padding:62px 0 28px;border-bottom:1px solid #202023;background:radial-gradient(circle at 75% 0,#25280c 0,transparent 38%)}.eyebrow{font-size:11px;letter-spacing:.16em;font-weight:950;color:var(--accent)}h1{font-size:clamp(42px,8vw,96px);line-height:.86;letter-spacing:-.055em;margin:13px 0 18px}.lead{font-size:clamp(15px,2vw,20px);line-height:1.75;max-width:720px;color:#c7c7c4}.updated{margin-top:16px;font-size:11px;color:var(--muted)}.summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:26px 0 0}.summary div{padding:16px;border:1px solid var(--line);border-radius:15px;background:#101012}.summary span{display:block;color:var(--muted);font-size:10px;font-weight:800}.summary b{display:block;font-size:31px;margin-top:7px}.toolbar{position:sticky;top:0;z-index:10;padding:12px 0;border-bottom:1px solid #202023;background:#080808e8;backdrop-filter:blur(12px)}.filters{display:flex;gap:8px;overflow:auto}.filter{border:1px solid var(--line);background:#141416;color:#d1d1ce;border-radius:999px;padding:10px 15px;font:800 12px/1 inherit;white-space:nowrap;cursor:pointer}.filter.on{background:var(--accent);color:#111;border-color:var(--accent)}main{padding:24px 0 60px}.status{padding:28px 0;color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.card{border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--panel);min-width:0;transition:.16s transform,.16s border-color}.card:hover{transform:translateY(-2px);border-color:#515155}.visual{position:relative;aspect-ratio:460/215;background:#171719;overflow:hidden}.visual img{width:100%;height:100%;object-fit:cover;display:block}.off{position:absolute;left:12px;top:12px;min-width:66px;padding:7px 10px;border-radius:999px;background:var(--accent);color:#111;font-size:13px;font-weight:950;text-align:center;box-shadow:0 4px 22px #0008}.cheap{position:absolute;right:12px;top:12px;padding:7px 10px;border-radius:999px;background:#0d0d0de6;border:1px solid #ffffff22;color:#fff;font-size:11px;font-weight:900}.body{padding:16px}.meta{font-size:10px;color:var(--muted);min-height:15px}.title{font-size:20px;line-height:1.25;font-weight:950;margin:8px 0 15px;letter-spacing:-.02em}.price{display:flex;align-items:baseline;gap:9px;margin-bottom:15px}.price del{font-size:12px;color:#757579}.price strong{font-size:27px;letter-spacing:-.03em}.tags{display:flex;gap:5px;flex-wrap:wrap;min-height:25px}.tag{padding:5px 7px;border:1px solid #333337;border-radius:999px;color:#aaa;font-size:9px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}.btn{display:grid;place-items:center;min-height:42px;border:1px solid var(--line);border-radius:11px;text-decoration:none;font-size:12px;font-weight:900;background:#18181a}.btn.primary{background:var(--accent);border-color:var(--accent);color:#111}.empty{grid-column:1/-1;padding:70px 20px;border:1px dashed #353538;border-radius:18px;text-align:center;color:var(--muted)}.note{margin-top:22px;padding:14px 16px;border:1px solid #343426;border-radius:13px;background:#13130d;color:#b9b99a;font-size:11px;line-height:1.7}.error{color:var(--danger)}
+    @media(max-width:980px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:640px){.wrap{width:min(100% - 22px,1380px)}.hero{padding-top:42px}.summary{grid-template-columns:repeat(3,1fr)}.summary div{padding:12px 10px}.summary b{font-size:24px}.grid{grid-template-columns:1fr}.title{font-size:19px}}
+  </style>
+</head>
+<body>
+  <header class="hero"><div class="wrap">
+    <div class="eyebrow">HARF-WAY / STEAM SALE CURATION</div>
+    <h1>SALE<br>WATCH</h1>
+    <p class="lead">HARF-WAYで紹介したゲームの中から、いまSteamで安くなっている作品だけを拾っています。知らなかった一本を、買いやすいタイミングから見つけるための棚です。</p>
+    <div id="updated" class="updated">価格を確認しています…</div>
+    <div class="summary"><div><span>セール中</span><b id="saleCount">—</b></div><div><span>500円以下</span><b id="cheapCount">—</b></div><div><span>50%以上OFF</span><b id="halfCount">—</b></div></div>
+  </div></header>
+  <div class="toolbar"><div class="wrap"><div class="filters">
+    <button class="filter on" data-filter="sale">セール中</button>
+    <button class="filter" data-filter="under500">500円以下</button>
+    <button class="filter" data-filter="half">50%以上OFF</button>
+    <button class="filter" data-filter="all">Steam掲載作品すべて</button>
+  </div></div></div>
+  <main><div class="wrap"><div id="status" class="status">読み込み中…</div><section id="grid" class="grid"></section><div class="note">価格は日本向けSteamストアの表示を定期取得しています。セール終了、地域差、Steam側の反映タイミングなどにより、表示価格とストア上の価格が一時的に異なる場合があります。購入前にSteam側の価格をご確認ください。</div></div></main>
+<script>
+  const $=s=>document.querySelector(s);let data={rows:[],summary:{}};let filter='sale';
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const finite=n=>Number.isFinite(Number(n));
+  function rows(){return (data.rows||[]).filter(r=>{const p=r.price||{};if(filter==='sale')return !!p.onSale;if(filter==='under500')return p.onSale&&finite(p.finalYen)&&Number(p.finalYen)<=500;if(filter==='half')return p.onSale&&Number(p.discountPercent||0)>=50;return p.ok&&p.priceAvailable})}
+  function image(r){return r.price?.headerImage||r.price?.capsuleImage||r.thumbnail||''}
+  function render(){const s=data.summary||{};$('#saleCount').textContent=Number(s.onSale||0);$('#cheapCount').textContent=Number(s.under500||0);$('#halfCount').textContent=Number(s.halfOff||0);const list=rows();$('#status').textContent=`${list.length}作品`;if(!list.length){$('#grid').innerHTML='<div class="empty">いま、この条件に当てはまる作品はありません。</div>';return}$('#grid').innerHTML=list.map(r=>{const p=r.price||{},img=image(r),under=p.onSale&&finite(p.finalYen)&&Number(p.finalYen)<=500;return `<article class="card"><div class="visual">${img?`<img src="${esc(img)}" alt="${esc(r.title)}" loading="lazy" />`:''}${p.onSale?`<span class="off">-${Number(p.discountPercent||0)}%</span>`:''}${under?'<span class="cheap">500円以下</span>':''}</div><div class="body"><div class="meta">${esc(r.category||'Steam')}</div><div class="title">${esc(r.title||p.steamName||'タイトルなし')}</div><div class="price">${p.onSale&&p.initialFormatted?`<del>${esc(p.initialFormatted)}</del>`:''}<strong>${esc(p.finalFormatted||'価格未取得')}</strong></div><div class="tags">${(r.tags||[]).slice(0,4).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div><div class="actions"><a class="btn primary" href="${esc(r.steamUrl)}" target="_blank" rel="noopener">Steamで見る</a>${r.articleUrl?`<a class="btn" href="${esc(r.articleUrl)}" target="_blank" rel="noopener">HARF-WAY記事</a>`:'<span></span>'}</div></div></article>`}).join('')}
+  document.querySelectorAll('.filter').forEach(btn=>btn.onclick=()=>{document.querySelectorAll('.filter').forEach(x=>x.classList.remove('on'));btn.classList.add('on');filter=btn.dataset.filter;render()});
+  fetch('/api/steam-sale-public').then(async r=>{const j=await r.json().catch(()=>({}));if(!r.ok||!j.ok)throw Error(j.error||`HTTP ${r.status}`);return j}).then(j=>{data=j;$('#updated').textContent=`最終価格確認 ${new Date(j.updatedAt).toLocaleString('ja-JP')} / 日本向け`;render()}).catch(e=>{$('#status').innerHTML=`<span class="error">セール情報を読み込めませんでした。時間を置いて再度お試しください。</span>`;$('#updated').textContent='価格取得エラー'});
+</script>
+</body>
+</html>
