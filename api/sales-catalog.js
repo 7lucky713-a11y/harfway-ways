@@ -2,7 +2,7 @@ import { neon } from '@neondatabase/serverless';
 import coreGamesHandler from './core/games.js';
 import { steamAppIdFromUrl } from './_steam-sale-core.js';
 
-const SCRAPS_BACKEND_URL = process.env.SCRAPS_BACKEND_URL || 'https://harfway-scraps-backend.vercel.app/api/scraps';
+const SCRAPS_BACKEND_URL = process.env.SCRAPS_BACKEND_URL || 'https://harfway-scraps-recovery.vercel.app/api/scraps';
 const SCRAPBOOK_PUBLIC_URL = process.env.SCRAPBOOK_PUBLIC_URL || 'https://harf-way-game-scrapbook.vercel.app/';
 
 function getDatabaseUrl() {
@@ -97,8 +97,8 @@ function normalizeScrap(raw, index) {
   const title = pickString(merged, ['post_title', 'game_title', 'gameTitle', 'title', 'name']);
   const explicitAppid = pickString(merged, ['appid', 'appId', 'app_id', 'steam_appid', 'steamAppId']);
   const steamCandidates = [
-    pickString(merged, ['steam_url', 'steamUrl', 'store_url', 'storeUrl', 'game_url', 'gameUrl']),
-    pickString(nested, ['steam_url', 'steamUrl', 'store_url', 'storeUrl'])
+    pickString(merged, ['store', 'steam_url', 'steamUrl', 'store_url', 'storeUrl', 'sourceStore', 'overrideStore', 'game_url', 'gameUrl']),
+    pickString(nested, ['store', 'steam_url', 'steamUrl', 'store_url', 'storeUrl', 'sourceStore', 'overrideStore'])
   ].filter(Boolean);
   let appid = /^\d+$/.test(explicitAppid) ? explicitAppid : '';
   let storeUrl = '';
@@ -113,7 +113,7 @@ function normalizeScrap(raw, index) {
   if (!storeUrl && appid) storeUrl = `https://store.steampowered.com/app/${appid}/`;
 
   const scrapUrl = [
-    pickString(merged, ['scrap_url', 'scrapUrl', 'public_url', 'publicUrl', 'permalink', 'page_url', 'pageUrl', 'source_url', 'sourceUrl']),
+    pickString(merged, ['scrap', 'scrap_url', 'scrapUrl', 'public_url', 'publicUrl', 'permalink', 'page_url', 'pageUrl', 'source_url', 'sourceUrl']),
     pickString(merged, ['url'])
   ].map(validContentUrl).find(Boolean) || SCRAPBOOK_PUBLIC_URL;
 
@@ -123,7 +123,7 @@ function normalizeScrap(raw, index) {
   return {
     id: `scrap:${id}`,
     title,
-    description: pickString(merged, ['petit_summary', 'summary', 'description', 'excerpt']),
+    description: pickString(merged, ['petit_summary', 'summary', 'description', 'excerpt', 'note']),
     storeUrl,
     articleUrl: '',
     salvagedArticle: null,
@@ -247,7 +247,7 @@ export default async function handler(req, res) {
       const salvagedArticle = salvagedArticles.get(String(game.id || '')) || null;
       const articleUrl = String(salvagedArticle?.url || '');
       const scrapMeta = [...refMetadata(game, 'scrap'), ...refMetadata(game, 'scraps'), ...refMetadata(game, 'scrapbook')];
-      const scrapUrl = scrapMeta.map(meta => validContentUrl(meta?.url || meta?.scrap_url || meta?.scrapUrl || '')).find(Boolean) || '';
+      const scrapUrl = scrapMeta.map(meta => validContentUrl(meta?.url || meta?.scrap || meta?.scrap_url || meta?.scrapUrl || '')).find(Boolean) || '';
       return {
         id: String(game.id || ''),
         title: String(game.title || ''),
@@ -278,9 +278,9 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       ok: true,
-      source: 'shared-content-core + scraps-backend',
+      source: 'shared-content-core + scraps-recovery',
       articlePolicy: 'archive-salvager-only',
-      scrapPolicy: 'scraps-backend + core refs',
+      scrapPolicy: 'scraps-recovery + core refs',
       updatedAt: new Date().toISOString(),
       summary: {
         total: rows.length,
