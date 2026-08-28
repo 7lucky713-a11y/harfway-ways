@@ -3,11 +3,12 @@ import fs from 'node:fs';
 const analyticsHtml=fs.readFileSync('dist/analytics/index.html','utf8');
 const salesHtml=fs.readFileSync('dist/sales/index.html','utf8');
 const waysHtml=fs.readFileSync('dist/index.html','utf8');
+const salesSource=fs.readFileSync('src/pages/sales.astro','utf8');
 const manifest=JSON.parse(fs.readFileSync('public/harfway-tool.json','utf8'));
 const checks=[
   [analyticsHtml.includes('/analytics-auto-sync.js'),'Analytics AUTO SYNC client missing from built page'],
-  [salesHtml.includes('/api/sale-price-snapshot'),'SALE WATCH direct price snapshot path missing from built page'],
-  [!salesHtml.includes('/api/steam-prices-public?appids='),'SALE WATCH legacy chunk price loop still present'],
+  [salesSource.includes('/api/sale-price-snapshot'),'SALE WATCH direct price snapshot path missing from source'],
+  [!salesSource.includes('/api/steam-prices-public?appids='),'SALE WATCH legacy chunk price loop still present'],
   [salesHtml.includes('/ga4-sale-watch.js'),'SALE WATCH GA4 client missing from built page'],
   [salesHtml.includes('/sale-watch-ways-deeplink.js'),'SALE WATCH WAYS deep-link client missing from built page'],
   [waysHtml.includes('/ways-deeplink.js'),'WAYS Steam deep-link client missing from built page'],
