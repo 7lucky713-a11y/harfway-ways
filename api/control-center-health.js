@@ -8,6 +8,26 @@ const BASELINE_HUB_IDS=new Set([
   'db-importer','kirehashi-read-watch'
 ]);
 
+// Sub-routes living inside an existing Vercel project do not create a new HUB id.
+// Keep those first-class tools here so Control Center still treats them like synced tools.
+const LOCAL_AUTO_ITEMS=[
+  {
+    id:'sale-watch',
+    public_url:'https://harfway-playback.vercel.app/sales',
+    admin_url:'https://harfway-playback.vercel.app/sales-admin',
+    sync_source:'manifest',
+    manifest:{
+      harfway:true,
+      name:'SALE WATCH',
+      group:'OPERATE',
+      role:'Steamセール監視',
+      description:'HARF-WAYで紹介したゲームをCore横断で監視し、現在のSteamセールを管理・公開。',
+      public_url:'https://harfway-playback.vercel.app/sales',
+      admin_url:'https://harfway-playback.vercel.app/sales-admin'
+    }
+  }
+];
+
 const CORE_CHECKS=[
   {id:'hub',name:'VERCEL HUB',kind:'ops',url:'https://harfway-vercel-hub.vercel.app/'},
   {id:'ways',name:'WAYS',kind:'publish',url:'https://harfway-playback.vercel.app/'},
@@ -75,8 +95,10 @@ export default async function handler(req,res){
     Promise.all(CORE_CHECKS.map(async item=>({...item,...await timedFetch(item.url)})))
   ]);
   const hubItems=Array.isArray(hubResult?.data?.items)?hubResult.data.items:[];
-  const autoCandidates=hubItems.filter(item=>!BASELINE_HUB_IDS.has(String(item?.id||'')));
-  const autoItems=await Promise.all(autoCandidates.slice(0,20).map(withManifest));
+  const localIds=new Set(LOCAL_AUTO_ITEMS.map(item=>String(item.id||'')));
+  const autoCandidates=hubItems.filter(item=>!BASELINE_HUB_IDS.has(String(item?.id||''))&&!localIds.has(String(item?.id||'')));
+  const remoteAutoItems=await Promise.all(autoCandidates.slice(0,20).map(withManifest));
+  const autoItems=[...LOCAL_AUTO_ITEMS,...remoteAutoItems].slice(0,20);
   const healthy=checks.filter(x=>x.ok).length;
   return res.status(200).json({
     ok:true,
