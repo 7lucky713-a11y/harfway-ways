@@ -26,6 +26,12 @@ function patchPortalJs(text) {
     );
 }
 
+function patchRootHtml(text) {
+  const shim = '<script src="/ads-portal-r2-shim.js"></script>';
+  if (text.includes(shim)) return text;
+  return text.includes('<head>') ? text.replace('<head>', `<head>${shim}`) : `${shim}${text}`;
+}
+
 export default async function handler(req, res) {
   const raw = Array.isArray(req.query?.path) ? req.query.path[0] : req.query?.path;
   const path = typeof raw === 'string' && raw ? raw : '/';
@@ -37,7 +43,7 @@ export default async function handler(req, res) {
 
   try {
     const upstream = await fetch(`${UPSTREAM}${path}`, {
-      headers: { 'User-Agent': 'HARF-WAY-ADS-Portal-Proxy/1.0' }
+      headers: { 'User-Agent': 'HARF-WAY-ADS-Portal-Proxy/2.0' }
     });
 
     if (!upstream.ok) {
@@ -49,11 +55,11 @@ export default async function handler(req, res) {
     const headers = cleanHeaders(upstream.headers);
     for (const [key, value] of Object.entries(headers)) res.setHeader(key, value);
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
-    res.setHeader('X-HARFWAY-ADS-PORTAL', 'video-10mb-image-3mb');
+    res.setHeader('X-HARFWAY-ADS-PORTAL', 'video-10mb-r2-image-3mb');
 
     if (path === '/') {
       res.setHeader('Cache-Control', 'no-store');
-      res.status(200).send(await upstream.text());
+      res.status(200).send(patchRootHtml(await upstream.text()));
       return;
     }
 
