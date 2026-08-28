@@ -1,0 +1,81 @@
+const UPSTREAM = 'https://harfway-ads-prototype.vercel.app';
+
+function allowedPath(path) {
+  return path === '/' || path.startsWith('/_next/static/');
+}
+
+function cleanHeaders(source) {
+  const headers = {};
+  const allowed = ['content-type', 'etag', 'last-modified'];
+  for (const key of allowed) {
+    const value = source.get(key);
+    if (value) headers[key] = value;
+  }
+  return headers;
+}
+
+function patchPortalJs(text) {
+  let out = text;
+  out = out.replaceAll(
+    'if(e.size>3145728)return void h("素材は3MBまでです。");',
+    'if(e.type.startsWith("video/")&&e.size>10485760)return void h("動画は10MBまでです。");if(e.type.startsWith("image/")&&e.size>3145728)return void h("画像は3MBまでです。");'
+  );
+  out = out.replaceAll(
+    'JPG / PNG / WebP / MP4 / WebM・3MBまで',
+    'JPG / PNG / WebP：3MBまで ／ MP4 / WebM：10MBまで'
+  );
+  return out;
+}
+
+function patchRootHtml(text) {
+  const bootstrap = '<script>try{history.replaceState(null,"","/")}catch(e){}</script><script src="/ads-portal-10mb-shim.js"></script>';
+  return text.replace('<head>', `<head>${bootstrap}`);
+}
+
+export default async function handler(req, res) {
+  const raw = Array.isArray(req.query?.path) ? req.query.path[0] : req.query?.path;
+  const path = typeof raw === 'string' && raw ? raw : '/';
+
+  if (!allowedPath(path)) {
+    res.status(400).json({ error: 'Unsupported portal asset path' });
+    return;
+  }
+
+  try {
+    const upstream = await fetch(`${UPSTREAM}${path}`, {
+      headers: { 'User-Agent': 'HARF-WAY-ADS-Portal-Proxy/1.0' }
+    });
+
+    if (!upstream.ok) {
+      res.status(upstream.status).send(await upstream.text());
+      return;
+    }
+
+    const contentType = upstream.headers.get('content-type') || 'application/octet-stream';
+    const headers = cleanHeaders(upstream.headers);
+    for (const [key, value] of Object.entries(headers)) res.setHeader(key, value);
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    res.setHeader('X-HARFWAY-ADS-PORTAL', '10mb-r2');
+
+    if (path === '/') {
+      const html = patchRootHtml(await upstream.text());
+      res.setHeader('Cache-Control', 'no-store');
+      res.status(200).send(html);
+      return;
+    }
+
+    if (/javascript|text\//i.test(contentType) || path.endsWith('.js')) {
+      const text = patchPortalJs(await upstream.text());
+      res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
+      res.status(200).send(text);
+      return;
+    }
+
+    const bytes = Buffer.from(await upstream.arrayBuffer());
+    res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
+    res.status(200).send(bytes);
+  } catch (error) {
+    console.error('ADS portal proxy failed', error);
+    res.status(502).json({ error: 'Advertiser portal is temporarily unavailable' });
+  }
+}
