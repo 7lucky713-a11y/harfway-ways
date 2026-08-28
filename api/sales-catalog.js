@@ -1,5 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import coreGamesHandler from './core/games.js';
+import gamesLiveHandler from './games-live.js';
 import { steamAppIdFromUrl } from './_steam-sale-core.js';
 
 const SCRAPS_BACKEND_URL = process.env.SCRAPS_RECOVERY_URL || 'https://harfway-scraps-recovery.vercel.app/api/scraps';
@@ -16,21 +17,39 @@ function getDatabaseUrl() {
   );
 }
 
-async function fetchCoreGames() {
+async function callHandler(handler, req) {
   let statusCode = 200;
   let payload = null;
-  const req = { method: 'GET', query: { limit: '500' } };
   const res = {
     setHeader() {},
     status(code) { statusCode = code; return this; },
     json(value) { payload = value; return this; },
     end(value) { payload = value; return this; }
   };
-  await coreGamesHandler(req, res);
+  await handler(req, res);
+  return { statusCode, payload };
+}
+
+async function fetchCoreGames() {
+  const { statusCode, payload } = await callHandler(coreGamesHandler, { method: 'GET', query: { limit: '500' } });
   if (statusCode >= 400 || !payload?.ok || !Array.isArray(payload.games)) {
     throw new Error(payload?.error || `core_${statusCode}`);
   }
   return payload.games;
+}
+
+async function fetchWaysGames() {
+  try {
+    const { statusCode, payload } = await callHandler(gamesLiveHandler, { method: 'GET', query: {} });
+    if (statusCode >= 400 || !payload?.ok || !Array.isArray(payload.entries)) {
+      throw new Error(payload?.error || `ways_${statusCode}`);
+    }
+    const rows = payload.entries.map(normalizeWays).filter(row => row.title || row.appid);
+    return { ok: true, rows, rawCount: payload.entries.length, core: payload.core || null, source: String(payload.source || '') };
+  } catch (error) {
+    console.error('[sales-catalog] ways fetch failed', error?.message || error);
+    return { ok: false, rows: [], rawCount: 0, error: String(error?.message || 'fetch_failed') };
+  }
 }
 
 async function fetchContentRefs() {
@@ -100,6 +119,30 @@ function validContentUrl(value) {
   const raw = String(value || '').trim();
   if (!raw || /store\.steampowered\.com/i.test(raw)) return '';
   try { const u = new URL(raw); return /^https?:$/.test(u.protocol) ? raw : ''; } catch { return ''; }
+}
+
+function normalizeWays(raw, index) {
+  const waysId = String(raw?.id || `game-${index}`);
+  const storeUrl = String(raw?.storeUrl || raw?.store_url || '');
+  const appid = steamAppIdFromUrl(storeUrl);
+  return {
+    id: `ways:${waysId}`,
+    waysId,
+    title: String(raw?.title || ''),
+    description: String(raw?.description || ''),
+    storeUrl,
+    articleUrl: '',
+    salvagedArticle: null,
+    category: String(raw?.category || ''),
+    tags: Array.isArray(raw?.tags) ? raw.tags.map(String).map(x => x.trim()).filter(Boolean) : [],
+    appid,
+    steamUrl: appid ? `https://store.steampowered.com/app/${appid}/` : '',
+    sources: ['ways'],
+    sourceOfTruth: 'ways-live',
+    thumbnail: String(raw?.thumbnailUrl || raw?.thumbnail || ''),
+    playlists: [],
+    scrapUrl: ''
+  };
 }
 
 function normalizeScrap(raw, index) {
@@ -176,6 +219,7 @@ function thumbnailFromRefs(game) {
   return '';
 }
 function keyTitle(value) { return String(value || '').trim().toLocaleLowerCase('ja-JP').replace(/[\s\u3000]+/g, ' '); }
+
 function mergeScraps(coreRows, scrapRows) {
   const rows = coreRows.map(row => ({ ...row, sources: [...new Set(row.sources || [])] }));
   const byApp = new Map(rows.filter(r => r.appid).map(r => [String(r.appid), r]));
@@ -199,17 +243,50 @@ function mergeScraps(coreRows, scrapRows) {
   return rows;
 }
 
+function mergeWays(baseRows, waysRows) {
+  const rows = baseRows;
+  const byId = new Map(rows.filter(r => r.id).map(r => [String(r.id), r]));
+  const byApp = new Map(rows.filter(r => r.appid).map(r => [String(r.appid), r]));
+  const byTitle = new Map(rows.filter(r => r.title).map(r => [keyTitle(r.title), r]));
+  for (const ways of waysRows) {
+    let target = ways.waysId ? byId.get(String(ways.waysId)) : null;
+    if (!target && ways.appid) target = byApp.get(String(ways.appid)) || null;
+    if (!target && ways.title) target = byTitle.get(keyTitle(ways.title)) || null;
+    if (target) {
+      target.sources = [...new Set([...(target.sources || []), 'ways'])];
+      target.waysId = ways.waysId;
+      if (!target.thumbnail && ways.thumbnail) target.thumbnail = ways.thumbnail;
+      if (!target.description && ways.description) target.description = ways.description;
+      if (!target.category && ways.category) target.category = ways.category;
+      if ((!target.tags || !target.tags.length) && ways.tags?.length) target.tags = ways.tags;
+      if (!target.appid && ways.appid) {
+        target.appid = ways.appid;
+        target.steamUrl = ways.steamUrl;
+        target.storeUrl = ways.storeUrl;
+        byApp.set(String(ways.appid), target);
+      }
+      continue;
+    }
+    rows.push(ways);
+    byId.set(String(ways.id), ways);
+    if (ways.appid) byApp.set(String(ways.appid), ways);
+    if (ways.title) byTitle.set(keyTitle(ways.title), ways);
+  }
+  return rows;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
   res.setHeader('X-Robots-Tag', 'index, follow');
   if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'method_not_allowed' });
   try {
-    const [games, contentRefs, salvagedArticles, scraps] = await Promise.all([
+    const [games, contentRefs, salvagedArticles, scraps, ways] = await Promise.all([
       fetchCoreGames(),
       fetchContentRefs().catch(error => { console.error('[sales-catalog] content refs query failed', error?.message || error); return new Map(); }),
       fetchSalvagedArticles().catch(error => { console.error('[sales-catalog] salvaged article query failed', error?.message || error); return new Map(); }),
-      fetchScraps()
+      fetchScraps(),
+      fetchWaysGames()
     ]);
     const coreRows = games.map(game => {
       const gameId = String(game.id || '');
@@ -230,7 +307,7 @@ export default async function handler(req, res) {
         playlists: playlistMeta.map(meta => String(meta?.playlist_id || '')).filter(Boolean), scrapUrl
       };
     });
-    const rows = mergeScraps(coreRows, scraps.rows);
+    const rows = mergeWays(mergeScraps(coreRows, scraps.rows), ways.rows);
     const sourceCounts = {};
     for (const row of rows) for (const source of row.sources || []) sourceCounts[source] = (sourceCounts[source] || 0) + 1;
     const steamLinked = rows.filter(row => row.appid).length;
@@ -238,12 +315,20 @@ export default async function handler(req, res) {
     const articleWithoutSteam = articleRows.filter(row => !row.appid && row.articleUrl).length;
     const scrapRows = rows.filter(row => (row.sources || []).includes('scrap'));
     const scrapSteamLinked = scrapRows.filter(row => row.appid).length;
+    const waysRows = rows.filter(row => (row.sources || []).includes('ways'));
+    const waysSteamLinked = waysRows.filter(row => row.appid).length;
     return res.status(200).json({
-      ok: true, source: 'shared-content-core + content-refs + scraps-recovery', articlePolicy: 'archive-salvager-only', scrapPolicy: 'scraps-recovery + core refs',
+      ok: true,
+      source: 'shared-content-core + content-refs + scraps-recovery + ways-live',
+      articlePolicy: 'archive-salvager-only',
+      scrapPolicy: 'scraps-recovery + core refs',
+      waysPolicy: 'games-live + core refs',
       updatedAt: new Date().toISOString(),
       summary: {
         total: rows.length, steamLinked, articleRows: articleRows.length, articleWithoutSteam,
-        scrapRows: scrapRows.length, scrapSteamLinked, scrapsBackendRaw: scraps.rawCount, scrapsBackendOk: scraps.ok, sourceCounts
+        scrapRows: scrapRows.length, scrapSteamLinked, scrapsBackendRaw: scraps.rawCount, scrapsBackendOk: scraps.ok,
+        waysRows: waysRows.length, waysSteamLinked, waysBackendRaw: ways.rawCount, waysBackendOk: ways.ok,
+        waysCoreMatched: Number(ways.core?.matched || 0), waysCoreTotal: Number(ways.core?.total || ways.rawCount || 0), sourceCounts
       },
       rows
     });
