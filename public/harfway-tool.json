@@ -13,5 +13,24 @@
   "control_center": {
     "sync": true,
     "health_url": "https://harfway-playback.vercel.app/"
+  },
+  "analytics": {
+    "enabled": true,
+    "service_name": "ways",
+    "label": "WAYS",
+    "content_type": "public_discovery",
+    "production_url": "https://harfway-playback.vercel.app/",
+    "host_aliases": [
+      "https://harfway-playback-harf-way.vercel.app/"
+    ],
+    "events": [
+      "page_view",
+      "game_view",
+      "game_select",
+      "video_start",
+      "video_50",
+      "video_complete",
+      "store_click"
+    ]
   }
 }
