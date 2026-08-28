@@ -172,6 +172,34 @@ function extractPlatformLinks(html,baseUrl){
   return out;
 }
 
+function normalizedTitle(value=''){
+  return String(value).normalize('NFKC').toLowerCase()
+    .replace(/[™®©]/g,'')
+    .replace(/[\s:：・!！?？'"“”‘’()（）\[\]【】_\-–—―～~,.、。]+/g,'');
+}
+function steamTitleScore(query='',candidate=''){
+  const a=normalizedTitle(query),b=normalizedTitle(candidate);if(!a||!b)return 0;
+  if(a===b)return 100;
+  if(a.length>=4&&(a.includes(b)||b.includes(a)))return 94;
+  const qa=String(query).normalize('NFKC').toLowerCase().split(/[\s:：・!！?？'"“”‘’()（）\[\]【】_\-–—―～~,.、。]+/).filter(x=>x.length>=2);
+  const cb=String(candidate).normalize('NFKC').toLowerCase();
+  if(!qa.length)return 0;
+  return Math.round(qa.filter(x=>cb.includes(x)).length/qa.length*82);
+}
+async function discoverSteamLink(gameName=''){
+  const title=cleanCandidate(gameName);if(!title||title.length<2)return null;
+  try{
+    const endpoint=`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(title)}&l=japanese&cc=JP`;
+    const r=await fetch(endpoint,{headers:{'user-agent':'HARF-WAY Archive Salvager/1.0','accept':'application/json'},redirect:'follow'});
+    if(!r.ok)return null;
+    const data=await r.json(),items=Array.isArray(data?.items)?data.items:[];
+    const ranked=items.map(item=>({item,score:steamTitleScore(title,item?.name||'')})).filter(x=>x.item?.id&&x.score>=88).sort((a,b)=>b.score-a.score);
+    const best=ranked[0];if(!best)return null;
+    const classified=classifyGameLink(`https://store.steampowered.com/app/${best.item.id}/`,'steam');if(!classified)return null;
+    return {name:title,platform:'steam',label:GAME_LINK_LABELS.steam,url:classified.url,externalId:classified.externalId,source:'steam-title-search',confidence:best.score,matchedTitle:String(best.item.name||'')};
+  }catch{return null}
+}
+
 function extractImages(html,baseUrl){
   const result=[],seen=new Set(),raw=String(html||'');
   const featuredRaw=raw.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)?.[1]||'';
@@ -241,11 +269,17 @@ export default async function handler(req,res){
     const nameHints=extractNameHints(hintsSource,finalUrl,title);
     let platformLinks=extractPlatformLinks(hintsSource,finalUrl);
     let singleGamePage=false;try{singleGamePage=/^\/game\/[^/]+\/?$/i.test(new URL(finalUrl).pathname)}catch{}
-    if(singleGamePage&&platformLinks.length){
+    if(singleGamePage){
       const pageGameName=nameHints.find(x=>x.confidence>=90)?.name||nameHints[0]?.name||'';
-      if(pageGameName)platformLinks=platformLinks.map(x=>({...x,name:pageGameName,source:`${x.source}+single-game-page`}));
+      if(pageGameName&&platformLinks.length){
+        platformLinks=platformLinks.map(x=>({...x,name:pageGameName,source:`${x.source}+single-game-page`}));
+      }
+      if(pageGameName&&!platformLinks.some(x=>x.platform==='steam')){
+        const steam=await discoverSteamLink(pageGameName);
+        if(steam)platformLinks.push(steam);
+      }
     }
-    const storeLinks=platformLinks.map(x=>({name:x.name,url:x.url,source:x.source,platform:x.platform,label:x.label,externalId:x.externalId,confidence:98}));
+    const storeLinks=platformLinks.map(x=>({name:x.name,url:x.url,source:x.source,platform:x.platform,label:x.label,externalId:x.externalId,confidence:Number(x.confidence||98),matchedTitle:x.matchedTitle||''}));
     return res.status(200).json({ok:true,article:{url:wp?.link||finalUrl,title,date,text:body.slice(0,150000),featuredImage,images,nameHints,storeLinks,platformLinks,contentSource,wp:{id:wp?.id||null,restBase:wp?.restBase||null,fieldCandidates:wp?.fieldCandidates||[]}}});
   }catch(error){console.error('[archive-fetch]',error);return res.status(500).json({ok:false,error:'archive_fetch_failed'})}
 }
