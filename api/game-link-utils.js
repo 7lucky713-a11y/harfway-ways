@@ -74,9 +74,13 @@ export function normalizeGameLinks(items=[]){
   const result=[],seen=new Set();
   for(const raw of Array.isArray(items)?items:[]){
     const item=typeof raw==='string'?{url:raw}:raw||{};
-    let classified=classifyGameLink(item.url,item.service);
+    const requestedService=String(item.service||'').trim();
+    // game_refs also stores WAYS / Playlist / Yorimichi relationships. Never
+    // reinterpret those unrelated refs as generic web/store links.
+    if(requestedService&&!GAME_LINK_SERVICES.includes(requestedService))continue;
+    let classified=classifyGameLink(item.url,requestedService);
     if(!classified)continue;
-    if(item.service==='official'&&classified.service==='official')classified={...classified,label:GAME_LINK_LABELS.official};
+    if(requestedService==='official'&&classified.service==='official')classified={...classified,label:GAME_LINK_LABELS.official};
     const key=`${classified.service}:${classified.externalId}`;
     if(seen.has(key))continue;
     seen.add(key);
