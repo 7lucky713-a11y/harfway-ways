@@ -23,10 +23,14 @@ function hostname(value){
   try{return new URL(String(value||'')).hostname.toLowerCase()}catch{return ''}
 }
 
-function manifestUrl(item={}){
-  const raw=String(item.admin_url||item.public_url||'').trim();
-  if(!raw)return '';
-  try{return new URL('/harfway-tool.json',raw).toString()}catch{return ''}
+function manifestUrls(item={}){
+  const urls=[];
+  for(const raw of [item.public_url,item.admin_url]){
+    const value=String(raw||'').trim();
+    if(!value)continue;
+    try{urls.push(new URL('/harfway-tool.json',value).toString())}catch{}
+  }
+  return [...new Set(urls)];
 }
 
 async function fetchJson(url,timeoutMs=2500){
@@ -37,6 +41,14 @@ async function fetchJson(url,timeoutMs=2500){
     if(!response.ok)return null;
     return await response.json().catch(()=>null);
   }catch{return null}finally{clearTimeout(timer)}
+}
+
+async function fetchManifest(item){
+  for(const url of manifestUrls(item)){
+    const manifest=await fetchJson(url,2200);
+    if(manifest?.harfway===true)return manifest;
+  }
+  return null;
 }
 
 function fromManifest(manifest,item={}){
@@ -66,15 +78,13 @@ export async function getAnalyticsRegistry(){
   const usedNames=new Set(services.map(x=>x.serviceName));
   const usedHosts=new Set(services.flatMap(x=>x.hosts));
   const hub=await fetchJson(HUB_API,3500);
-  const hubItems=Array.isArray(hub?.items)?hub.items:[];
+  const hubConnected=Boolean(hub&&Array.isArray(hub.items));
+  const hubItems=hubConnected?hub.items:[];
   const candidates=hubItems.filter(item=>!BASELINE_HUB_IDS.has(String(item?.id||''))).slice(0,30);
-  let manifestChecked=0;
+  const discovered=await Promise.all(candidates.map(async item=>({item,manifest:await fetchManifest(item)})));
   let autoAdded=0;
-  for(const item of candidates){
-    const url=manifestUrl(item);
-    if(!url)continue;
-    manifestChecked++;
-    const manifest=await fetchJson(url,2200);
+  const manifestChecked=discovered.filter(x=>manifestUrls(x.item).length>0).length;
+  for(const {item,manifest} of discovered){
     const service=fromManifest(manifest,item);
     if(!service||usedNames.has(service.serviceName))continue;
     service.hosts=service.hosts.filter(host=>!usedHosts.has(host));
@@ -87,7 +97,7 @@ export async function getAnalyticsRegistry(){
   return {
     services,
     summary:{total:services.length,builtIn:DEFAULT_ANALYTICS_SERVICES.length,autoAdded,hubCandidates:candidates.length,manifestChecked},
-    hubConnected:Array.isArray(hubItems)
+    hubConnected
   };
 }
 
