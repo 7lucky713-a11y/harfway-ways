@@ -30,3 +30,4 @@ function stripPreviewLabelsForProduction(){
 stripPreviewLabelsForProduction();
 inject('src/pages/analytics.astro','<script is:inline src="/analytics-auto-sync.js"></script>','Analytics AUTO SYNC client');
 inject('src/pages/sales.astro','<script is:inline src="/ga4-sale-watch.js"></script>','SALE WATCH GA4 client');
+inject('src/pages/salvage/store-edit.astro','<script is:inline src="/game-links-unlinked-filter.js"></script>','GAME LINKS unlinked filter');
