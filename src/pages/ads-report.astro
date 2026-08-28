@@ -1,99 +1,155 @@
 ---
-const fixture = {
-  generatedAt: '2026-08-28T13:49:00.000Z',
-  source: 'preview_snapshot',
-  summary: { campaigns: 4, activeCampaigns: 0, impressions: 25, clicks: 2, storeVisits: 2, ctr: 8.0, configuredPriceYen: 40000, integrityWarnings: 1 },
-  placements: [
-    { key: 'playback', name: 'WAYS', impressions: 8, clicks: 0, storeVisits: 0, ctr: 0, everyN: 4, sessionCap: 2 },
-    { key: 'playlist', name: 'PLAYLIST', impressions: 10, clicks: 1, storeVisits: 1, ctr: 10, everyN: 4, sessionCap: 2 },
-    { key: 'scraps', name: '切れ端', impressions: 7, clicks: 1, storeVisits: 1, ctr: 14.29, everyN: 3, sessionCap: 2 },
-  ],
-  campaigns: [
-    { id:'736426eb-8d82-49d2-b622-7ddb6fd948c0', name:'マジカルラプチャー', status:'completed', priceYen:15000, target:10000, impressions:1, counterImpressions:1, clicks:1, storeVisits:1, ctr:100, placements:['scraps','playlist','playback'], endDate:'2026-10-24', integrity:true, breakdown:[{name:'切れ端',impressions:1,clicks:1,storeVisits:1}] },
-    { id:'c6ae2b06-5ccc-453d-a5bd-f7b2b4c81d24', name:'ADVERTISER RLS TEST', status:'pending', priceYen:5000, target:3000, impressions:0, counterImpressions:0, clicks:0, storeVisits:0, ctr:0, placements:['playlist'], endDate:'2026-09-10', integrity:true, breakdown:[] },
-    { id:'c16de81f-8e4f-4247-9853-110757e956e5', name:'モンタビ', status:'completed', priceYen:15000, target:10000, impressions:22, counterImpressions:21, clicks:1, storeVisits:1, ctr:4.55, placements:['playback','playlist','scraps'], endDate:'2026-09-10', integrity:false, breakdown:[{name:'WAYS',impressions:8,clicks:0,storeVisits:0},{name:'PLAYLIST',impressions:8,clicks:1,storeVisits:1},{name:'切れ端',impressions:6,clicks:0,storeVisits:0}] },
-    { id:'0e92d29a-7c15-478e-b43c-9373fe0f81a1', name:'NEON SAMPLE', status:'completed', priceYen:5000, target:3000, impressions:2, counterImpressions:2, clicks:0, storeVisits:0, ctr:0, placements:['playlist','playback'], endDate:'2026-09-05', integrity:true, breakdown:[{name:'PLAYLIST',impressions:2,clicks:0,storeVisits:0}] },
-  ],
-};
 ---
 <html lang="ja">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <meta name="robots" content="noindex,nofollow" />
-<title>HARF-WAY ADS REPORT — Preview</title>
+<title>HARF-WAY ADS REPORT</title>
 <style is:global>
-:root{--bg:#0b0d0f;--panel:#121519;--panel2:#171b20;--line:#2a3038;--ink:#f5f6f2;--muted:#929ba7;--acid:#e6ff4f;--warn:#ffd46d}
+:root{--bg:#0b0d0f;--panel:#121519;--panel2:#171b20;--line:#2a3038;--ink:#f5f6f2;--muted:#929ba7;--acid:#e6ff4f;--warn:#ffd46d;--danger:#ff8d82}
 *{box-sizing:border-box}html{background:var(--bg)}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}a{color:inherit}
 .wrap{max-width:1240px;margin:auto;padding:36px 24px 80px}.top{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap}.ey{font-size:10px;letter-spacing:.18em;color:var(--acid);font-weight:900}.title{margin:8px 0 12px;font-size:clamp(44px,7vw,84px);line-height:.88;letter-spacing:-.065em}.lead{max-width:760px;color:var(--muted);font-size:13px;line-height:1.8}
-.badges{display:flex;gap:8px;flex-wrap:wrap}.badge{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;padding:8px 10px;background:#101318;color:#bac1ca;font-size:9px}.badge.live{background:var(--acid);border-color:var(--acid);color:#111;font-weight:900}
-.notice{padding:14px;border:1px dashed #39424e;border-radius:13px;color:#a7b0bc;font-size:10px;line-height:1.7;margin-top:18px}.notice.protected{border-color:#66572d;color:#e6cf8b;background:#1c190f}
-.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:20px}.card{border:1px solid var(--line);background:var(--panel);border-radius:17px}.kpi{padding:18px;min-height:126px}.kpi small{display:block;color:var(--muted);font-size:8px;letter-spacing:.14em}.kpi strong{display:block;margin-top:8px;font-size:34px;letter-spacing:-.05em}.kpi span{display:block;margin-top:6px;color:var(--muted);font-size:9px}
+.badges{display:flex;gap:8px;flex-wrap:wrap}.badge{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;padding:8px 10px;background:#101318;color:#bac1ca;font-size:9px}.badge.live{background:var(--acid);border-color:var(--acid);color:#111;font-weight:900}.badge.warn{border-color:#66572d;color:var(--warn);background:#211c10}
+.notice{padding:14px;border:1px dashed #39424e;border-radius:13px;color:#a7b0bc;font-size:10px;line-height:1.7;margin-top:18px}.notice.protected{border-color:#66572d;color:#e6cf8b;background:#1c190f}.notice.error{border-color:#663c39;color:#ffc1ba;background:#211311}
+.card{border:1px solid var(--line);background:var(--panel);border-radius:17px}.hidden{display:none!important}
+.auth-panel{margin-top:18px;padding:20px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:end}.auth-copy h2{margin:4px 0 7px;font-size:22px}.auth-copy p{margin:0;color:var(--muted);font-size:10px;line-height:1.7}.auth-form{display:flex;gap:8px;align-items:end;flex-wrap:wrap;justify-content:flex-end}.field{display:grid;gap:5px}.field span{font-size:8px;color:var(--muted);letter-spacing:.08em}.field input{width:210px;border:1px solid var(--line);border-radius:10px;background:#0d1014;color:var(--ink);padding:10px 11px;font:inherit;font-size:11px;outline:none}.field input:focus{border-color:#657021}.auth-message{margin-top:9px;color:var(--warn);font-size:9px;min-height:1em}
+button,.button{border:0;cursor:pointer}.button{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;padding:10px 12px;border-radius:999px;background:#f4f5f1;color:#111;font-size:10px;font-weight:900}.button.secondary{background:#14181d;color:#d9dee5;border:1px solid var(--line)}.button:disabled{opacity:.45;cursor:wait}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:20px}.kpi{padding:18px;min-height:126px}.kpi small{display:block;color:var(--muted);font-size:8px;letter-spacing:.14em}.kpi strong{display:block;margin-top:8px;font-size:34px;letter-spacing:-.05em}.kpi span{display:block;margin-top:6px;color:var(--muted);font-size:9px}
 .section{margin-top:38px}.section-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px}.section h2{margin:0;font-size:25px;letter-spacing:-.03em}.section p{margin:5px 0 0;color:var(--muted);font-size:10px}
 .media-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.media{padding:20px;min-height:194px}.media h3{font-size:25px;margin:6px 0 16px}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.metric{background:var(--panel2);border:1px solid #242a32;border-radius:10px;padding:10px}.metric small{display:block;color:var(--muted);font-size:7px}.metric b{display:block;margin-top:4px;font-size:17px}.rule{margin-top:14px;color:var(--muted);font-size:9px}.integrity{margin-top:16px;padding:13px 15px;border:1px solid #66572d;border-radius:13px;background:#211c10;color:#efd687;font-size:10px;line-height:1.7}
 .toolbar{display:flex;gap:7px;flex-wrap:wrap}.toolbar button{border:1px solid var(--line);background:#101318;color:#c5cbd3;border-radius:999px;padding:8px 11px;font:700 9px/1 inherit;cursor:pointer}.toolbar button.on{background:var(--acid);border-color:var(--acid);color:#111}
-.table-wrap{overflow:auto}.report-table{width:100%;min-width:920px;border-collapse:collapse}.report-table th,.report-table td{padding:14px;border-bottom:1px solid var(--line);text-align:left;font-size:10px;vertical-align:middle}.report-table th{color:#7f8996;font-size:7px;letter-spacing:.14em;background:#101318}.report-table tbody tr{cursor:pointer}.report-table tbody tr:hover{background:#171b20}.report-table td:first-child{min-width:190px}.sub{display:block;color:#77818e;font-size:8px;margin-top:4px}.status{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:5px 7px;font-size:7px}.status.pending{border-color:#66572d;color:var(--warn)}.progress{width:110px;height:5px;border-radius:999px;overflow:hidden;background:#292f36}.progress i{display:block;height:100%;background:var(--acid);min-width:2px}.ok{color:#cbd2da}.ng{color:var(--warn);font-weight:900}
+.table-wrap{overflow:auto}.report-table{width:100%;min-width:920px;border-collapse:collapse}.report-table th,.report-table td{padding:14px;border-bottom:1px solid var(--line);text-align:left;font-size:10px;vertical-align:middle}.report-table th{color:#7f8996;font-size:7px;letter-spacing:.14em;background:#101318}.report-table tbody tr{cursor:pointer}.report-table tbody tr:hover{background:#171b20}.report-table td:first-child{min-width:190px}.sub{display:block;color:#77818e;font-size:8px;margin-top:4px}.status{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:5px 7px;font-size:7px}.status.pending{border-color:#66572d;color:var(--warn)}.status.active{border-color:#466c43;color:#a9e5a1}.progress{width:110px;height:5px;border-radius:999px;overflow:hidden;background:#292f36}.progress i{display:block;height:100%;background:var(--acid);min-width:2px}.ok{color:#cbd2da}.ng{color:var(--warn);font-weight:900}
 .detail{display:none;margin-top:12px;padding:20px}.detail.show{display:block}.detail-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap}.detail h3{font-size:28px;margin:4px 0 5px}.detail-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}.detail-grid>div{padding:14px;border:1px solid var(--line);background:var(--panel2);border-radius:11px}.detail-grid small{display:block;color:var(--muted);font-size:7px}.detail-grid b{display:block;margin-top:4px;font-size:19px}
-.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:26px}.button{display:inline-block;text-decoration:none;padding:10px 12px;border-radius:999px;background:#f4f5f1;color:#111;font-size:10px;font-weight:900}.button.secondary{background:#14181d;color:#d9dee5;border:1px solid var(--line)}
-@media(max-width:860px){.kpis{grid-template-columns:repeat(2,1fr)}.media-grid,.detail-grid{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(4,1fr)}}
-@media(max-width:560px){.wrap{padding:24px 14px 50px}.title{font-size:44px}.kpis{grid-template-columns:1fr 1fr}.kpi{min-height:112px}.kpi strong{font-size:27px}.metrics{grid-template-columns:repeat(2,1fr)}}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:26px}
+@media(max-width:900px){.auth-panel{grid-template-columns:1fr}.auth-form{justify-content:flex-start}.kpis{grid-template-columns:repeat(2,1fr)}.media-grid,.detail-grid{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:560px){.wrap{padding:24px 14px 50px}.title{font-size:44px}.kpis{grid-template-columns:1fr 1fr}.kpi{min-height:112px}.kpi strong{font-size:27px}.metrics{grid-template-columns:repeat(2,1fr)}.field,.field input{width:100%}.auth-form{display:grid;width:100%}}
 </style>
 </head>
 <body>
 <main class="wrap">
   <div class="top">
     <div><div class="ey">HARF-WAY / AD SALES REPORT</div><h1 class="title">広告の届き方を、<br/>一枚で見る。</h1><p class="lead">販売・配信・結果報告を同じ数字で確認するための統合レポート。IMP / CLICK / STORE VISIT はイベントログを正本にし、内部カウンタとの差分は管理者だけに警告します。</p></div>
-    <div class="badges"><span class="badge live">3 MEDIA CONNECTED</span><span class="badge" id="sourceBadge">LOADING</span></div>
+    <div class="badges"><span class="badge live">3 MEDIA CONNECTED</span><span class="badge" id="sourceBadge">AUTH CHECK</span></div>
   </div>
-  <div id="connectionNotice" class="notice">本番APIとの接続状態を確認しています。</div>
-  <section class="kpis" id="kpis"></section>
-  <section class="section"><div class="section-head"><div><h2>媒体別</h2><p>WAYS / PLAYLIST / 切れ端の横断集計。</p></div></div><div class="media-grid" id="mediaGrid"></div></section>
-  <div class="integrity" id="integrity"></div>
-  <section class="section">
-    <div class="section-head"><div><h2>案件別</h2><p>クリックすると媒体別内訳を表示します。</p></div><div class="toolbar" id="filters"><button class="on" data-filter="all">ALL</button><button data-filter="pending">PENDING</button><button data-filter="completed">COMPLETED</button><button data-filter="warning">WARNING</button></div></div>
-    <div class="card table-wrap"><table class="report-table"><thead><tr><th>CAMPAIGN</th><th>STATUS</th><th>CONFIG PRICE</th><th>EVENT IMP</th><th>CLICK</th><th>CTR</th><th>STORE</th><th>DELIVERY</th><th>INTEGRITY</th></tr></thead><tbody id="campaignBody"></tbody></table></div>
-    <div class="card detail" id="detail"></div>
+
+  <div id="connectionNotice" class="notice">Neon Authとの接続状態を確認しています。</div>
+
+  <section id="authPanel" class="card auth-panel hidden">
+    <div class="auth-copy"><div class="ey">ADMIN AUTH</div><h2>管理者ログイン</h2><p>広告DBの数字は公開しません。Neon Authで管理者と確認できた場合だけ、リアルタイム集計を表示します。</p><div id="authMessage" class="auth-message"></div></div>
+    <form id="authForm" class="auth-form">
+      <label class="field"><span>EMAIL</span><input id="authEmail" type="email" autocomplete="username" required /></label>
+      <label class="field"><span>PASSWORD</span><input id="authPassword" type="password" autocomplete="current-password" required /></label>
+      <button id="loginButton" class="button" type="submit">ログインして表示</button>
+    </form>
   </section>
-  <div class="actions"><a class="button" href="/ads-hub/">ADS HUBへ戻る</a><a class="button secondary" href="https://harfway-ads-admin.vercel.app" target="_blank" rel="noreferrer">広告Admin ↗</a><a class="button secondary" href="https://harfway-ads-placement-dashboard.vercel.app" target="_blank" rel="noreferrer">旧 配信状況 ↗</a></div>
+
+  <div id="reportShell" class="hidden">
+    <section class="kpis" id="kpis"></section>
+    <section class="section"><div class="section-head"><div><h2>媒体別</h2><p>WAYS / PLAYLIST / 切れ端の横断集計。</p></div><button id="refreshButton" class="button secondary" type="button">再読み込み</button></div><div class="media-grid" id="mediaGrid"></div></section>
+    <div class="integrity" id="integrity"></div>
+    <section class="section">
+      <div class="section-head"><div><h2>案件別</h2><p>クリックすると媒体別内訳を表示します。</p></div><div class="toolbar" id="filters"><button class="on" data-filter="all">ALL</button><button data-filter="pending">PENDING</button><button data-filter="active">ACTIVE</button><button data-filter="completed">COMPLETED</button><button data-filter="warning">WARNING</button></div></div>
+      <div class="card table-wrap"><table class="report-table"><thead><tr><th>CAMPAIGN</th><th>STATUS</th><th>CONFIG PRICE</th><th>EVENT IMP</th><th>CLICK</th><th>CTR</th><th>STORE</th><th>DELIVERY</th><th>INTEGRITY</th></tr></thead><tbody id="campaignBody"></tbody></table></div>
+      <div class="card detail" id="detail"></div>
+    </section>
+  </div>
+
+  <div class="actions"><a class="button" href="/ads-hub/">ADS HUBへ戻る</a><a class="button secondary" href="https://harfway-ads-admin.vercel.app" target="_blank" rel="noreferrer">広告Admin ↗</a><button id="logoutButton" class="button secondary hidden" type="button">ログアウト</button></div>
 </main>
-<script define:vars={{ fixture }}>
-const PROD_HOSTS=new Set(['harfway-playback.vercel.app','harfway-playback-harf-way.vercel.app']);
-const isProduction=PROD_HOSTS.has(location.hostname);
-const isPreview=!isProduction;
+
+<script>
+import { createClient } from '@neondatabase/neon-js';
+
+const AUTH_URL='https://ep-damp-resonance-awphji1s.neonauth.c-12.us-east-1.aws.neon.tech/neondb/auth';
+const DATA_URL='https://ep-damp-resonance-awphji1s.apirest.c-12.us-east-1.aws.neon.tech/neondb/rest/v1';
+const neon=createClient({auth:{url:AUTH_URL},dataApi:{url:DATA_URL}});
 const $=id=>document.getElementById(id);
-const sourceBadge=$('sourceBadge'),connectionNotice=$('connectionNotice'),kpis=$('kpis'),mediaGrid=$('mediaGrid'),integrity=$('integrity'),filters=$('filters'),campaignBody=$('campaignBody'),detail=$('detail');
+const sourceBadge=$('sourceBadge'),connectionNotice=$('connectionNotice'),authPanel=$('authPanel'),authForm=$('authForm'),authMessage=$('authMessage'),authEmail=$('authEmail'),authPassword=$('authPassword'),loginButton=$('loginButton'),logoutButton=$('logoutButton'),reportShell=$('reportShell'),kpis=$('kpis'),mediaGrid=$('mediaGrid'),integrity=$('integrity'),filters=$('filters'),campaignBody=$('campaignBody'),detail=$('detail'),refreshButton=$('refreshButton');
 const yen=n=>'¥'+Number(n||0).toLocaleString('ja-JP');
 const num=n=>Number(n||0).toLocaleString('ja-JP');
 const pct=n=>Number(n||0).toFixed(2)+'%';
+const placementName={playback:'WAYS',playlist:'PLAYLIST',scraps:'切れ端'};
 let report=null,filter='all';
-function mapPerformance(data){
-  if(data?.status!=='available'||!Array.isArray(data.campaigns))return null;
-  const campaigns=data.campaigns.map(c=>({id:c.id,name:c.name,status:c.status,priceYen:0,target:c.impressionsTarget||0,impressions:c.impressionsServed||0,counterImpressions:c.impressionsServed||0,clicks:c.clicks||0,storeVisits:0,ctr:c.ctr||0,placements:String(c.placement||'').split('/').map(x=>x.trim()).filter(Boolean),endDate:'—',integrity:true,breakdown:[]}));
-  const impressions=campaigns.reduce((a,c)=>a+c.impressions,0),clicks=campaigns.reduce((a,c)=>a+c.clicks,0);
-  return {generatedAt:data.generatedAt,source:'live_admin_api',summary:{campaigns:campaigns.length,activeCampaigns:data.summary?.activeCampaigns||0,impressions,clicks,storeVisits:0,ctr:impressions?clicks/impressions*100:0,configuredPriceYen:0,integrityWarnings:0},placements:[],campaigns};
+
+function sessionUser(raw){const value=raw?.data??raw;return value?.user??value?.session?.user??null}
+function resultError(result){return result?.error?.message||result?.error||null}
+function scalar(value){if(Array.isArray(value))return value[0]??null;return value}
+function setNotice(text,state=''){connectionNotice.textContent=text;connectionNotice.className=`notice${state?' '+state:''}`}
+function showAuth(message=''){
+  authPanel.classList.remove('hidden');reportShell.classList.add('hidden');logoutButton.classList.add('hidden');sourceBadge.textContent='LOGIN REQUIRED';authMessage.textContent=message;
 }
-async function load(){
-  let live=null;
-  try{const r=await fetch('/api/ads-performance',{cache:'no-store'});if(r.ok)live=mapPerformance(await r.json())}catch{}
-  if(live){report=live;sourceBadge.textContent='LIVE / ADMIN API';connectionNotice.textContent='広告Adminの保護APIからリアルタイム取得しています。';connectionNotice.className='notice';}
-  else if(isPreview){report=fixture;sourceBadge.textContent='PREVIEW / REAL SNAPSHOT';connectionNotice.innerHTML='<b>Preview表示</b>：UI確認のため、2026-08-28時点の実DBスナップショットを表示しています。本番ホストではこのフォールバックは使用しません。';connectionNotice.className='notice protected';}
-  else{report={summary:{campaigns:0,activeCampaigns:0,impressions:0,clicks:0,storeVisits:0,ctr:0,configuredPriceYen:0,integrityWarnings:0},placements:[],campaigns:[]};sourceBadge.textContent='PROTECTED';connectionNotice.innerHTML='<b>レポートAPIは保護されています。</b> サーバー間の読み取り接続が設定されるまで、本番では数値を表示しません。';connectionNotice.className='notice protected';}
-  render();
+function showReport(){authPanel.classList.add('hidden');reportShell.classList.remove('hidden');logoutButton.classList.remove('hidden')}
+
+async function readAllEvents(){
+  const pageSize=1000,maxRows=100000,rows=[];
+  for(let from=0;from<maxRows;from+=pageSize){
+    const {data,error}=await neon.from('ad_events').select('campaign_id,event_type,placement').range(from,from+pageSize-1);
+    if(error)throw new Error(error.message||'イベント取得に失敗しました');
+    const page=data||[];rows.push(...page);if(page.length<pageSize)return rows;
+  }
+  throw new Error('イベント件数が安全上限を超えました。集計RPCへの切替が必要です。');
 }
+
+function buildReport(campaignRows,eventRows,placementRows){
+  const byCampaign=new Map();
+  const blank=()=>({impressions:0,clicks:0,storeVisits:0,breakdown:new Map()});
+  for(const e of eventRows){
+    if(!byCampaign.has(e.campaign_id))byCampaign.set(e.campaign_id,blank());
+    const s=byCampaign.get(e.campaign_id);const key=e.placement||'unknown';
+    if(!s.breakdown.has(key))s.breakdown.set(key,{impressions:0,clicks:0,storeVisits:0});
+    const p=s.breakdown.get(key);
+    if(e.event_type==='impression'){s.impressions++;p.impressions++}
+    else if(e.event_type==='click'){s.clicks++;p.clicks++}
+    else if(e.event_type==='store_visit'){s.storeVisits++;p.storeVisits++}
+  }
+  const campaigns=(campaignRows||[]).map(c=>{
+    const s=byCampaign.get(c.id)||blank();const ctr=s.impressions?s.clicks/s.impressions*100:0;
+    const integrityOk=Number(c.impressions||0)===s.impressions&&Number(c.clicks||0)===s.clicks&&Number(c.store_visits||0)===s.storeVisits;
+    return {id:c.id,name:c.title,status:c.status,priceYen:Number(c.price_yen||0),target:Number(c.impression_limit||0),impressions:s.impressions,counterImpressions:Number(c.impressions||0),clicks:s.clicks,counterClicks:Number(c.clicks||0),storeVisits:s.storeVisits,counterStoreVisits:Number(c.store_visits||0),ctr,placements:c.placements||[],endDate:c.end_date||'—',integrity:integrityOk,breakdown:[...s.breakdown.entries()].map(([key,v])=>({name:placementName[key]||key,...v}))};
+  });
+  const impressions=eventRows.filter(e=>e.event_type==='impression').length,clicks=eventRows.filter(e=>e.event_type==='click').length,storeVisits=eventRows.filter(e=>e.event_type==='store_visit').length;
+  const placements=(placementRows||[]).map(p=>({key:p.placement,name:placementName[p.placement]||p.placement,impressions:Number(p.impressions||0),clicks:Number(p.clicks||0),storeVisits:Number(p.store_visits||0),ctr:Number(p.ctr||0),everyN:Number(p.every_n_items||0),sessionCap:Number(p.session_cap_24h||0),enabled:Boolean(p.enabled)}));
+  return {summary:{campaigns:campaigns.length,impressions,clicks,storeVisits,ctr:impressions?clicks/impressions*100:0,configuredPriceYen:campaigns.reduce((a,c)=>a+c.priceYen,0),integrityWarnings:campaigns.filter(c=>!c.integrity).length},placements,campaigns};
+}
+
+async function loadRealtime(){
+  showReport();sourceBadge.textContent='LOADING LIVE';setNotice('広告DBの実イベントを読み込んでいます。');
+  const adminResult=await neon.rpc('ad_is_admin');
+  if(adminResult.error)throw new Error(adminResult.error.message||'管理者判定に失敗しました');
+  if(scalar(adminResult.data)!==true)throw new Error('このアカウントには広告管理者権限がありません。');
+  const [campaignResult,eventRows,placementResult]=await Promise.all([
+    neon.from('ad_campaigns').select('id,title,status,placements,impression_limit,price_yen,end_date,impressions,clicks,store_visits,created_at').order('created_at',{ascending:false}),
+    readAllEvents(),
+    neon.rpc('ad_placement_stats')
+  ]);
+  if(campaignResult.error)throw new Error(campaignResult.error.message||'キャンペーン取得に失敗しました');
+  if(placementResult.error)throw new Error(placementResult.error.message||'媒体集計取得に失敗しました');
+  report=buildReport(campaignResult.data||[],eventRows,placementResult.data||[]);render();sourceBadge.textContent='LIVE / NEON';setNotice(`リアルタイム取得済み：${new Date().toLocaleString('ja-JP')}`);
+}
+
 function render(){
-  const s=report.summary||{};
+  const s=report.summary;
   kpis.innerHTML=[['EVENT IMP',num(s.impressions),'イベントログ正本'],['CLICK',num(s.clicks),'CTR '+pct(s.ctr)],['STORE VISIT',num(s.storeVisits),'ストア遷移'],['CONFIG PRICE',yen(s.configuredPriceYen),'設定額 / 売上ではない']].map(x=>`<article class="card kpi"><small>${x[0]}</small><strong>${x[1]}</strong><span>${x[2]}</span></article>`).join('');
-  mediaGrid.innerHTML=(report.placements||[]).length?report.placements.map(x=>`<article class="card media"><div class="ey">${x.key.toUpperCase()}</div><h3>${x.name}</h3><div class="metrics"><div class="metric"><small>IMP</small><b>${num(x.impressions)}</b></div><div class="metric"><small>CLICK</small><b>${num(x.clicks)}</b></div><div class="metric"><small>CTR</small><b>${pct(x.ctr)}</b></div><div class="metric"><small>STORE</small><b>${num(x.storeVisits)}</b></div></div><div class="rule">${x.everyN}作品ごと / 同一案件 24h ${x.sessionCap}imp</div></article>`).join(''):'<div class="notice" style="grid-column:1/-1">媒体別の詳細は安全な集計API接続後に表示します。</div>';
-  integrity.innerHTML=`<b>DATA INTEGRITY</b>：${s.integrityWarnings||0}件の差分を検知。広告主向け数値は event log を優先します。`;
+  mediaGrid.innerHTML=report.placements.map(x=>`<article class="card media"><div class="ey">${x.key.toUpperCase()}</div><h3>${x.name}</h3><div class="metrics"><div class="metric"><small>IMP</small><b>${num(x.impressions)}</b></div><div class="metric"><small>CLICK</small><b>${num(x.clicks)}</b></div><div class="metric"><small>CTR</small><b>${pct(x.ctr)}</b></div><div class="metric"><small>STORE</small><b>${num(x.storeVisits)}</b></div></div><div class="rule">${x.everyN}作品ごと / 同一案件 24h ${x.sessionCap}imp${x.enabled?'':' / 停止中'}</div></article>`).join('');
+  integrity.innerHTML=`<b>DATA INTEGRITY</b>：${s.integrityWarnings}件の差分を検知。広告主向け数値は event log を優先します。`;
   renderRows();
 }
 function renderRows(){
-  const list=(report.campaigns||[]).filter(c=>filter==='all'||(filter==='warning'?!c.integrity:c.status===filter));
+  const list=report.campaigns.filter(c=>filter==='all'||(filter==='warning'?!c.integrity:c.status===filter));
   campaignBody.innerHTML=list.length?list.map(c=>{const d=c.target?c.impressions/c.target*100:0;return `<tr data-id="${c.id}"><td><b>${c.name}</b><span class="sub">${(c.placements||[]).join(' / ')||'—'}</span></td><td><span class="status ${c.status}">${String(c.status).toUpperCase()}</span></td><td>${yen(c.priceYen)}</td><td>${num(c.impressions)} / ${num(c.target)}</td><td>${num(c.clicks)}</td><td>${pct(c.ctr)}</td><td>${num(c.storeVisits)}</td><td><div class="progress"><i style="width:${Math.min(100,d)}%"></i></div><span class="sub">${d.toFixed(2)}%</span></td><td class="${c.integrity?'ok':'ng'}">${c.integrity?'OK':'⚠ COUNTER '+num(c.counterImpressions)}</td></tr>`}).join(''):'<tr><td colspan="9" style="text-align:center;color:#7f8996;padding:28px">表示できる案件がありません。</td></tr>';
 }
-filters.addEventListener('click',e=>{const b=e.target.closest('[data-filter]');if(!b)return;filter=b.dataset.filter;filters.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));detail.classList.remove('show');renderRows()});
-campaignBody.addEventListener('click',e=>{const tr=e.target.closest('[data-id]');if(!tr)return;const c=(report.campaigns||[]).find(x=>x.id===tr.dataset.id);if(!c)return;detail.classList.add('show');detail.innerHTML=`<div class="detail-head"><div><div class="ey">CAMPAIGN DETAIL</div><h3>${c.name}</h3><span class="sub">${String(c.status).toUpperCase()} / ${yen(c.priceYen)} / END ${c.endDate||'—'}</span></div><span class="badge">${num(c.impressions)} / ${num(c.target)} IMP</span></div><div class="detail-grid">${(c.breakdown||[]).length?c.breakdown.map(x=>`<div><small>${x.name}</small><b>${num(x.impressions)} IMP</b><span class="sub">${num(x.clicks)} CLICK / ${num(x.storeVisits)} STORE</span></div>`).join(''):'<div><small>BREAKDOWN</small><b>接続待ち</b><span class="sub">媒体別イベントAPI接続後に表示</span></div>'}</div><div class="notice ${c.integrity?'':'protected'}">${c.integrity?'内部カウンタとイベントログは一致しています。':`内部IMP ${num(c.counterImpressions)} / EVENT IMP ${num(c.impressions)}。外部報告にはEVENT IMPを使用します。`}</div>`});
-load();
+filters.addEventListener('click',e=>{const b=e.target.closest('[data-filter]');if(!b||!report)return;filter=b.dataset.filter;filters.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));detail.classList.remove('show');renderRows()});
+campaignBody.addEventListener('click',e=>{const tr=e.target.closest('[data-id]');if(!tr||!report)return;const c=report.campaigns.find(x=>x.id===tr.dataset.id);if(!c)return;detail.classList.add('show');detail.innerHTML=`<div class="detail-head"><div><div class="ey">CAMPAIGN DETAIL</div><h3>${c.name}</h3><span class="sub">${String(c.status).toUpperCase()} / ${yen(c.priceYen)} / END ${c.endDate}</span></div><span class="badge">${num(c.impressions)} / ${num(c.target)} IMP</span></div><div class="detail-grid">${c.breakdown.length?c.breakdown.map(x=>`<div><small>${x.name}</small><b>${num(x.impressions)} IMP</b><span class="sub">${num(x.clicks)} CLICK / ${num(x.storeVisits)} STORE</span></div>`).join(''):'<div><small>BREAKDOWN</small><b>NO DELIVERY</b></div>'}</div><div class="notice ${c.integrity?'':'protected'}">${c.integrity?'内部カウンタとイベントログは一致しています。':`EVENT: ${num(c.impressions)} IMP / ${num(c.clicks)} CLICK / ${num(c.storeVisits)} STORE ｜ COUNTER: ${num(c.counterImpressions)} / ${num(c.counterClicks)} / ${num(c.counterStoreVisits)}`}</div>`});
+
+authForm.addEventListener('submit',async e=>{e.preventDefault();authMessage.textContent='';loginButton.disabled=true;loginButton.textContent='ログイン中…';try{const result=await neon.auth.signIn.email({email:authEmail.value.trim(),password:authPassword.value});const error=resultError(result);if(error)throw new Error(String(error));authPassword.value='';await loadRealtime()}catch(error){showAuth(error?.message||'ログインに失敗しました。')}finally{loginButton.disabled=false;loginButton.textContent='ログインして表示'}});
+logoutButton.addEventListener('click',async()=>{try{await neon.auth.signOut()}catch{}report=null;showAuth('ログアウトしました。');setNotice('管理者ログインが必要です。','protected')});
+refreshButton.addEventListener('click',()=>loadRealtime().catch(error=>{sourceBadge.textContent='ERROR';setNotice(error?.message||'再読み込みに失敗しました。','error')}));
+
+async function bootstrap(){
+  try{const session=await neon.auth.getSession();if(sessionUser(session)){await loadRealtime()}else{showAuth();setNotice('管理者ログイン後に、Neon Data APIから実数を読み込みます。','protected')}}catch(error){showAuth('Preview OriginがNeon Authの許可リストに未登録の可能性があります。');sourceBadge.textContent='AUTH BLOCKED';setNotice(error?.message||'Neon Authへ接続できません。','error')}
+}
+bootstrap();
 </script>
 </body>
 </html>
