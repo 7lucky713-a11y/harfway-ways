@@ -1,21 +1,13 @@
 import {getGa4Summary} from './ga4-lib.js';
+import {getAnalyticsRegistry} from './analytics-registry-lib.js';
 
 const WAYS='https://harfway-playback.vercel.app/api/analytics';
 const SHOWCASE='https://harfway-showcase-metrics.vercel.app/api/stats';
 const CORE='https://harfway-playback.vercel.app/api/core/games?limit=500';
 const GA4_MEASUREMENT_ID='G-LQVHR07K15';
 
-const SERVICE_META={
-  ways:{contentType:'public_discovery',url:'https://harfway-playback.vercel.app/'},
-  showcase:{contentType:'public_showcase',url:'https://harfway-showcase-ui-v4.vercel.app/'},
-  playlist:{contentType:'public_playlist',url:'https://harfway-playlist-tv.vercel.app/'},
-  yorimichi:{contentType:'editor',url:'https://weekly-yorimichi-editor.vercel.app/'},
-  zine:{contentType:'editor',url:'https://harfway-zine-editor.vercel.app/'}
-};
-
 const intParam=(value,fallback,min,max)=>{const n=Number.parseInt(String(value??''),10);return Number.isFinite(n)?Math.min(max,Math.max(min,n)):fallback};
 const num=v=>Number(v||0);
-const collection=name=>({enabled:true,provider:'ga4',measurementId:GA4_MEASUREMENT_ID,serviceName:name,contentType:SERVICE_META[name].contentType,productionUrl:SERVICE_META[name].url});
 const ga4Summary=s=>s?{
   pageViews:num(s.pageViews),sessions:num(s.sessions),activeUsers:num(s.activeUsers),eventCount:num(s.eventCount),
   gameViews:num(s.events?.game_view),plays:num(s.events?.video_start),completes:num(s.events?.video_complete),storeClicks:num(s.events?.store_click),
@@ -36,6 +28,7 @@ async function jsonFetch(url,options={}){
 
 function showcaseTotal(data,event){return num(data?.totals?.find?.(x=>x.event_type===event)?.count)}
 function showcaseSessions(data){return num(data?.totals?.find?.(x=>x.event_type==='showcase_page_view')?.sessions)}
+function collection(def){return {enabled:true,provider:'ga4',measurementId:GA4_MEASUREMENT_ID,serviceName:def.serviceName,contentType:def.contentType,productionUrl:def.productionUrl,source:def.source||'built_in'}}
 
 export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
@@ -43,12 +36,15 @@ export default async function handler(req,res){
   const days=intParam(req.query?.days,7,1,365);
   const key=String(req.headers['x-showcase-admin-key']||'').trim();
   try{
-    const [ways,showcase,core,ga4]=await Promise.all([
+    const [ways,showcase,core,registry]=await Promise.all([
       jsonFetch(`${WAYS}?days=${days}`),
       key?jsonFetch(`${SHOWCASE}?showcaseId=mochikomi-02`,{headers:{'x-admin-key':key}}):Promise.resolve({ok:false,status:401,data:{error:'admin_key_required'}}),
       jsonFetch(CORE),
-      getGa4Summary(days)
+      getAnalyticsRegistry()
     ]);
+    const definitions=Array.isArray(registry?.services)?registry.services:[];
+    const defMap=new Map(definitions.map(def=>[def.serviceName,def]));
+    const ga4=await getGa4Summary(days,definitions);
 
     const titles=new Map((core.data?.games||[]).map(g=>[String(g.id||''),String(g.title||g.id||'')]));
     const waysGames=(ways.data?.games||[]).map(g=>({...g,title:titles.get(String(g.game_id||''))||String(g.game_id||'')}));
@@ -62,21 +58,42 @@ export default async function handler(req,res){
     const ga4Period=ga4.ok?ga4.period:`last_${days}_days`;
     const showcaseGa4=ga4Summary(ga4For('showcase'));
     const showcaseReporting=showcase.ok||ga4.ok;
+    const services={};
+
+    for(const def of definitions){
+      const name=def.serviceName;
+      if(name==='ways'){
+        services.ways={connected:ways.ok,reportingConnected:ways.ok,reportingProvider:'custom',collection:collection(def),period:`last_${days}_days`,status:ways.status,summary:waysSummary,ga4Summary:ga4Summary(ga4For('ways')),games:waysGames,devices:ways.data?.devices||[],error:ways.ok?null:ways.data?.error,label:def.label,autoSynced:def.source==='manifest'};
+        continue;
+      }
+      if(name==='showcase'){
+        services.showcase={connected:showcaseReporting,reportingConnected:showcaseReporting,deepReportingConnected:showcase.ok,reportingProvider:showcase.ok?'custom+ga4_data_api':'ga4_data_api',collection:collection(def),period:showcase.ok?'all_time':ga4Period,status:showcase.ok?showcase.status:(ga4.ok?200:showcase.status),error:showcaseReporting?null:(showcase.data?.error||ga4.reason||'showcase_unavailable'),summary:showcase.ok?showcaseSummary:showcaseGa4,ga4Summary:showcaseGa4,games:showcase.ok?(showcase.data?.games||[]):[],label:def.label,autoSynced:def.source==='manifest'};
+        continue;
+      }
+      services[name]={
+        connected:ga4.ok,
+        reportingConnected:ga4.ok,
+        reportingProvider:'ga4_data_api',
+        collection:collection(def),
+        period:ga4Period,
+        status:ga4.ok?200:null,
+        reason:ga4.ok?null:ga4.reason,
+        summary:ga4Summary(ga4For(name)),
+        label:def.label,
+        autoSynced:def.source==='manifest',
+        manifestId:def.manifestId||null,
+        expectedEvents:def.expectedEvents||[]
+      };
+    }
 
     return res.status(200).json({
       ok:true,
       generatedAt:new Date().toISOString(),
-      services:{
-        ways:{connected:ways.ok,reportingConnected:ways.ok,reportingProvider:'custom',collection:collection('ways'),period:`last_${days}_days`,status:ways.status,summary:waysSummary,ga4Summary:ga4Summary(ga4For('ways')),games:waysGames,devices:ways.data?.devices||[],error:ways.ok?null:ways.data?.error},
-        showcase:{connected:showcaseReporting,reportingConnected:showcaseReporting,deepReportingConnected:showcase.ok,reportingProvider:showcase.ok?'custom+ga4_data_api':'ga4_data_api',collection:collection('showcase'),period:showcase.ok?'all_time':ga4Period,status:showcase.ok?showcase.status:(ga4.ok?200:showcase.status),error:showcaseReporting?null:(showcase.data?.error||ga4.reason||'showcase_unavailable'),summary:showcase.ok?showcaseSummary:showcaseGa4,ga4Summary:showcaseGa4,games:showcase.ok?(showcase.data?.games||[]):[]},
-        playlist:{connected:ga4.ok,reportingConnected:ga4.ok,reportingProvider:'ga4_data_api',collection:collection('playlist'),period:ga4Period,status:ga4.ok?200:null,reason:ga4.ok?null:ga4.reason,summary:ga4Summary(ga4For('playlist'))},
-        yorimichi:{connected:ga4.ok,reportingConnected:ga4.ok,reportingProvider:'ga4_data_api',collection:collection('yorimichi'),period:ga4Period,status:ga4.ok?200:null,reason:ga4.ok?null:ga4.reason,summary:ga4Summary(ga4For('yorimichi'))},
-        zine:{connected:ga4.ok,reportingConnected:ga4.ok,reportingProvider:'ga4_data_api',collection:collection('zine'),period:ga4Period,status:ga4.ok?200:null,reason:ga4.ok?null:ga4.reason,summary:ga4Summary(ga4For('zine'))}
-      },
+      services,
       ga4:{
         collectionEnabled:true,
         measurementId:GA4_MEASUREMENT_ID,
-        servicesInstrumented:5,
+        servicesInstrumented:definitions.length,
         reportingConnected:ga4.ok,
         reportingProvider:'ga4_data_api',
         period:ga4.ok?ga4.period:null,
@@ -86,6 +103,7 @@ export default async function handler(req,res){
         services:ga4.ok?ga4.services:{},
         customDimensions:['service_name','content_type','game_id']
       },
+      registry:{...registry.summary,hubConnected:registry.hubConnected,services:definitions.map(def=>({serviceName:def.serviceName,label:def.label,contentType:def.contentType,productionUrl:def.productionUrl,source:def.source,hosts:def.hosts}))},
       core:{connected:core.ok,count:(core.data?.games||[]).length}
     });
   }catch(error){
