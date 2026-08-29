@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { ListObjectsV2Command, S3Client } from '@aws-sdk/client-s3';
 
 const targets = [
   path.resolve('dist/mew-log/index.html'),
@@ -16,6 +17,27 @@ const r2Flags = {
   publicBase: Boolean(process.env.R2_PUBLIC_BASE_URL)
 };
 console.log('[mew-log-r2-env]', JSON.stringify(r2Flags));
+
+if (Object.values(r2Flags).every(Boolean)) {
+  try {
+    const client = new S3Client({
+      region: 'auto',
+      endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      credentials: {
+        accessKeyId: process.env.R2_ACCESS_KEY_ID,
+        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY
+      }
+    });
+    await client.send(new ListObjectsV2Command({
+      Bucket: process.env.R2_BUCKET,
+      Prefix: 'mew-log/',
+      MaxKeys: 1
+    }));
+    console.log('[mew-log-r2-read] ok');
+  } catch (error) {
+    console.log('[mew-log-r2-read] failed', String(error?.name || error?.Code || error?.message || 'unknown').slice(0, 120));
+  }
+}
 
 for (const file of targets) {
   if (!fs.existsSync(file)) continue;
