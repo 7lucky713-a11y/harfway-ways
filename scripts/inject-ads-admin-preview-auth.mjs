@@ -3,45 +3,49 @@ import path from 'node:path';
 
 const dist = path.resolve('dist');
 const direct = 'https://ep-damp-resonance-awphji1s.neonauth.c-12.us-east-1.aws.neon.tech/neondb/auth';
-const proxied = '/api/neon-auth-proxy';
-
-if (!fs.existsSync(dist)) {
-  console.error('[ads-admin-preview-auth] dist not found');
-  process.exit(1);
-}
+const runtimeExpression = 'window.location.origin+"/api/neon-auth-proxy"';
 
 function walk(dir) {
   const out = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) out.push(...walk(full));
-    else out.push(full);
+    else if (/\.(?:html|js)$/.test(entry.name)) out.push(full);
   }
   return out;
 }
 
-const candidates = walk(dist).filter((file) => {
-  const rel = path.relative(dist, file).replaceAll('\\', '/');
-  return rel === 'ads-admin/index.html' || /(^|\/)ads-admin[^/]*\.js$/i.test(rel);
-});
-
-let replacements = 0;
-const touched = [];
-for (const file of candidates) {
-  let text = fs.readFileSync(file, 'utf8');
-  if (!text.includes(direct)) continue;
-  const count = text.split(direct).length - 1;
-  text = text.replaceAll(direct, proxied);
-  fs.writeFileSync(file, text);
-  replacements += count;
-  touched.push(path.relative(dist, file).replaceAll('\\', '/'));
-}
-
-if (!replacements) {
-  console.error('[ads-admin-preview-auth] direct Neon Auth URL not found in ADS ADMIN build output');
-  console.error('[ads-admin-preview-auth] candidates:', candidates.map((f) => path.relative(dist, f).replaceAll('\\', '/')).join(', '));
+if (!fs.existsSync(dist)) {
+  console.error('[ads-admin-preview-auth] dist not found');
   process.exit(1);
 }
 
-console.log(`[ads-admin-preview-auth] routed ADS ADMIN auth through same-origin preview proxy (${replacements} replacement${replacements === 1 ? '' : 's'})`);
-console.log('[ads-admin-preview-auth] touched:', touched.join(', '));
+let replacements = 0;
+const touched = [];
+for (const file of walk(dist)) {
+  if (!file.includes('ads-admin') && !file.endsWith('index.html')) continue;
+  let text = fs.readFileSync(file, 'utf8');
+  const before = text;
+
+  for (const quote of ['"', "'", '`']) {
+    const needle = `${quote}${direct}${quote}`;
+    if (text.includes(needle)) {
+      const count = text.split(needle).length - 1;
+      text = text.replaceAll(needle, runtimeExpression);
+      replacements += count;
+    }
+  }
+
+  if (text !== before) {
+    fs.writeFileSync(file, text);
+    touched.push(path.relative(dist, file));
+  }
+}
+
+if (!replacements) {
+  console.error('[ads-admin-preview-auth] Neon Auth literal not found; refusing silent Preview build');
+  process.exit(1);
+}
+
+console.log(`[ads-admin-preview-auth] routed ADS ADMIN auth through runtime same-origin proxy (${replacements} replacement${replacements === 1 ? '' : 's'})`);
+for (const file of touched) console.log(`[ads-admin-preview-auth] touched: ${file}`);
