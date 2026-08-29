@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "node scripts/patch-ways-ads-r2-prod.mjs && node scripts/inject-analytics-auto-sync.mjs && node scripts/inject-control-center-page-manifests.mjs && astro build && node scripts/inject-ads-capacity-panel.mjs && node scripts/verify-analytics-auto-sync.mjs",
+    "build": "node scripts/diagnose-scraps-legacy-media.mjs && node scripts/patch-ways-ads-r2-prod.mjs && node scripts/inject-analytics-auto-sync.mjs && node scripts/inject-control-center-page-manifests.mjs && astro build && node scripts/inject-ads-capacity-panel.mjs && node scripts/verify-analytics-auto-sync.mjs",
     "preview": "astro preview"
   },
   "dependencies": {
