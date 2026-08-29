@@ -16,6 +16,7 @@
   let sampleMediaUrl = '';
   let sampleVideoEl = null;
   let sampleTarget = null;
+  let sampleTargetKind = '';
   let sampleRestore = null;
   let sampleSyncTimer = 0;
 
@@ -180,7 +181,7 @@
     if (mediaCandidates[0]) return { kind: 'media', el: mediaCandidates[0].el };
 
     const bgCandidates = [...panel.querySelectorAll('div,section,article,figure')]
-      .filter((el) => !el.closest(`#${BUTTON_ID}`))
+      .filter((el) => !el.closest(`#${BUTTON_ID}`) && !el.dataset.hwadsSampleMedia)
       .map((el) => ({ el, rect: visibleRect(el), bg: getComputedStyle(el).backgroundImage }))
       .filter((x) => x.rect && x.bg && x.bg !== 'none')
       .sort((a, b) => (b.rect.width * b.rect.height) - (a.rect.width * a.rect.height));
@@ -197,6 +198,7 @@
     }
     sampleRestore = null;
     sampleTarget = null;
+    sampleTargetKind = '';
   }
 
   function revokeSampleUrl() {
@@ -207,12 +209,17 @@
   function applySampleMedia() {
     if (!latestMediaFile) return;
     const panel = findPreviewPanel();
-    const targetInfo = findSampleTarget(panel);
+    if (!panel) return;
+
+    let targetInfo = sampleTarget?.isConnected && panel.contains(sampleTarget)
+      ? { kind: sampleTargetKind || 'media', el: sampleTarget }
+      : findSampleTarget(panel);
     if (!targetInfo?.el) return;
 
     if (sampleTarget && sampleTarget !== targetInfo.el) restoreSampleTarget();
     if (!sampleMediaUrl) sampleMediaUrl = URL.createObjectURL(latestMediaFile);
     sampleTarget = targetInfo.el;
+    sampleTargetKind = targetInfo.kind;
 
     if (latestMediaFile.type.startsWith('image/')) {
       if (targetInfo.kind === 'media') {
@@ -220,7 +227,7 @@
         if (el.tagName === 'IMG') {
           if (!el.dataset.hwadsOriginalSrc) el.dataset.hwadsOriginalSrc = el.currentSrc || el.src || '';
           const original = el.dataset.hwadsOriginalSrc;
-          sampleRestore = () => { if (original) el.src = original; delete el.dataset.hwadsOriginalSrc; };
+          sampleRestore = () => { if (original) el.src = original; delete el.dataset.hwadsOriginalSrc; delete el.dataset.hwadsSampleMedia; };
           el.src = sampleMediaUrl;
           el.style.objectFit = 'cover';
           el.dataset.hwadsSampleMedia = '1';
