@@ -22,8 +22,8 @@ try {
            p.prosecdef AS security_definer, pg_get_functiondef(p.oid) AS definition
     FROM pg_proc p
     JOIN pg_namespace n ON n.oid = p.pronamespace
-    WHERE p.proname = 'hwads_is_admin'
-    ORDER BY n.nspname
+    WHERE p.proname IN ('hwads_is_admin','ad_is_admin')
+    ORDER BY n.nspname, p.proname
   `;
 
   const policies = await sql`
@@ -45,9 +45,32 @@ try {
     ORDER BY table_schema, table_name, ordinal_position
   `;
 
+  const sohiOwner = await sql`
+    SELECT
+      c.title,
+      (c.owner_user_id IS NOT NULL) AS has_owner_user_id,
+      (u.id IS NOT NULL) AS auth_user_found,
+      COALESCE(u.role, '') AS auth_role,
+      (u.email IS NOT NULL) AS auth_email_present
+    FROM public.ad_campaigns c
+    LEFT JOIN neon_auth."user" u ON u.id::text = c.owner_user_id
+    WHERE c.title = 'ソヒ'
+    ORDER BY c.created_at DESC
+    LIMIT 1
+  `;
+
+  const roleCounts = await sql`
+    SELECT COALESCE(role,'') AS role, count(*)::int AS n
+    FROM neon_auth."user"
+    GROUP BY COALESCE(role,'')
+    ORDER BY role
+  `;
+
   console.log('[ads-admin-db-diagnose] functions', JSON.stringify(functions.map(x => ({...x, definition:redact(x.definition)}))));
   console.log('[ads-admin-db-diagnose] candidates', JSON.stringify(candidates));
   console.log('[ads-admin-db-diagnose] policies', JSON.stringify(policies.map(x => ({...x, qual:redact(x.qual), with_check:redact(x.with_check)}))));
+  console.log('[ads-admin-db-diagnose] sohi-owner', JSON.stringify(sohiOwner));
+  console.log('[ads-admin-db-diagnose] role-counts', JSON.stringify(roleCounts));
 } catch (error) {
   console.error('[ads-admin-db-diagnose] failed', String(error?.message || error));
   process.exitCode = 1;
