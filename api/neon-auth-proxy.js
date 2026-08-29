@@ -23,6 +23,25 @@ function normalizeSetCookie(cookie) {
     .replace(/;\s*Path=[^;]*/ig, '; Path=/');
 }
 
+function copyResponseHeaders(upstream, res) {
+  const blocked = new Set([
+    'connection', 'content-length', 'content-encoding', 'transfer-encoding',
+    'access-control-allow-origin', 'access-control-allow-credentials',
+    'access-control-allow-headers', 'access-control-allow-methods', 'set-cookie'
+  ]);
+  for (const [key, value] of upstream.headers.entries()) {
+    if (blocked.has(key.toLowerCase())) continue;
+    try { res.setHeader(key, value); } catch {}
+  }
+  res.setHeader('cache-control', 'no-store');
+  res.setHeader('x-harfway-preview-auth-proxy', '1');
+
+  const setCookies = typeof upstream.headers.getSetCookie === 'function'
+    ? upstream.headers.getSetCookie()
+    : (upstream.headers.get('set-cookie') ? [upstream.headers.get('set-cookie')] : []);
+  if (setCookies.length) res.setHeader('set-cookie', setCookies.map(normalizeSetCookie));
+}
+
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
     res.status(204).end();
@@ -41,6 +60,10 @@ export default async function handler(req, res) {
   if (req.headers['content-type']) headers['content-type'] = req.headers['content-type'];
   if (req.headers.cookie) headers.cookie = req.headers.cookie;
   if (req.headers.authorization) headers.authorization = req.headers.authorization;
+  for (const [key, value] of Object.entries(req.headers || {})) {
+    if (!key.toLowerCase().startsWith('x-') || value == null) continue;
+    headers[key] = Array.isArray(value) ? value.join(', ') : String(value);
+  }
 
   let body;
   if (!['GET', 'HEAD'].includes(req.method || 'GET')) {
@@ -59,20 +82,7 @@ export default async function handler(req, res) {
       body,
       redirect: 'manual'
     });
-
-    const contentType = upstream.headers.get('content-type');
-    if (contentType) res.setHeader('content-type', contentType);
-    res.setHeader('cache-control', 'no-store');
-    res.setHeader('x-harfway-preview-auth-proxy', '1');
-
-    const location = upstream.headers.get('location');
-    if (location) res.setHeader('location', location);
-
-    const setCookies = typeof upstream.headers.getSetCookie === 'function'
-      ? upstream.headers.getSetCookie()
-      : (upstream.headers.get('set-cookie') ? [upstream.headers.get('set-cookie')] : []);
-    if (setCookies.length) res.setHeader('set-cookie', setCookies.map(normalizeSetCookie));
-
+    copyResponseHeaders(upstream, res);
     const bytes = Buffer.from(await upstream.arrayBuffer());
     res.status(upstream.status).send(bytes);
   } catch (error) {
