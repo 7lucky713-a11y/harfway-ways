@@ -52,17 +52,17 @@
       }
     },
     {
-      "id": "shelf-admin",
-      "admin_url": "https://harfway-playback.vercel.app/db-master-core",
+      "id": "memory",
+      "public_url": "https://harfway-playback.vercel.app/memory",
       "sync_source": "local-registry",
       "manifest": {
         "harfway": true,
-        "id": "shelf-admin",
-        "name": "SHELF ADMIN / CORE",
-        "group": "CREATE",
-        "role": "棚生成・表示管理",
-        "description": "Shared Content Coreの作品から棚を組むための表示・固定・画像ソース設定を管理。専用UI分離前はCore DB管理画面を入口にする。",
-        "admin_url": "https://harfway-playback.vercel.app/db-master-core"
+        "id": "memory",
+        "name": "HARF-WAY MEMORY",
+        "group": "OPERATE",
+        "role": "セーブデータ・共有メモ",
+        "description": "HARF-WAYとChatGPTの現在地、最近の決定、次の一手、ユーザーの気づきINBOXをまとめる共有メモリ入口。",
+        "public_url": "https://harfway-playback.vercel.app/memory"
       }
     }
   ]
