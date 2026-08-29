@@ -2,7 +2,7 @@ const HUB_API='https://harfway-vercel-hub.vercel.app/api/entries';
 const GITHUB_OWNER='7lucky713-a11y';
 const GITHUB_REPOS_API=`https://api.github.com/users/${GITHUB_OWNER}/repos?per_page=100&sort=pushed&direction=desc&type=owner`;
 const GITHUB_SYNC_SINCE=Date.parse('2026-08-29T00:00:00.000Z');
-const LOCAL_REGISTRY_URL='https://raw.githubusercontent.com/7lucky713-a11y/harfway-ways/production/public/harfway-tools.json';
+const LOCAL_REGISTRY_URL='https://raw.githubusercontent.com/7lucky713-a11y/harfway-ways/control-center-registry/public/harfway-tools.json';
 
 const BASELINE_HUB_IDS=new Set([
   'hub','play','scr','show','ads','clean','mochikomi-02','editors-pick','tv','pltv','petit',
@@ -351,7 +351,7 @@ export default async function handler(req,res){
     vercel:{
       connected:false,
       status:0,
-      reason:'not_required_tokenless_github_discovery',
+      reason:'not_required_tokenless_registry_and_github_discovery',
       syncSince:new Date(GITHUB_SYNC_SINCE).toISOString(),
       scanned:0,
       autoItems:[]
