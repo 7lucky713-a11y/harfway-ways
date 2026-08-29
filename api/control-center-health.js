@@ -3,16 +3,12 @@ const VERCEL_API='https://api.vercel.com';
 const VERCEL_TEAM_ID='team_gbsYb1fPzUH6nOmZmcSZDvvG';
 const VERCEL_SYNC_SINCE=Date.parse('2026-08-29T00:00:00.000Z');
 
-// Snapshot of HUB entries that existed when automatic sync was introduced.
-// Any new HUB id added after this point is treated as an AUTO SYNC candidate.
 const BASELINE_HUB_IDS=new Set([
   'hub','play','scr','show','ads','clean','mochikomi-02','editors-pick','tv','pltv','petit',
   'yorimichi-editor','scrap-extractor','design-stock','factory','zine-editor','todays-flyer',
   'db-importer','kirehashi-read-watch'
 ]);
 
-// Existing first-class systems. Production re-deploys of these projects should not
-// create duplicate AUTO cards when the Vercel production watcher sees them again.
 const KNOWN_TOOL_IDS=new Set([
   'ways','play','playback','archive','salvager','db-master','r2-media','analytics','showcase',
   'playlist','playlist-tv','scrapbook','yorimichi','yorimichi-editor','zine','zine-editor',
@@ -20,9 +16,6 @@ const KNOWN_TOOL_IDS=new Set([
   'shelf-admin','shelf-generator'
 ]);
 
-// Sub-routes living inside an existing Vercel project do not create a new project-level
-// production deployment. Keep those first-class tools here so Control Center still treats
-// them like synced tools.
 const LOCAL_AUTO_ITEMS=[
   {
     id:'sale-watch',
@@ -178,7 +171,7 @@ async function withManifest(item={}){
 }
 
 async function loadVercelProductionItems(){
-  const token=String(process.env.VERCEL_AUTOMATION_TOKEN||process.env.VERCEL_TOKEN||'').trim();
+  const token=String(process.env.VERCEL_AUTOMATION_TOKEN||process.env.VERCEL_TOKEN||process.env.VERCEL_OIDC_TOKEN||'').trim();
   if(!token){
     return {connected:false,status:0,reason:'missing_vercel_token',scanned:0,items:[]};
   }
@@ -281,9 +274,6 @@ export default async function handler(req,res){
   const localIds=new Set(LOCAL_AUTO_ITEMS.map(item=>String(item.id||'')));
   const autoCandidates=hubItems.filter(item=>!BASELINE_HUB_IDS.has(String(item?.id||''))&&!localIds.has(String(item?.id||'')));
   const remoteAutoItems=await Promise.all(autoCandidates.slice(0,20).map(withManifest));
-
-  // Production watcher is authoritative for new standalone tools. HUB remains as a fallback
-  // and for manually registered/sub-route tools.
   const autoItems=mergeAutoItems(LOCAL_AUTO_ITEMS,vercelResult.items,remoteAutoItems);
   const healthy=checks.filter(x=>x.ok).length;
 
