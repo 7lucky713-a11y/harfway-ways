@@ -1,0 +1,15 @@
+---
+const status = {
+  sessionSecret: Boolean(process.env.ADS_ADVERTISER_SESSION_SECRET),
+  advertiserCodes: Boolean(process.env.ADS_ADVERTISER_CODES),
+  adminReadKey: Boolean(
+    process.env.ADS_ADVERTISER_ADMIN_KEY
+    || process.env.ADS_ADMIN_KEY
+    || process.env.HARFWAY_ADS_ADMIN_KEY
+  ),
+  manualReports: Boolean(process.env.ADS_ADVERTISER_REPORTS),
+  environment: process.env.VERCEL_ENV || 'unknown',
+};
+console.log(`[advertiser-config-probe] ${JSON.stringify(status)}`);
+---
+<html lang="ja"><head><meta name="robots" content="noindex,nofollow" /><title>Advertiser config probe</title></head><body>Preview configuration probe.</body></html>
