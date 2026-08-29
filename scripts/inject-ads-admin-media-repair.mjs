@@ -8,8 +8,8 @@ if (!fs.existsSync(target)) {
 }
 
 let html = fs.readFileSync(target, 'utf8');
-const marker = '<script src="/ads-portal-r2-shim.js"></script><script src="/ads-admin-media-repair.js"></script>';
-if (html.includes('/ads-admin-media-repair.js')) {
+const marker = '<script src="/ads-portal-r2-shim.js"></script><script src="/ads-admin-media-repair.js"></script><script src="/ads-admin-write-bridge.js"></script>';
+if (html.includes('/ads-admin-media-repair.js') && html.includes('/ads-admin-write-bridge.js')) {
   console.log('[ads-admin-media-repair] already injected');
   process.exit(0);
 }
@@ -20,4 +20,4 @@ if (html.includes('<script type="module"')) {
   html = html.replace('</body>', `${marker}</body>`);
 }
 fs.writeFileSync(target, html);
-console.log('[ads-admin-media-repair] injected');
+console.log('[ads-admin-media-repair] injected repair + write bridge');
