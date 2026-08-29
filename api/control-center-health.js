@@ -1,4 +1,7 @@
 const HUB_API='https://harfway-vercel-hub.vercel.app/api/entries';
+const VERCEL_API='https://api.vercel.com';
+const VERCEL_TEAM_ID='team_gbsYb1fPzUH6nOmZmcSZDvvG';
+const VERCEL_SYNC_SINCE=Date.parse('2026-08-29T00:00:00.000Z');
 
 // Snapshot of HUB entries that existed when automatic sync was introduced.
 // Any new HUB id added after this point is treated as an AUTO SYNC candidate.
@@ -8,8 +11,17 @@ const BASELINE_HUB_IDS=new Set([
   'db-importer','kirehashi-read-watch'
 ]);
 
-// Sub-routes living inside an existing Vercel project do not create a new HUB id.
-// Keep those first-class tools here so Control Center still treats them like synced tools.
+// Existing first-class systems. Production re-deploys of these projects should not
+// create duplicate AUTO cards when the Vercel production watcher sees them again.
+const KNOWN_TOOL_IDS=new Set([
+  'ways','play','playback','archive','salvager','db-master','r2-media','analytics','showcase',
+  'playlist','playlist-tv','scrapbook','yorimichi','yorimichi-editor','zine','zine-editor',
+  'design-stock','factory','cleanup','sale-watch','reader-entrance'
+]);
+
+// Sub-routes living inside an existing Vercel project do not create a new project-level
+// production deployment. Keep those first-class tools here so Control Center still treats
+// them like synced tools.
 const LOCAL_AUTO_ITEMS=[
   {
     id:'sale-watch',
@@ -60,14 +72,43 @@ const CORE_CHECKS=[
   {id:'cleanup',name:'VERCEL CLEANUP',kind:'ops',url:'https://harfway-vercel-cleanup-harf-way.vercel.app/'}
 ];
 
+function normalizeId(value=''){
+  return String(value||'').trim().toLowerCase();
+}
+
+function normalizeUrl(value=''){
+  try{
+    const u=new URL(String(value||'').trim());
+    return `${u.origin}${u.pathname.replace(/\/+$/,'')||'/'}`;
+  }catch{return String(value||'').trim().replace(/\/+$/,'')}
+}
+
+function syncKey(item={}){
+  const manifest=item.manifest||{};
+  const id=normalizeId(manifest.id||item.id);
+  if(id)return `id:${id}`;
+  const url=normalizeUrl(manifest.public_url||item.public_url||manifest.admin_url||item.admin_url);
+  if(url)return `url:${url}`;
+  return '';
+}
+
+function isKnownTool(item={}){
+  const manifest=item.manifest||{};
+  const id=normalizeId(manifest.id||item.id);
+  if(id&&KNOWN_TOOL_IDS.has(id))return true;
+  const url=normalizeUrl(manifest.public_url||item.public_url||'');
+  if(!url)return false;
+  return CORE_CHECKS.some(x=>normalizeUrl(x.url)===url)||LOCAL_AUTO_ITEMS.some(x=>normalizeUrl(x.public_url)===url);
+}
+
 async function timedFetch(url,opts={}){
   const ctrl=new AbortController();
   const timer=setTimeout(()=>ctrl.abort(),6500);
   const started=Date.now();
   try{
-    let res=await fetch(url,{method:'HEAD',redirect:'follow',signal:ctrl.signal,headers:{'user-agent':'HARF-WAY-Control-Center/0.3'},...opts});
+    let res=await fetch(url,{method:'HEAD',redirect:'follow',signal:ctrl.signal,headers:{'user-agent':'HARF-WAY-Control-Center/0.4'},...opts});
     if(res.status===405||res.status===501){
-      res=await fetch(url,{method:'GET',redirect:'follow',signal:ctrl.signal,headers:{'user-agent':'HARF-WAY-Control-Center/0.3'},...opts});
+      res=await fetch(url,{method:'GET',redirect:'follow',signal:ctrl.signal,headers:{'user-agent':'HARF-WAY-Control-Center/0.4'},...opts});
     }
     return {ok:res.ok,status:res.status,latencyMs:Date.now()-started,finalUrl:res.url||url};
   }catch(error){
@@ -81,42 +122,146 @@ function manifestUrl(item={}){
   try{return new URL('/harfway-tool.json',raw).toString()}catch{return ''}
 }
 
+async function fetchManifest(url){
+  if(!url)return null;
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(),3000);
+  try{
+    const response=await fetch(url,{cache:'no-store',signal:ctrl.signal,headers:{'user-agent':'HARF-WAY-Control-Center/0.4'}});
+    if(!response.ok)return null;
+    const manifest=await response.json().catch(()=>null);
+    if(!manifest||manifest.harfway!==true||manifest?.control_center?.sync===false)return null;
+    return manifest;
+  }catch{return null}finally{clearTimeout(timer)}
+}
+
 async function withManifest(item={}){
   const url=manifestUrl(item);
   if(!url)return {...item,sync_source:'hub',manifest:null};
-  const ctrl=new AbortController();
-  const timer=setTimeout(()=>ctrl.abort(),2500);
+  const manifest=await fetchManifest(url);
+  return manifest?{...item,sync_source:'manifest',manifest}:{...item,sync_source:'hub',manifest:null};
+}
+
+async function loadVercelProductionItems(){
+  const token=String(process.env.VERCEL_AUTOMATION_TOKEN||process.env.VERCEL_TOKEN||'').trim();
+  if(!token){
+    return {connected:false,status:0,reason:'missing_vercel_token',scanned:0,items:[]};
+  }
+
+  const params=new URLSearchParams({
+    teamId:VERCEL_TEAM_ID,
+    target:'production',
+    state:'READY',
+    limit:'100',
+    since:String(VERCEL_SYNC_SINCE)
+  });
+
   try{
-    const response=await fetch(url,{cache:'no-store',signal:ctrl.signal,headers:{'user-agent':'HARF-WAY-Control-Center/0.3'}});
-    if(!response.ok)return {...item,sync_source:'hub',manifest:null};
-    const manifest=await response.json().catch(()=>null);
-    if(!manifest||manifest.harfway!==true)return {...item,sync_source:'hub',manifest:null};
-    return {...item,sync_source:'manifest',manifest};
-  }catch{
-    return {...item,sync_source:'hub',manifest:null};
-  }finally{clearTimeout(timer)}
+    const response=await fetch(`${VERCEL_API}/v7/deployments?${params.toString()}`,{
+      cache:'no-store',
+      headers:{
+        authorization:`Bearer ${token}`,
+        'user-agent':'HARF-WAY-Control-Center/0.4'
+      }
+    });
+    const data=await response.json().catch(()=>null);
+    if(!response.ok){
+      return {connected:false,status:response.status,reason:data?.error?.message||'vercel_api_error',scanned:0,items:[]};
+    }
+
+    const deployments=Array.isArray(data?.deployments)?data.deployments:[];
+    const newestByProject=new Map();
+    for(const deployment of deployments){
+      const projectId=String(deployment?.projectId||deployment?.name||'');
+      if(!projectId||!deployment?.url)continue;
+      const current=newestByProject.get(projectId);
+      if(!current||Number(deployment?.created||0)>Number(current?.created||0))newestByProject.set(projectId,deployment);
+    }
+
+    const candidates=[...newestByProject.values()].slice(0,40);
+    const resolved=await Promise.all(candidates.map(async deployment=>{
+      const baseUrl=`https://${String(deployment.url).replace(/^https?:\/\//,'')}`;
+      const manifest=await fetchManifest(new URL('/harfway-tool.json',baseUrl).toString());
+      if(!manifest)return null;
+      const item={
+        id:manifest.id||`vercel-${deployment.projectId||deployment.uid||deployment.name}`,
+        project_slug:manifest.project_slug||deployment.name||'',
+        public_url:manifest.public_url||baseUrl,
+        admin_url:manifest.admin_url||'',
+        metrics_url:manifest.metrics_url||'',
+        sync_source:'vercel-production',
+        manifest,
+        deployment:{
+          id:deployment.uid||deployment.id||'',
+          projectId:deployment.projectId||'',
+          url:baseUrl,
+          created:deployment.created||0,
+          target:deployment.target||'production',
+          state:deployment.state||deployment.readyState||'READY'
+        }
+      };
+      return isKnownTool(item)?null:item;
+    }));
+
+    return {
+      connected:true,
+      status:response.status,
+      reason:'',
+      scanned:candidates.length,
+      items:resolved.filter(Boolean)
+    };
+  }catch(error){
+    return {connected:false,status:0,reason:String(error?.message||error),scanned:0,items:[]};
+  }
+}
+
+function mergeAutoItems(...groups){
+  const seen=new Set();
+  const merged=[];
+  for(const group of groups){
+    for(const item of group||[]){
+      const key=syncKey(item)||`fallback:${normalizeId(item?.project_slug||item?.name||'')}`;
+      if(key&&seen.has(key))continue;
+      if(key)seen.add(key);
+      merged.push(item);
+    }
+  }
+  return merged.slice(0,30);
 }
 
 export default async function handler(req,res){
   if(req.method!=='GET')return res.status(405).json({ok:false,error:'method_not_allowed'});
   res.setHeader('Cache-Control','no-store');
   const checkedAt=new Date().toISOString();
-  const [hubResult,checks]=await Promise.all([
-    fetch(HUB_API,{headers:{'user-agent':'HARF-WAY-Control-Center/0.3'}})
+
+  const [hubResult,checks,vercelResult]=await Promise.all([
+    fetch(HUB_API,{headers:{'user-agent':'HARF-WAY-Control-Center/0.4'}})
       .then(async r=>({ok:r.ok,status:r.status,data:r.ok?await r.json():null}))
       .catch(error=>({ok:false,status:0,error:String(error?.message||error)})),
-    Promise.all(CORE_CHECKS.map(async item=>({...item,...await timedFetch(item.url)})))
+    Promise.all(CORE_CHECKS.map(async item=>({...item,...await timedFetch(item.url)}))),
+    loadVercelProductionItems()
   ]);
+
   const hubItems=Array.isArray(hubResult?.data?.items)?hubResult.data.items:[];
   const localIds=new Set(LOCAL_AUTO_ITEMS.map(item=>String(item.id||'')));
   const autoCandidates=hubItems.filter(item=>!BASELINE_HUB_IDS.has(String(item?.id||''))&&!localIds.has(String(item?.id||'')));
   const remoteAutoItems=await Promise.all(autoCandidates.slice(0,20).map(withManifest));
-  const autoItems=[...LOCAL_AUTO_ITEMS,...remoteAutoItems].slice(0,20);
+
+  // Production watcher is authoritative for new standalone tools. HUB remains as a fallback
+  // and for manually registered/sub-route tools.
+  const autoItems=mergeAutoItems(LOCAL_AUTO_ITEMS,vercelResult.items,remoteAutoItems);
   const healthy=checks.filter(x=>x.ok).length;
+
   return res.status(200).json({
     ok:true,
     checkedAt,
-    summary:{healthy,total:checks.length,hubEntries:hubItems.length,autoSync:autoItems.length},
+    summary:{
+      healthy,
+      total:checks.length,
+      hubEntries:hubItems.length,
+      autoSync:autoItems.length,
+      vercelProductionSync:vercelResult.items.length
+    },
     checks,
     hub:{
       connected:!!hubResult.ok,
@@ -124,6 +269,14 @@ export default async function handler(req,res){
       items:hubItems,
       autoItems,
       baselineCount:BASELINE_HUB_IDS.size
+    },
+    vercel:{
+      connected:vercelResult.connected,
+      status:vercelResult.status,
+      reason:vercelResult.reason,
+      syncSince:new Date(VERCEL_SYNC_SINCE).toISOString(),
+      scanned:vercelResult.scanned,
+      autoItems:vercelResult.items
     }
   });
 }
