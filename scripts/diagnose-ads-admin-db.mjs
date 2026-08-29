@@ -31,6 +31,22 @@ try {
     ORDER BY n.nspname, p.proname
   `;
 
+  const functionSecurity = await sql`
+    SELECT
+      pg_get_userbyid(p.proowner) AS function_owner,
+      c.relowner::regrole::text AS user_table_owner,
+      c.relrowsecurity AS user_table_rls,
+      c.relforcerowsecurity AS user_table_force_rls,
+      r.rolbypassrls AS function_owner_bypassrls,
+      has_table_privilege(pg_get_userbyid(p.proowner), 'neon_auth.user', 'SELECT') AS function_owner_can_select_user
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    JOIN pg_class c ON c.oid = 'neon_auth.user'::regclass
+    JOIN pg_roles r ON r.rolname = pg_get_userbyid(p.proowner)
+    WHERE n.nspname='public' AND p.proname='ad_is_admin'
+    LIMIT 1
+  `;
+
   const policies = await sql`
     SELECT schemaname, tablename, policyname, roles, cmd, qual, with_check
     FROM pg_policies
@@ -72,6 +88,7 @@ try {
   `;
 
   console.log('[ads-admin-db-diagnose] functions', JSON.stringify(functions.map(x => ({...x, definition:redact(x.definition)}))));
+  console.log('[ads-admin-db-diagnose] function-security', JSON.stringify(functionSecurity));
   console.log('[ads-admin-db-diagnose] candidates', JSON.stringify(candidates));
   console.log('[ads-admin-db-diagnose] policies', JSON.stringify(policies.map(x => ({...x, qual:redact(x.qual), with_check:redact(x.with_check)}))));
   console.log('[ads-admin-db-diagnose] sohi-owner', JSON.stringify(sohiOwner));
