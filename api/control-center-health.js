@@ -16,7 +16,8 @@ const BASELINE_HUB_IDS=new Set([
 const KNOWN_TOOL_IDS=new Set([
   'ways','play','playback','archive','salvager','db-master','r2-media','analytics','showcase',
   'playlist','playlist-tv','scrapbook','yorimichi','yorimichi-editor','zine','zine-editor',
-  'design-stock','factory','cleanup','sale-watch','reader-entrance'
+  'design-stock','factory','cleanup','sale-watch','reader-entrance','ads','harfway-ads',
+  'shelf-admin','shelf-generator'
 ]);
 
 // Sub-routes living inside an existing Vercel project do not create a new project-level
@@ -50,6 +51,38 @@ const LOCAL_AUTO_ITEMS=[
       description:'HARF-WAY本体・WAYS・PLAYLIST・SCRAPS・SALE WATCHを1か所から辿れる読者向け入口。',
       public_url:'https://harfway-playback.vercel.app/entrance'
     }
+  },
+  {
+    id:'harfway-ads',
+    public_url:'https://harfway-ads-prototype.vercel.app/',
+    admin_url:'https://harfway-ads-admin.vercel.app/',
+    metrics_url:'https://harfway-ads-placement-dashboard.vercel.app/',
+    sync_source:'manifest',
+    manifest:{
+      harfway:true,
+      id:'harfway-ads',
+      name:'HARF-WAY ADS',
+      group:'OPERATE',
+      role:'広告配信・入稿・計測',
+      description:'HARF-WAYの自前広告ネットワーク。広告主向け入口、管理、配信枠、IMP上限、結果計測をまとめて扱う。',
+      public_url:'https://harfway-ads-prototype.vercel.app/',
+      admin_url:'https://harfway-ads-admin.vercel.app/',
+      metrics_url:'https://harfway-ads-placement-dashboard.vercel.app/'
+    }
+  },
+  {
+    id:'shelf-admin',
+    admin_url:'https://harfway-playback.vercel.app/db-master-core',
+    sync_source:'manifest',
+    manifest:{
+      harfway:true,
+      id:'shelf-admin',
+      name:'SHELF ADMIN / CORE',
+      group:'CREATE',
+      role:'棚生成・表示管理',
+      description:'Shared Content Coreの作品から棚を組むための表示・固定・画像ソース設定を管理。専用UI分離前はCore DB管理画面を入口にする。',
+      admin_url:'https://harfway-playback.vercel.app/db-master-core'
+    }
   }
 ];
 
@@ -60,8 +93,10 @@ const CORE_CHECKS=[
   {id:'archive',name:'WAYS ARCHIVE',kind:'publish',url:'https://harfway-playback.vercel.app/archive/'},
   {id:'salvager',name:'ARCHIVE SALVAGER',kind:'core',url:'https://harfway-playback.vercel.app/salvage/'},
   {id:'db-master',name:'DB MASTER',kind:'core',url:'https://harfway-playback.vercel.app/db-master'},
+  {id:'shelf-admin',name:'SHELF ADMIN / CORE',kind:'create',url:'https://harfway-playback.vercel.app/db-master-core'},
   {id:'r2-media',name:'R2 MEDIA MANAGER',kind:'core',url:'https://harfway-showcase-manager-v2.vercel.app/r2-media.html'},
   {id:'analytics',name:'ANALYTICS HUB',kind:'ops',url:'https://harfway-playback.vercel.app/analytics'},
+  {id:'ads',name:'HARF-WAY ADS',kind:'ops',url:'https://harfway-ads-admin.vercel.app/'},
   {id:'showcase',name:'SHOWCASE',kind:'publish',url:'https://harfway-showcase-ui-v4.vercel.app/'},
   {id:'playlist',name:'PLAYLIST TV',kind:'publish',url:'https://harfway-playlist-tv.vercel.app/'},
   {id:'scrapbook',name:'GAME SCRAPBOOK',kind:'publish',url:'https://harf-way-game-scrapbook.vercel.app/'},
