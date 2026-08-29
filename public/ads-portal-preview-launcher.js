@@ -158,7 +158,7 @@
     if (!wrap) {
       wrap = document.createElement('div');
       wrap.id = BUTTON_ID;
-      wrap.innerHTML = '<button type="button"><span>実際の掲載プレビューを開く</span><b>↗</b></button><small>現在の入力内容を別ページで確認できます。PC / スマホ切替対応。</small>';
+      wrap.innerHTML = '<button type="button"><span>実画面で掲載位置を確認</span><b>↗</b></button><small>公開中の4媒体を切り替えながら、PC / スマホ両方で「どこにどう出るか」を確認できます。</small>';
     }
     if (wrap.parentElement !== panel || panel.lastElementChild !== wrap) panel.appendChild(wrap);
     return true;
@@ -171,12 +171,13 @@
     const popup = window.open('about:blank', '_blank');
     const label = button.querySelector('span');
     const before = label?.textContent || '';
-    if (label) label.textContent = 'プレビューを準備中…';
+    if (label) label.textContent = '実画面を準備中…';
     button.disabled = true;
     try {
       const draft = readDraft();
       await saveDraft(draft);
-      const url = `/ads-preview/?id=${encodeURIComponent(draft.id)}`;
+      const firstPlacement = draft.placements?.[0] || 'playlist';
+      const url = `/ads-live-preview/?id=${encodeURIComponent(draft.id)}&placement=${encodeURIComponent(firstPlacement)}&device=pc`;
       if (popup) popup.location.href = url;
       else window.location.href = url;
     } catch (error) {
@@ -186,7 +187,7 @@
       window.setTimeout(() => { if (label) label.textContent = before; }, 1800);
     } finally {
       button.disabled = false;
-      if (label && label.textContent === 'プレビューを準備中…') label.textContent = before;
+      if (label && label.textContent === '実画面を準備中…') label.textContent = before;
     }
   }, true);
 
