@@ -25,6 +25,19 @@ const LOCAL_AUTO_ITEMS=[
       public_url:'https://harfway-playback.vercel.app/sales',
       admin_url:'https://harfway-playback.vercel.app/sales-admin'
     }
+  },
+  {
+    id:'reader-entrance',
+    public_url:'https://harfway-playback.vercel.app/entrance',
+    sync_source:'manifest',
+    manifest:{
+      harfway:true,
+      name:'HARF-WAY ENTRANCE',
+      group:'PUBLISH',
+      role:'読者向けコンテンツHUB',
+      description:'HARF-WAY本体・WAYS・PLAYLIST・SCRAPS・SALE WATCHを1か所から辿れる読者向け入口。',
+      public_url:'https://harfway-playback.vercel.app/entrance'
+    }
   }
 ];
 
