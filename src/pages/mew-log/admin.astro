@@ -45,15 +45,26 @@ const title = 'MEW LOG ADMIN';
     .form input,.form textarea,.form select{border:1px solid var(--line);background:#151915;padding:12px 13px;border-radius:10px;font-size:16px;outline:none}
     .form input:focus,.form textarea:focus,.form select:focus{border-color:var(--accent);box-shadow:0 0 0 3px #93ad8218}
     .form textarea{min-height:150px;resize:vertical;line-height:1.7}
+    .form input[type="file"]{padding:10px;background:#181d19}
     .full{grid-column:1/-1}
+    .media-help{font:700 12px/1.6 ui-monospace,monospace;color:var(--muted)}
+    .media-status{grid-column:1/-1;display:none;border:1px solid var(--line);background:#181d19;padding:11px 13px;border-radius:10px;font:800 12px/1.6 ui-monospace,monospace;color:#cbd4c9}
+    .media-status.on{display:block}
+    .media-status.good{border-color:#56705b;color:#bbd1bc}
+    .media-status.bad{border-color:#784d4d;color:#e0b2b2}
+    .current-media{grid-column:1/-1;display:none;gap:10px;border:1px solid var(--line);background:#181d19;padding:12px;border-radius:12px}
+    .current-media.on{display:grid}
+    .current-media video{width:min(440px,100%);max-height:260px;background:#0f120f;border-radius:10px;border:1px solid var(--line)}
     .actions{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap}
     .actions button{border:1px solid var(--line);padding:12px 16px;font-weight:900;border-radius:10px;background:var(--accent);color:#121612}
+    .actions button:disabled{opacity:.55;cursor:wait}
     .actions .sub{background:var(--panel-2);color:var(--text)}
     .list{display:grid;gap:14px;margin:34px 0 76px}
     .item{border:1px solid var(--line);background:var(--panel);padding:18px;border-radius:14px;display:grid;grid-template-columns:1fr auto;gap:16px;box-shadow:0 10px 28px #0002}
     .item small{font:800 11px ui-monospace,monospace;color:var(--accent)}
     .item h3{font-size:23px;line-height:1.35;margin:6px 0 10px}
     .item p{font-size:15px;line-height:1.85;color:#c0c9be;margin:0}
+    .item video{display:block;width:min(380px,100%);max-height:220px;margin:12px 0;background:#0f120f;border-radius:10px;border:1px solid var(--line)}
     .item .btns{display:flex;gap:8px;align-items:start}
     .item button{border:1px solid var(--line);padding:8px 11px;background:var(--panel-2);font-size:13px;font-weight:900;border-radius:8px}
     .item button:hover{border-color:var(--accent)}
@@ -62,7 +73,7 @@ const title = 'MEW LOG ADMIN';
     @media(max-width:700px){
       .wrap{padding:0 18px}
       .form{grid-template-columns:1fr}
-      .full,.actions{grid-column:1}
+      .full,.actions,.media-status,.current-media{grid-column:1}
       .item{grid-template-columns:1fr}
       .item .btns{justify-content:flex-start}
       .hero h1{font-size:44px}
@@ -80,9 +91,9 @@ const title = 'MEW LOG ADMIN';
 <main class="wrap">
   <section class="hero">
     <h1>とりあえず残す。</h1>
-    <p>Preview版はブラウザlocalStorageへ保存。Production DBには書き込みません。</p>
+    <p>日記・動画・ビルド・猫を、Neon Previewへ保存。動画はR2へ直接保管します。</p>
   </section>
-  <div class="notice">日記 / 動画メモ / ビルドメモ / キャラメモを同じ形式で保存します。Preview確認後にNeon/R2へ接続する想定です。</div>
+  <div class="notice">Preview専用のNeon branchへ保存中。動画はMP4 / WebM、20MBまで。Production DB / Production R2運用にはまだ反映しません。</div>
   <form class="form" id="form">
     <input type="hidden" id="editId" />
     <label>種類
@@ -92,8 +103,14 @@ const title = 'MEW LOG ADMIN';
     <label>猫 / キャラ<input id="cat" placeholder="例：PONZU" /></label>
     <label>クラス<input id="className" placeholder="例：Fighter" /></label>
     <label class="full">タグ<input id="tags" placeholder="例：GEN 8, 繁殖, 位置取り" /></label>
+    <label class="full" id="mediaField">動画ファイル
+      <input id="mediaFile" type="file" accept="video/mp4,video/webm" />
+      <span class="media-help">「動画メモ」の時だけ使用。MP4 / WebM・20MBまで。選択すると保存時にR2へアップロードします。</span>
+    </label>
+    <div class="current-media" id="currentMedia"></div>
+    <div class="media-status" id="mediaStatus"></div>
     <label class="full">メモ<textarea id="memo" required placeholder="何が起きた？何を試した？次に何をしたい？"></textarea></label>
-    <div class="actions"><button type="submit">保存する</button><button type="button" class="sub" id="reset">入力をクリア</button></div>
+    <div class="actions"><button type="submit">保存する</button><button type="button" class="sub" id="clearInputs">入力をクリア</button></div>
   </form>
   <section class="list" id="list"></section>
 </main>
@@ -111,7 +128,7 @@ function render(){
   document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{if(!confirm('この記録を削除しますか？'))return;save(load().filter(v=>v.id!==b.dataset.del));render()})
 }
 form.onsubmit=e=>{e.preventDefault();const xs=load();const id=editId.value||('entry-'+Date.now());const prev=xs.find(x=>x.id===id);const obj={id,type:type.value,title:title.value.trim(),cat:cat.value.trim(),className:className.value.trim(),tags:tags.value.split(',').map(s=>s.trim()).filter(Boolean),memo:memo.value.trim(),createdAt:prev?.createdAt||new Date().toISOString().slice(0,10),updatedAt:new Date().toISOString()};const next=prev?xs.map(x=>x.id===id?obj:x):[obj,...xs];save(next);clearForm();render()};
-reset.onclick=clearForm;
+clearInputs.onclick=clearForm;
 render();
 </script>
 </body>
