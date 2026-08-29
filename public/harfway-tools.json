@@ -67,18 +67,24 @@
     },
     {
       "id": "mew-log",
+      "project_slug": "harfway-playback",
       "public_url": "https://harfway-playback.vercel.app/mew-log/",
       "admin_url": "https://harfway-playback.vercel.app/mew-log/admin/",
-      "sync_source": "local-registry",
+      "sync_source": "page-manifest",
       "manifest": {
         "harfway": true,
         "id": "mew-log",
         "name": "MEW LOG",
+        "project_slug": "harfway-playback",
         "group": "CREATE",
         "role": "Mewgenics個人プレイアーカイブ",
         "description": "日記・画像・動画・ビルド・キャラメモをNeon/R2へ蓄積し、あとから攻略や読み物へ育てる1ゲーム専門アーカイブ。",
         "public_url": "https://harfway-playback.vercel.app/mew-log/",
-        "admin_url": "https://harfway-playback.vercel.app/mew-log/admin/"
+        "admin_url": "https://harfway-playback.vercel.app/mew-log/admin/",
+        "control_center": {
+          "sync": true,
+          "scope": "page"
+        }
       }
     }
   ]
