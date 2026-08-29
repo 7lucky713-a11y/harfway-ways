@@ -1,18 +1,15 @@
 const HUB_API='https://harfway-vercel-hub.vercel.app/api/entries';
-const VERCEL_API='https://api.vercel.com';
-const VERCEL_TEAM_ID='team_gbsYb1fPzUH6nOmZmcSZDvvG';
-const VERCEL_SYNC_SINCE=Date.parse('2026-08-29T00:00:00.000Z');
+const GITHUB_OWNER='7lucky713-a11y';
+const GITHUB_REPOS_API=`https://api.github.com/users/${GITHUB_OWNER}/repos?per_page=100&sort=pushed&direction=desc&type=owner`;
+const GITHUB_SYNC_SINCE=Date.parse('2026-08-29T00:00:00.000Z');
+const LOCAL_REGISTRY_URL='https://raw.githubusercontent.com/7lucky713-a11y/harfway-ways/control-center-registry/public/harfway-tools.json';
 
-// Snapshot of HUB entries that existed when automatic sync was introduced.
-// Any new HUB id added after this point is treated as an AUTO SYNC candidate.
 const BASELINE_HUB_IDS=new Set([
   'hub','play','scr','show','ads','clean','mochikomi-02','editors-pick','tv','pltv','petit',
   'yorimichi-editor','scrap-extractor','design-stock','factory','zine-editor','todays-flyer',
   'db-importer','kirehashi-read-watch'
 ]);
 
-// Existing first-class systems. Production re-deploys of these projects should not
-// create duplicate AUTO cards when the Vercel production watcher sees them again.
 const KNOWN_TOOL_IDS=new Set([
   'ways','play','playback','archive','salvager','db-master','r2-media','analytics','showcase',
   'playlist','playlist-tv','scrapbook','yorimichi','yorimichi-editor','zine','zine-editor',
@@ -20,17 +17,15 @@ const KNOWN_TOOL_IDS=new Set([
   'shelf-admin','shelf-generator'
 ]);
 
-// Sub-routes living inside an existing Vercel project do not create a new project-level
-// production deployment. Keep those first-class tools here so Control Center still treats
-// them like synced tools.
 const LOCAL_AUTO_ITEMS=[
   {
     id:'sale-watch',
     public_url:'https://harfway-playback.vercel.app/sales',
     admin_url:'https://harfway-playback.vercel.app/sales-admin',
-    sync_source:'manifest',
+    sync_source:'local-registry',
     manifest:{
       harfway:true,
+      id:'sale-watch',
       name:'SALE WATCH',
       group:'OPERATE',
       role:'Steamセール監視',
@@ -42,9 +37,10 @@ const LOCAL_AUTO_ITEMS=[
   {
     id:'reader-entrance',
     public_url:'https://harfway-playback.vercel.app/entrance',
-    sync_source:'manifest',
+    sync_source:'local-registry',
     manifest:{
       harfway:true,
+      id:'reader-entrance',
       name:'HARF-WAY ENTRANCE',
       group:'PUBLISH',
       role:'読者向けコンテンツHUB',
@@ -57,7 +53,7 @@ const LOCAL_AUTO_ITEMS=[
     public_url:'https://harfway-ads-prototype.vercel.app/',
     admin_url:'https://harfway-ads-admin.vercel.app/',
     metrics_url:'https://harfway-ads-placement-dashboard.vercel.app/',
-    sync_source:'manifest',
+    sync_source:'local-registry',
     manifest:{
       harfway:true,
       id:'harfway-ads',
@@ -73,7 +69,7 @@ const LOCAL_AUTO_ITEMS=[
   {
     id:'shelf-admin',
     admin_url:'https://harfway-playback.vercel.app/db-master-core',
-    sync_source:'manifest',
+    sync_source:'local-registry',
     manifest:{
       harfway:true,
       id:'shelf-admin',
@@ -127,13 +123,25 @@ function syncKey(item={}){
   return '';
 }
 
-function isKnownTool(item={}){
+function isKnownTool(item={},localItems=LOCAL_AUTO_ITEMS){
   const manifest=item.manifest||{};
   const id=normalizeId(manifest.id||item.id);
   if(id&&KNOWN_TOOL_IDS.has(id))return true;
   const url=normalizeUrl(manifest.public_url||item.public_url||'');
   if(!url)return false;
-  return CORE_CHECKS.some(x=>normalizeUrl(x.url)===url)||LOCAL_AUTO_ITEMS.some(x=>normalizeUrl(x.public_url)===url);
+  return CORE_CHECKS.some(x=>normalizeUrl(x.url)===url)||localItems.some(x=>normalizeUrl(x.public_url)===url);
+}
+
+async function fetchJson(url,{timeoutMs=3500,headers={}}={}){
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(),timeoutMs);
+  try{
+    const response=await fetch(url,{cache:'no-store',signal:ctrl.signal,headers:{'user-agent':'HARF-WAY-Control-Center/0.5',...headers}});
+    const data=await response.json().catch(()=>null);
+    return {ok:response.ok,status:response.status,data,headers:response.headers};
+  }catch(error){
+    return {ok:false,status:0,data:null,error:error?.name==='AbortError'?'timeout':String(error?.message||error)};
+  }finally{clearTimeout(timer)}
 }
 
 async function timedFetch(url,opts={}){
@@ -141,9 +149,9 @@ async function timedFetch(url,opts={}){
   const timer=setTimeout(()=>ctrl.abort(),6500);
   const started=Date.now();
   try{
-    let res=await fetch(url,{method:'HEAD',redirect:'follow',signal:ctrl.signal,headers:{'user-agent':'HARF-WAY-Control-Center/0.4'},...opts});
+    let res=await fetch(url,{method:'HEAD',redirect:'follow',signal:ctrl.signal,headers:{'user-agent':'HARF-WAY-Control-Center/0.5'},...opts});
     if(res.status===405||res.status===501){
-      res=await fetch(url,{method:'GET',redirect:'follow',signal:ctrl.signal,headers:{'user-agent':'HARF-WAY-Control-Center/0.4'},...opts});
+      res=await fetch(url,{method:'GET',redirect:'follow',signal:ctrl.signal,headers:{'user-agent':'HARF-WAY-Control-Center/0.5'},...opts});
     }
     return {ok:res.ok,status:res.status,latencyMs:Date.now()-started,finalUrl:res.url||url};
   }catch(error){
@@ -159,15 +167,10 @@ function manifestUrl(item={}){
 
 async function fetchManifest(url){
   if(!url)return null;
-  const ctrl=new AbortController();
-  const timer=setTimeout(()=>ctrl.abort(),3000);
-  try{
-    const response=await fetch(url,{cache:'no-store',signal:ctrl.signal,headers:{'user-agent':'HARF-WAY-Control-Center/0.4'}});
-    if(!response.ok)return null;
-    const manifest=await response.json().catch(()=>null);
-    if(!manifest||manifest.harfway!==true||manifest?.control_center?.sync===false)return null;
-    return manifest;
-  }catch{return null}finally{clearTimeout(timer)}
+  const result=await fetchJson(url,{timeoutMs:3000});
+  const manifest=result.data;
+  if(!result.ok||!manifest||manifest.harfway!==true||manifest?.control_center?.sync===false)return null;
+  return manifest;
 }
 
 async function withManifest(item={}){
@@ -177,77 +180,104 @@ async function withManifest(item={}){
   return manifest?{...item,sync_source:'manifest',manifest}:{...item,sync_source:'hub',manifest:null};
 }
 
-async function loadVercelProductionItems(){
-  const token=String(process.env.VERCEL_AUTOMATION_TOKEN||process.env.VERCEL_TOKEN||'').trim();
-  if(!token){
-    return {connected:false,status:0,reason:'missing_vercel_token',scanned:0,items:[]};
+async function loadLocalRegistryItems(){
+  const result=await fetchJson(LOCAL_REGISTRY_URL,{timeoutMs:2500});
+  const items=Array.isArray(result?.data?.items)?result.data.items:[];
+  if(!result.ok||!items.length)return {connected:false,status:result.status||0,items:LOCAL_AUTO_ITEMS};
+  const clean=items.filter(item=>item?.manifest?.harfway===true&&item?.manifest?.control_center?.sync!==false);
+  return {connected:true,status:result.status,items:clean.length?clean:LOCAL_AUTO_ITEMS};
+}
+
+function rawManifestUrls(repo={}){
+  const fullName=String(repo.full_name||'').trim();
+  if(!fullName)return [];
+  const refs=['production'];
+  const defaultBranch=String(repo.default_branch||'').trim();
+  if(defaultBranch&&defaultBranch!=='production')refs.push(defaultBranch);
+  const paths=['public/harfway-tool.json','harfway-tool.json'];
+  const urls=[];
+  for(const ref of refs){
+    for(const path of paths)urls.push(`https://raw.githubusercontent.com/${fullName}/${encodeURIComponent(ref)}/${path}`);
   }
+  return urls;
+}
 
-  const params=new URLSearchParams({
-    teamId:VERCEL_TEAM_ID,
-    target:'production',
-    state:'READY',
-    limit:'100',
-    since:String(VERCEL_SYNC_SINCE)
-  });
+async function repoManifest(repo={}){
+  for(const url of rawManifestUrls(repo)){
+    const manifest=await fetchManifest(url);
+    if(manifest)return {manifest,sourceUrl:url};
+  }
+  return null;
+}
 
+function sameManifest(repoManifestValue={},liveManifest={}){
+  const repoId=normalizeId(repoManifestValue.id||repoManifestValue.project_slug||'');
+  const liveId=normalizeId(liveManifest.id||liveManifest.project_slug||'');
+  if(repoId&&liveId)return repoId===liveId;
+  const repoName=normalizeId(repoManifestValue.name||'');
+  const liveName=normalizeId(liveManifest.name||'');
+  return Boolean(repoName&&liveName&&repoName===liveName);
+}
+
+async function verifyLiveProduction(manifest={}){
+  const raw=String(manifest?.control_center?.manifest_url||manifest.public_url||manifest.admin_url||'').trim();
+  if(!raw)return null;
+  let url='';
   try{
-    const response=await fetch(`${VERCEL_API}/v7/deployments?${params.toString()}`,{
-      cache:'no-store',
-      headers:{
-        authorization:`Bearer ${token}`,
-        'user-agent':'HARF-WAY-Control-Center/0.4'
-      }
-    });
-    const data=await response.json().catch(()=>null);
-    if(!response.ok){
-      return {connected:false,status:response.status,reason:data?.error?.message||'vercel_api_error',scanned:0,items:[]};
-    }
+    url=manifest?.control_center?.manifest_url?new URL(raw).toString():new URL('/harfway-tool.json',raw).toString();
+  }catch{return null}
+  const live=await fetchManifest(url);
+  if(!live||!sameManifest(manifest,live))return null;
+  return {manifest:live,url};
+}
 
-    const deployments=Array.isArray(data?.deployments)?data.deployments:[];
-    const newestByProject=new Map();
-    for(const deployment of deployments){
-      const projectId=String(deployment?.projectId||deployment?.name||'');
-      if(!projectId||!deployment?.url)continue;
-      const current=newestByProject.get(projectId);
-      if(!current||Number(deployment?.created||0)>Number(current?.created||0))newestByProject.set(projectId,deployment);
-    }
-
-    const candidates=[...newestByProject.values()].slice(0,40);
-    const resolved=await Promise.all(candidates.map(async deployment=>{
-      const baseUrl=`https://${String(deployment.url).replace(/^https?:\/\//,'')}`;
-      const manifest=await fetchManifest(new URL('/harfway-tool.json',baseUrl).toString());
-      if(!manifest)return null;
-      const item={
-        id:manifest.id||`vercel-${deployment.projectId||deployment.uid||deployment.name}`,
-        project_slug:manifest.project_slug||deployment.name||'',
-        public_url:manifest.public_url||baseUrl,
-        admin_url:manifest.admin_url||'',
-        metrics_url:manifest.metrics_url||'',
-        sync_source:'vercel-production',
-        manifest,
-        deployment:{
-          id:deployment.uid||deployment.id||'',
-          projectId:deployment.projectId||'',
-          url:baseUrl,
-          created:deployment.created||0,
-          target:deployment.target||'production',
-          state:deployment.state||deployment.readyState||'READY'
-        }
-      };
-      return isKnownTool(item)?null:item;
-    }));
-
-    return {
-      connected:true,
-      status:response.status,
-      reason:'',
-      scanned:candidates.length,
-      items:resolved.filter(Boolean)
-    };
-  }catch(error){
-    return {connected:false,status:0,reason:String(error?.message||error),scanned:0,items:[]};
+async function loadGithubProductionItems(localItems=LOCAL_AUTO_ITEMS){
+  const reposResult=await fetchJson(GITHUB_REPOS_API,{
+    timeoutMs:4500,
+    headers:{accept:'application/vnd.github+json','x-github-api-version':'2022-11-28'}
+  });
+  if(!reposResult.ok||!Array.isArray(reposResult.data)){
+    return {connected:false,status:reposResult.status||0,reason:reposResult.error||'github_repo_list_failed',scanned:0,manifestCandidates:0,items:[]};
   }
+
+  const recentRepos=reposResult.data
+    .filter(repo=>!repo?.fork&&!repo?.archived&&Date.parse(repo?.pushed_at||0)>=GITHUB_SYNC_SINCE)
+    .slice(0,35);
+
+  const discovered=await Promise.all(recentRepos.map(async repo=>{
+    const source=await repoManifest(repo);
+    if(!source)return null;
+    const manifest=source.manifest;
+    const item={
+      id:manifest.id||`github-${repo.name}`,
+      project_slug:manifest.project_slug||repo.name||'',
+      public_url:manifest.public_url||'',
+      admin_url:manifest.admin_url||'',
+      metrics_url:manifest.metrics_url||'',
+      sync_source:'github-production',
+      manifest,
+      repository:{
+        fullName:repo.full_name||'',
+        defaultBranch:repo.default_branch||'',
+        pushedAt:repo.pushed_at||'',
+        manifestSource:source.sourceUrl
+      }
+    };
+    if(isKnownTool(item,localItems))return null;
+    const live=await verifyLiveProduction(manifest);
+    if(!live)return null;
+    return {...item,manifest:live.manifest,productionManifestUrl:live.url};
+  }));
+
+  const manifestCandidates=discovered.filter(Boolean).length;
+  return {
+    connected:true,
+    status:reposResult.status,
+    reason:'',
+    scanned:recentRepos.length,
+    manifestCandidates,
+    items:discovered.filter(Boolean)
+  };
 }
 
 function mergeAutoItems(...groups){
@@ -266,25 +296,22 @@ function mergeAutoItems(...groups){
 
 export default async function handler(req,res){
   if(req.method!=='GET')return res.status(405).json({ok:false,error:'method_not_allowed'});
-  res.setHeader('Cache-Control','no-store');
+  res.setHeader('Cache-Control','public, s-maxage=300, stale-while-revalidate=900');
   const checkedAt=new Date().toISOString();
 
-  const [hubResult,checks,vercelResult]=await Promise.all([
-    fetch(HUB_API,{headers:{'user-agent':'HARF-WAY-Control-Center/0.4'}})
-      .then(async r=>({ok:r.ok,status:r.status,data:r.ok?await r.json():null}))
-      .catch(error=>({ok:false,status:0,error:String(error?.message||error)})),
-    Promise.all(CORE_CHECKS.map(async item=>({...item,...await timedFetch(item.url)}))),
-    loadVercelProductionItems()
+  const [localRegistry,hubResult,checks]=await Promise.all([
+    loadLocalRegistryItems(),
+    fetchJson(HUB_API,{timeoutMs:3500}),
+    Promise.all(CORE_CHECKS.map(async item=>({...item,...await timedFetch(item.url)})))
   ]);
 
+  const localItems=localRegistry.items||LOCAL_AUTO_ITEMS;
+  const githubResult=await loadGithubProductionItems(localItems);
   const hubItems=Array.isArray(hubResult?.data?.items)?hubResult.data.items:[];
-  const localIds=new Set(LOCAL_AUTO_ITEMS.map(item=>String(item.id||'')));
+  const localIds=new Set(localItems.map(item=>String(item.id||'')));
   const autoCandidates=hubItems.filter(item=>!BASELINE_HUB_IDS.has(String(item?.id||''))&&!localIds.has(String(item?.id||'')));
   const remoteAutoItems=await Promise.all(autoCandidates.slice(0,20).map(withManifest));
-
-  // Production watcher is authoritative for new standalone tools. HUB remains as a fallback
-  // and for manually registered/sub-route tools.
-  const autoItems=mergeAutoItems(LOCAL_AUTO_ITEMS,vercelResult.items,remoteAutoItems);
+  const autoItems=mergeAutoItems(localItems,githubResult.items,remoteAutoItems);
   const healthy=checks.filter(x=>x.ok).length;
 
   return res.status(200).json({
@@ -295,7 +322,8 @@ export default async function handler(req,res){
       total:checks.length,
       hubEntries:hubItems.length,
       autoSync:autoItems.length,
-      vercelProductionSync:vercelResult.items.length
+      githubProductionSync:githubResult.items.length,
+      vercelProductionSync:0
     },
     checks,
     hub:{
@@ -305,13 +333,28 @@ export default async function handler(req,res){
       autoItems,
       baselineCount:BASELINE_HUB_IDS.size
     },
+    localRegistry:{
+      connected:localRegistry.connected,
+      status:localRegistry.status,
+      autoItems:localItems
+    },
+    discovery:{
+      connected:githubResult.connected,
+      source:'github-production-manifest',
+      status:githubResult.status,
+      reason:githubResult.reason,
+      syncSince:new Date(GITHUB_SYNC_SINCE).toISOString(),
+      scanned:githubResult.scanned,
+      manifestCandidates:githubResult.manifestCandidates,
+      autoItems:githubResult.items
+    },
     vercel:{
-      connected:vercelResult.connected,
-      status:vercelResult.status,
-      reason:vercelResult.reason,
-      syncSince:new Date(VERCEL_SYNC_SINCE).toISOString(),
-      scanned:vercelResult.scanned,
-      autoItems:vercelResult.items
+      connected:false,
+      status:0,
+      reason:'not_required_tokenless_registry_and_github_discovery',
+      syncSince:new Date(GITHUB_SYNC_SINCE).toISOString(),
+      scanned:0,
+      autoItems:[]
     }
   });
 }

@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "harfway": true,
+  "control_center_registry": true,
+  "items": [
+    {
+      "id": "sale-watch",
+      "public_url": "https://harfway-playback.vercel.app/sales",
+      "admin_url": "https://harfway-playback.vercel.app/sales-admin",
+      "sync_source": "local-registry",
+      "manifest": {
+        "harfway": true,
+        "id": "sale-watch",
+        "name": "SALE WATCH",
+        "group": "OPERATE",
+        "role": "Steamセール監視",
+        "description": "HARF-WAYで紹介したゲームをCore横断で監視し、現在のSteamセールを管理・公開。",
+        "public_url": "https://harfway-playback.vercel.app/sales",
+        "admin_url": "https://harfway-playback.vercel.app/sales-admin"
+      }
+    },
+    {
+      "id": "reader-entrance",
+      "public_url": "https://harfway-playback.vercel.app/entrance",
+      "sync_source": "local-registry",
+      "manifest": {
+        "harfway": true,
+        "id": "reader-entrance",
+        "name": "HARF-WAY ENTRANCE",
+        "group": "PUBLISH",
+        "role": "読者向けコンテンツHUB",
+        "description": "HARF-WAY本体・WAYS・PLAYLIST・SCRAPS・SALE WATCHを1か所から辿れる読者向け入口。",
+        "public_url": "https://harfway-playback.vercel.app/entrance"
+      }
+    },
+    {
+      "id": "harfway-ads",
+      "public_url": "https://harfway-ads-prototype.vercel.app/",
+      "admin_url": "https://harfway-ads-admin.vercel.app/",
+      "metrics_url": "https://harfway-ads-placement-dashboard.vercel.app/",
+      "sync_source": "local-registry",
+      "manifest": {
+        "harfway": true,
+        "id": "harfway-ads",
+        "name": "HARF-WAY ADS",
+        "group": "OPERATE",
+        "role": "広告配信・入稿・計測",
+        "description": "HARF-WAYの自前広告ネットワーク。広告主向け入口、管理、配信枠、IMP上限、結果計測をまとめて扱う。",
+        "public_url": "https://harfway-ads-prototype.vercel.app/",
+        "admin_url": "https://harfway-ads-admin.vercel.app/",
+        "metrics_url": "https://harfway-ads-placement-dashboard.vercel.app/"
+      }
+    },
+    {
+      "id": "shelf-admin",
+      "admin_url": "https://harfway-playback.vercel.app/db-master-core",
+      "sync_source": "local-registry",
+      "manifest": {
+        "harfway": true,
+        "id": "shelf-admin",
+        "name": "SHELF ADMIN / CORE",
+        "group": "CREATE",
+        "role": "棚生成・表示管理",
+        "description": "Shared Content Coreの作品から棚を組むための表示・固定・画像ソース設定を管理。専用UI分離前はCore DB管理画面を入口にする。",
+        "admin_url": "https://harfway-playback.vercel.app/db-master-core"
+      }
+    }
+  ]
+}
