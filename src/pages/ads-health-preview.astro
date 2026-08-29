@@ -1,0 +1,75 @@
+---
+const checks = [
+  ['page','ページ'],
+  ['serve','配信API'],
+  ['media','R2素材'],
+  ['tracking','計測経路'],
+];
+---
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>HARF-WAY / ADS 4面チェック</title>
+  <style>
+    :root{--bg:#f3eee2;--ink:#171713;--muted:#756f62;--line:#cfc5b4;--ok:#376f43;--bad:#a6322a;--wait:#8b6a21}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu Gothic",sans-serif}.wrap{width:min(1180px,calc(100% - 32px));margin:auto;padding:40px 0 80px}.eyebrow{font:800 10px/1 ui-monospace,monospace;letter-spacing:.18em;color:var(--muted)}h1{margin:12px 0 8px;font:900 clamp(40px,7vw,80px)/.92 Georgia,serif;letter-spacing:-.05em}.lead{max-width:740px;color:var(--muted);font-size:13px;line-height:1.9}.top{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;padding-bottom:28px;border-bottom:1px solid var(--line)}button{border:1px solid var(--ink);background:var(--ink);color:#fff;padding:13px 18px;border-radius:999px;font-weight:900;cursor:pointer}button:disabled{opacity:.5;cursor:wait}.summary{margin:24px 0 16px;padding:18px 20px;border:1px solid var(--line);display:flex;justify-content:space-between;gap:20px;align-items:center;background:rgba(255,255,255,.22)}.summary b{font-size:22px}.summary small{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.card{border:1px solid var(--line);padding:20px;background:rgba(255,255,255,.28)}.card-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.card h2{margin:0;font-size:28px}.state{font:900 10px/1 ui-monospace,monospace;letter-spacing:.12em;border:1px solid currentColor;border-radius:999px;padding:7px 9px}.state.ok{color:var(--ok)}.state.bad{color:var(--bad)}.state.wait{color:var(--wait)}.rows{margin-top:18px;border-top:1px solid var(--line)}.row{display:grid;grid-template-columns:92px 58px 1fr;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);font-size:11px;align-items:center}.row b.ok{color:var(--ok)}.row b.bad{color:var(--bad)}.row b.wait{color:var(--wait)}.row span:last-child{color:var(--muted);line-height:1.5}.actions{margin-top:16px}.actions a{color:var(--ink);font-weight:900;font-size:11px}.note{margin-top:18px;color:var(--muted);font-size:11px;line-height:1.8}.error{color:var(--bad);font-weight:800}.hidden{display:none}@media(max-width:760px){.top{display:block}.top button{margin-top:20px}.grid{grid-template-columns:1fr}.summary{display:block}.summary small{display:block;margin-top:8px}.row{grid-template-columns:78px 52px 1fr}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="top">
+      <div>
+        <div class="eyebrow">HARF-WAY / ADS DELIVERY HEALTH</div>
+        <h1>4掲載面<br>動作チェック</h1>
+        <p class="lead">WAYS / PLAYLIST / 切れ端 / SALE WATCH の「ページ・配信API・R2素材・計測経路」をProductionに対して読み取りだけで確認します。IMP / CLICK / STORE VISITは送信しません。</p>
+      </div>
+      <button id="run" type="button">4面をチェック</button>
+    </section>
+
+    <section class="summary" id="summary">
+      <div><b id="score">未チェック</b><small id="checked">ボタンを押すとProductionを診断します。</small></div>
+      <div class="state wait" id="overall">WAITING</div>
+    </section>
+
+    <section class="grid" id="grid">
+      {['WAYS','PLAYLIST','切れ端','SALE WATCH'].map((label) => (
+        <article class="card" data-placeholder>
+          <div class="card-head"><h2>{label}</h2><span class="state wait">WAIT</span></div>
+          <div class="rows">
+            {checks.map(([,name]) => <div class="row"><span>{name}</span><b class="wait">—</b><span>未チェック</span></div>)}
+          </div>
+        </article>
+      ))}
+    </section>
+    <p class="note">このページはPreview確認専用です。診断はイベントPOSTを行わず、計測APIはOPTIONS応答だけを確認します。</p>
+    <p class="error hidden" id="error"></p>
+  </main>
+<script>
+  const labels={page:'ページ',serve:'配信API',media:'R2素材',tracking:'計測経路'};
+  const run=document.querySelector('#run');
+  const grid=document.querySelector('#grid');
+  const score=document.querySelector('#score');
+  const checked=document.querySelector('#checked');
+  const overall=document.querySelector('#overall');
+  const error=document.querySelector('#error');
+  const esc=(v)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function state(ok){return ok?'<b class="ok">OK</b>':'<b class="bad">NG</b>'}
+  function renderSurface(s){
+    const rows=Object.entries(s.checks||{}).map(([key,c])=>`<div class="row"><span>${esc(labels[key]||key)}</span>${state(Boolean(c?.ok))}<span>${esc(c?.detail||'—')}${Number.isFinite(c?.ms)?` / ${c.ms}ms`:''}</span></div>`).join('');
+    return `<article class="card"><div class="card-head"><h2>${esc(s.label)}</h2><span class="state ${s.ok?'ok':'bad'}">${s.ok?'OK':'CHECK'}</span></div><div class="rows">${rows}</div><div class="actions"><a href="${esc(s.pageUrl)}" target="_blank" rel="noopener">実画面を開く ↗</a></div></article>`;
+  }
+  async function check(){
+    run.disabled=true;run.textContent='確認中…';error.classList.add('hidden');overall.className='state wait';overall.textContent='CHECKING';score.textContent='確認中…';checked.textContent='Productionへ読み取り診断しています。';
+    try{
+      const r=await fetch('/api/ads-surface-health',{cache:'no-store'});const d=await r.json().catch(()=>({}));if(!r.ok||d.ok!==true)throw new Error(d.error||`HTTP ${r.status}`);
+      grid.innerHTML=(d.surfaces||[]).map(renderSurface).join('');score.textContent=`${d.healthy} / ${d.total} 掲載面 OK`;checked.textContent=`${new Date(d.checkedAt).toLocaleString('ja-JP')} / ${d.elapsedMs}ms / counted events: ${d.countedEvents}`;overall.className=`state ${d.allHealthy?'ok':'bad'}`;overall.textContent=d.allHealthy?'ALL OK':'CHECK';
+    }catch(e){error.textContent=`診断に失敗しました：${e?.message||'unknown error'}`;error.classList.remove('hidden');score.textContent='診断失敗';checked.textContent='もう一度実行してください。';overall.className='state bad';overall.textContent='ERROR';}
+    finally{run.disabled=false;run.textContent='もう一度チェック'}
+  }
+  run.addEventListener('click',check);
+</script>
+</body>
+</html>
