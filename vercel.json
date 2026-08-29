@@ -2,6 +2,10 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
+      "source": "/api/neon-auth-proxy/:path*",
+      "destination": "/api/neon-auth-proxy?path=:path*"
+    },
+    {
       "source": "/ads-portal",
       "destination": "/api/ads-portal-proxy?path=/"
     },
