@@ -7,9 +7,13 @@ import {
   S3Client
 } from '@aws-sdk/client-s3';
 
-const VIDEO_TYPES = {
-  'video/mp4': 'mp4',
-  'video/webm': 'webm'
+const MEDIA_TYPES = {
+  'image/jpeg': { ext: 'jpg', kind: 'image', max: 8 * 1024 * 1024 },
+  'image/png': { ext: 'png', kind: 'image', max: 8 * 1024 * 1024 },
+  'image/webp': { ext: 'webp', kind: 'image', max: 8 * 1024 * 1024 },
+  'image/gif': { ext: 'gif', kind: 'image', max: 8 * 1024 * 1024 },
+  'video/mp4': { ext: 'mp4', kind: 'video', max: 20 * 1024 * 1024 },
+  'video/webm': { ext: 'webm', kind: 'video', max: 20 * 1024 * 1024 }
 };
 const MAX_BYTES = 20 * 1024 * 1024;
 const CHUNK_BYTES = 2_500_000;
@@ -29,7 +33,7 @@ function parseBody(req) {
 }
 
 function safeName(value) {
-  return String(value || 'video').replace(/[\u0000-\u001f]/g, '').slice(0, 180) || 'video';
+  return String(value || 'media').replace(/[\u0000-\u001f]/g, '').slice(0, 180) || 'media';
 }
 
 function cleanUploadId(value) {
@@ -145,10 +149,10 @@ async function startUpload(req, res) {
   const contentType = String(body.contentType || '').toLowerCase();
   const size = Number(body.size || 0);
   const fileName = safeName(body.fileName);
-  const ext = VIDEO_TYPES[contentType];
-  if (!ext) return json(res, 400, { ok: false, error: 'unsupported_video_type' });
-  if (!Number.isInteger(size) || size <= 0 || size > MAX_BYTES) {
-    return json(res, 413, { ok: false, error: 'video_too_large', maxBytes: MAX_BYTES });
+  const info = MEDIA_TYPES[contentType];
+  if (!info) return json(res, 400, { ok: false, error: 'unsupported_media_type' });
+  if (!Number.isInteger(size) || size <= 0 || size > info.max) {
+    return json(res, 413, { ok: false, error: info.kind === 'video' ? 'video_too_large' : 'image_too_large', maxBytes: info.max });
   }
   const client = r2();
   const bkt = bucket();
@@ -161,7 +165,7 @@ async function startUpload(req, res) {
     ContentType: 'application/json',
     CacheControl: 'no-store'
   }));
-  return json(res, 200, { ok: true, uploadId, chunkBytes: CHUNK_BYTES, maxBytes: MAX_BYTES });
+  return json(res, 200, { ok: true, uploadId, chunkBytes: CHUNK_BYTES, maxBytes: info.max, kind: info.kind });
 }
 
 async function putPart(req, res) {
@@ -169,9 +173,11 @@ async function putPart(req, res) {
   const part = Number(req.headers['x-part-number'] || 0);
   const contentType = String(req.headers['x-content-type'] || '').toLowerCase();
   const size = Number(req.headers['x-file-size'] || 0);
-  if (!uploadId || !Number.isInteger(part) || part < 1 || part > MAX_PARTS || !VIDEO_TYPES[contentType]) {
+  const info = MEDIA_TYPES[contentType];
+  if (!uploadId || !Number.isInteger(part) || part < 1 || part > MAX_PARTS || !info) {
     return json(res, 400, { ok: false, error: 'invalid_part_request' });
   }
+  if (!Number.isInteger(size) || size <= 0 || size > info.max) return json(res, 413, { ok: false, error: 'media_too_large' });
   const client = r2();
   const bkt = bucket();
   const reservation = await readReservation(client, bkt, uploadId);
@@ -200,8 +206,8 @@ async function completeUpload(req, res) {
   const size = Number(body.size || 0);
   const parts = Number(body.parts || 0);
   const fileName = safeName(body.fileName);
-  const ext = VIDEO_TYPES[contentType];
-  if (!uploadId || !ext || !Number.isInteger(size) || size <= 0 || size > MAX_BYTES) {
+  const info = MEDIA_TYPES[contentType];
+  if (!uploadId || !info || !Number.isInteger(size) || size <= 0 || size > info.max) {
     return json(res, 400, { ok: false, error: 'invalid_upload_metadata' });
   }
   const expectedParts = Math.ceil(size / CHUNK_BYTES);
@@ -223,13 +229,13 @@ async function completeUpload(req, res) {
     if (!obj.Body) throw new Error(`missing_part_${part}`);
     const buffer = Buffer.from(await obj.Body.transformToByteArray());
     total += buffer.length;
-    if (total > MAX_BYTES) throw new Error('video_too_large');
+    if (total > info.max) throw new Error('media_too_large');
     buffers.push(buffer);
     tempObjects.push({ Key: key });
   }
   if (total !== size) throw new Error('uploaded_size_mismatch');
 
-  const key = finalKey(uploadId, ext);
+  const key = finalKey(uploadId, info.ext);
   await client.send(new PutObjectCommand({
     Bucket: bkt,
     Key: key,
@@ -245,6 +251,7 @@ async function completeUpload(req, res) {
     mediaUrl: publicUrl(key),
     mediaKey: key,
     mediaType: contentType,
+    mediaKind: info.kind,
     mediaSize: size,
     mediaName: fileName
   });
@@ -253,7 +260,7 @@ async function completeUpload(req, res) {
 async function deleteMedia(req, res) {
   const body = parseBody(req);
   const key = String(body.key || '').trim();
-  if (!/^mew-log\/\d{4}-\d{2}-\d{2}\/[0-9a-f-]+\.(mp4|webm)$/i.test(key)) {
+  if (!/^mew-log\/\d{4}-\d{2}-\d{2}\/[0-9a-f-]+\.(jpg|png|webp|gif|mp4|webm)$/i.test(key)) {
     return json(res, 400, { ok: false, error: 'invalid_media_key' });
   }
   const client = r2();
@@ -267,7 +274,14 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       const flags = envStatus();
       const configured = Object.values(flags).every(Boolean);
-      return json(res, configured ? 200 : 503, { ok: configured, configured, env: flags, maxBytes: MAX_BYTES, chunkBytes: CHUNK_BYTES });
+      return json(res, configured ? 200 : 503, {
+        ok: configured,
+        configured,
+        env: flags,
+        maxImageBytes: 8 * 1024 * 1024,
+        maxVideoBytes: 20 * 1024 * 1024,
+        chunkBytes: CHUNK_BYTES
+      });
     }
     ensureWriteOrigin(req);
     if (req.method === 'POST') {
@@ -281,6 +295,10 @@ export default async function handler(req, res) {
     return json(res, 405, { ok: false, error: 'method_not_allowed' });
   } catch (error) {
     console.error('[mew-log-media]', error?.message || error);
-    return json(res, error?.status || 500, { ok: false, error: error?.message || 'mew_log_media_failed' });
+    const accessDenied = /access\s*denied/i.test(String(error?.message || '')) || String(error?.name || '') === 'AccessDenied';
+    return json(res, accessDenied ? 403 : (error?.status || 500), {
+      ok: false,
+      error: accessDenied ? 'r2_write_permission_denied' : (error?.message || 'mew_log_media_failed')
+    });
   }
 }
