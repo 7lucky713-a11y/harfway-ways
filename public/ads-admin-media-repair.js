@@ -44,6 +44,8 @@
     return matches.length === 1 ? matches[0] : null;
   }
 
+  window.__HW_ADS_ADMIN_CURRENT_CAMPAIGN = currentCampaign;
+
   function hasNoMedia() {
     const media = document.querySelector('#detail .media');
     return Boolean(media && /NO MEDIA/i.test(media.textContent || ''));
@@ -71,7 +73,8 @@
           campaign_not_found: '対象案件が見つかりませんでした。',
           legacy_media_not_found: 'この案件には復旧できる旧メディアが見つかりませんでした。'
         };
-        throw new Error(messages[data?.error] || data?.error || `復旧に失敗しました (${res.status})`);
+        const stage = data?.stage ? `\n処理段階: ${data.stage}` : '';
+        throw new Error(messages[data?.error] || data?.message || (typeof data?.error === 'string' ? data.error : '') || `復旧に失敗しました (${res.status})${stage}`);
       }
 
       button.textContent = data.alreadyRepaired ? 'すでに復旧済みです' : 'R2へ復旧しました';
