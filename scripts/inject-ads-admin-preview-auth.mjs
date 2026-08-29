@@ -3,9 +3,7 @@ import path from 'node:path';
 
 const dist = path.resolve('dist');
 const directAuth = 'https://ep-damp-resonance-awphji1s.neonauth.c-12.us-east-1.aws.neon.tech/neondb/auth';
-const directData = 'https://ep-damp-resonance-awphji1s.apirest.c-12.us-east-1.aws.neon.tech/neondb/rest/v1';
 const runtimeAuth = 'window.location.origin+"/api/neon-auth-proxy"';
-const runtimeData = 'window.location.origin+"/api/neon-data-proxy"';
 
 function walk(dir) {
   const out = [];
@@ -34,7 +32,6 @@ if (!fs.existsSync(dist)) {
 }
 
 let authReplacements = 0;
-let dataReplacements = 0;
 const touched = [];
 
 for (const file of walk(dist)) {
@@ -46,20 +43,16 @@ for (const file of walk(dist)) {
   text = auth.text;
   authReplacements += auth.count;
 
-  const data = replaceLiteral(text, directData, runtimeData);
-  text = data.text;
-  dataReplacements += data.count;
-
   if (text !== before) {
     fs.writeFileSync(file, text);
     touched.push(path.relative(dist, file));
   }
 }
 
-if (!authReplacements || !dataReplacements) {
-  console.error(`[ads-admin-preview-auth] required literals missing: auth=${authReplacements} data=${dataReplacements}; refusing silent Preview build`);
+if (!authReplacements) {
+  console.error(`[ads-admin-preview-auth] auth literal missing; refusing silent Preview build`);
   process.exit(1);
 }
 
-console.log(`[ads-admin-preview-auth] routed ADS ADMIN through same-origin Preview proxies (auth=${authReplacements}, data=${dataReplacements})`);
+console.log(`[ads-admin-preview-auth] routed only Neon Auth through same-origin Preview proxy (auth=${authReplacements}); Data API remains direct like Production`);
 for (const file of touched) console.log(`[ads-admin-preview-auth] touched: ${file}`);
