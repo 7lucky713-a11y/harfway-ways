@@ -1,0 +1,75 @@
+---
+---
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>WAYS WEEKLY EDITOR</title>
+<style>
+:root{--bg:#0a0a0a;--panel:#121315;--line:#2b2d31;--text:#f4f4ee;--muted:#8d9198;--acid:#efff35}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}.app{min-height:100vh;display:grid;grid-template-columns:360px minmax(0,1fr)}.side{border-right:1px solid var(--line);padding:22px;overflow:auto;height:100vh;position:sticky;top:0}.main{padding:28px;min-width:0}.brand{font-size:11px;letter-spacing:.16em;color:var(--acid);font-weight:900}.side h1{font-size:34px;line-height:.95;margin:10px 0 20px;letter-spacing:-.04em}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}.btn{border:1px solid #3b3d42;background:#17181b;color:#fff;padding:9px 11px;border-radius:8px;cursor:pointer;font-size:12px}.btn.primary{background:var(--acid);color:#111;border-color:var(--acid);font-weight:900}.btn.danger{color:#ffb4b4}.field{display:grid;gap:7px;margin:13px 0}.field label{font-size:10px;color:#9da0a6;letter-spacing:.08em}.field input,.field textarea,.field select{width:100%;background:#0d0e10;color:#fff;border:1px solid #31343a;border-radius:8px;padding:10px;font:inherit}.field textarea{min-height:86px;resize:vertical}.search{position:sticky;top:-22px;background:var(--bg);padding:10px 0 12px;z-index:3}.games{display:grid;gap:8px}.game{display:grid;grid-template-columns:78px 1fr auto;gap:10px;align-items:center;border:1px solid #292c31;background:#111214;border-radius:10px;padding:8px}.game img{width:78px;aspect-ratio:16/9;object-fit:cover;background:#050505;border-radius:6px}.game h3{font-size:12px;margin:0 0 4px}.game p{font-size:9px;color:#777;margin:0}.game button{width:32px;height:32px;border-radius:50%;border:1px solid #444;background:#1b1c20;color:#fff;cursor:pointer}.game.selected{border-color:var(--acid)}.game.selected button{background:var(--acid);color:#111}.header{display:flex;align-items:end;justify-content:space-between;gap:20px;margin-bottom:22px}.header h2{font-size:44px;line-height:.95;margin:0;letter-spacing:-.05em}.meta{color:#777;font-size:11px}.layout{display:grid;grid-template-columns:minmax(0,.9fr) minmax(420px,1.1fr);gap:24px}.stack{display:grid;gap:12px;align-content:start}.card{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:14px}.selected-row{display:grid;grid-template-columns:36px 100px 1fr auto;gap:10px;align-items:center}.selected-row img{width:100px;aspect-ratio:16/9;object-fit:cover;border-radius:8px;background:#050505}.grab{cursor:grab;color:#767a82;font-size:20px;text-align:center}.selected-row h3{margin:0 0 6px;font-size:14px}.selected-row textarea{width:100%;background:#0c0d0f;color:#fff;border:1px solid #33363c;border-radius:7px;padding:8px;min-height:62px;resize:vertical}.selected-row .actions{display:flex;flex-direction:column;gap:6px}.tiny{border:1px solid #3c3f44;background:#151619;color:#ddd;border-radius:7px;padding:7px 8px;font-size:10px;cursor:pointer}.tiny.pick.on{background:var(--acid);color:#111;border-color:var(--acid);font-weight:900}.preview-shell{border:1px solid var(--line);background:#fff;color:#222;border-radius:14px;overflow:hidden}.preview-bar{background:#111;color:#fff;padding:10px 14px;font-size:10px;letter-spacing:.1em}.preview{padding:36px;max-height:calc(100vh - 120px);overflow:auto}.ww{max-width:760px;margin:0 auto}.ww-kicker{font-size:11px;font-weight:800;letter-spacing:.12em}.ww h1{font-size:38px;line-height:1.08;margin:8px 0 14px}.ww-intro,.ww-outro{font-size:15px;line-height:1.9;color:#444}.ww-item{margin:34px 0}.ww-media{position:relative}.ww-media video,.ww-media img{width:100%;display:block;background:#000}.ww-num{position:absolute;left:10px;top:10px;background:#111;color:#fff;padding:5px 7px;font-size:10px}.ww-pick{display:inline-block;margin-top:10px;background:#111;color:#fff;padding:5px 8px;font-size:10px;font-weight:800}.ww-title{font-size:24px;margin:10px 0 6px}.ww-comment{font-size:14px;line-height:1.8;color:#555}.ww-store{display:inline-block;margin-top:8px;color:#111;font-weight:700}.empty{padding:28px;border:1px dashed #363940;border-radius:12px;text-align:center;color:#757981}.status{font-size:10px;color:#858991;margin-top:8px}@media(max-width:1100px){.app{grid-template-columns:1fr}.side{height:auto;position:relative;border-right:0;border-bottom:1px solid var(--line)}.layout{grid-template-columns:1fr}.preview{max-height:none}}@media(max-width:640px){.main,.side{padding:16px}.header h2{font-size:32px}.selected-row{grid-template-columns:26px 76px 1fr}.selected-row img{width:76px}.selected-row .actions{grid-column:2/4;flex-direction:row}.preview{padding:22px 16px}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="side">
+  <div class="brand">HARF-WAY / WAYS</div>
+  <h1>WEEKLY<br>EDITOR</h1>
+  <div class="toolbar">
+    <button class="btn primary" id="saveBtn">号を保存</button>
+    <button class="btn" id="newBtn">新規</button>
+    <button class="btn" id="exportBtn">JSON</button>
+  </div>
+  <div class="field"><label>VOL.</label><input id="vol" value="001" /></div>
+  <div class="field"><label>今週のテーマ</label><input id="theme" placeholder="例：操作がなんか変なゲーム" /></div>
+  <div class="field"><label>導入文</label><textarea id="intro" placeholder="今週の棚をひとことで案内する文章"></textarea></div>
+  <div class="field"><label>あとがき</label><textarea id="outro" placeholder="今週の総括コメント"></textarea></div>
+  <div class="search field"><label>WAYSから選ぶ</label><input id="query" placeholder="作品名で検索" /></div>
+  <div id="games" class="games"><div class="status">WAYSを読み込み中…</div></div>
+</aside>
+<main class="main">
+  <div class="header"><div><div class="brand">CURATION BOARD</div><h2>今週の棚</h2></div><div class="meta"><span id="count">0</span> SELECTED</div></div>
+  <div class="layout">
+    <section class="stack">
+      <div class="toolbar">
+        <button class="btn primary" id="copyHtml">WordPress HTMLをコピー</button>
+        <button class="btn" id="copyCss">共通CSSをコピー</button>
+      </div>
+      <div id="selected" class="stack"><div class="empty">左のWAYS一覧から作品を選んでください。</div></div>
+      <div class="status" id="saveStatus">ローカル保存方式です。</div>
+    </section>
+    <section class="preview-shell"><div class="preview-bar">WORDPRESS PREVIEW</div><div id="preview" class="preview"></div></section>
+  </div>
+</main>
+</div>
+<script is:inline>
+const API='https://harfway-playback.vercel.app/api/games-live';
+const KEY='harfway_ways_weekly_issues_v1';
+let items=[], selectedIds=[], comments={}, pickId='', dragId='';
+const $=s=>document.querySelector(s), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const issue=()=>({vol:$('#vol').value.trim(),theme:$('#theme').value.trim(),intro:$('#intro').value.trim(),outro:$('#outro').value.trim(),selectedIds:[...selectedIds],comments:{...comments},pickId,updatedAt:new Date().toISOString()});
+function game(id){return items.find(x=>x.id===id)}
+function renderGames(){const q=$('#query').value.trim().toLowerCase();const list=items.filter(x=>!q||String(x.title||'').toLowerCase().includes(q));$('#games').innerHTML=list.map(x=>`<div class="game ${selectedIds.includes(x.id)?'selected':''}"><img src="${esc(x.thumbnailUrl||'')}" alt="" loading="lazy"><div><h3>${esc(x.title)}</h3><p>${esc(x.category||'')}</p></div><button data-add="${esc(x.id)}">${selectedIds.includes(x.id)?'✓':'＋'}</button></div>`).join('')||'<div class="status">該当作品なし</div>'}
+function add(id){if(selectedIds.includes(id))selectedIds=selectedIds.filter(v=>v!==id);else selectedIds.push(id);if(pickId&&!selectedIds.includes(pickId))pickId='';renderAll()}
+function renderSelected(){if(!selectedIds.length){$('#selected').innerHTML='<div class="empty">左のWAYS一覧から作品を選んでください。</div>';return}$('#selected').innerHTML=selectedIds.map((id,i)=>{const x=game(id);if(!x)return'';return `<div class="card selected-row" draggable="true" data-drag="${esc(id)}"><div class="grab">⋮⋮</div><img src="${esc(x.thumbnailUrl||'')}" alt=""><div><h3>${String(i+1).padStart(2,'0')} / ${esc(x.title)}</h3><textarea data-comment="${esc(id)}" placeholder="この作品への一言">${esc(comments[id]||'')}</textarea></div><div class="actions"><button class="tiny pick ${pickId===id?'on':''}" data-pick="${esc(id)}">EDITOR'S PICK</button><button class="tiny" data-remove="${esc(id)}">外す</button></div></div>`}).join('')}
+function previewHTML(){const data=issue();return `<div class="ways-weekly"><div class="ways-weekly__kicker">WAYS WEEKLY / VOL.${esc(data.vol)}</div><div class="ways-weekly__title">${esc(data.theme||'今週のWAYS')}</div>${data.intro?`<p class="ways-weekly__intro">${esc(data.intro).replace(/\n/g,'<br>')}</p>`:''}<div class="ways-weekly__list">${data.selectedIds.map((id,i)=>{const x=game(id);if(!x)return'';return `<section class="ways-weekly__item"><div class="ways-weekly__media"><video controls muted playsinline preload="metadata" poster="${esc(x.thumbnailUrl||'')}" src="${esc(x.video||'')}"></video><span class="ways-weekly__num">${String(i+1).padStart(2,'0')}</span></div>${data.pickId===id?'<div class="ways-weekly__pick">EDITOR\'S PICK</div>':''}<div class="ways-weekly__game-title">${esc(x.title)}</div>${data.comments[id]?`<p class="ways-weekly__comment">${esc(data.comments[id]).replace(/\n/g,'<br>')}</p>`:''}${x.storeUrl?`<a class="ways-weekly__store" href="${esc(x.storeUrl)}" target="_blank" rel="noopener">ゲームを見る ↗</a>`:''}</section>`}).join('')}</div>${data.outro?`<p class="ways-weekly__outro">${esc(data.outro).replace(/\n/g,'<br>')}</p>`:''}<p class="ways-weekly__more"><a href="https://harfway-playback.vercel.app/" target="_blank" rel="noopener">もっとWAYSを掘る →</a></p></div>`}
+const commonCSS=`.ways-weekly{max-width:860px;margin:0 auto}.ways-weekly__kicker{font-size:12px;font-weight:800;letter-spacing:.12em}.ways-weekly__title{font-size:clamp(32px,6vw,56px);font-weight:900;line-height:1.05;margin:8px 0 18px}.ways-weekly__intro,.ways-weekly__outro{font-size:16px;line-height:1.9}.ways-weekly__item{margin:46px 0}.ways-weekly__media{position:relative;background:#000}.ways-weekly__media video{width:100%;height:auto;display:block;background:#000}.ways-weekly__num{position:absolute;top:12px;left:12px;background:#111;color:#fff;padding:5px 8px;font-size:11px}.ways-weekly__pick{display:inline-block;margin-top:12px;background:#111;color:#fff;padding:5px 8px;font-size:11px;font-weight:800}.ways-weekly__game-title{font-size:26px;font-weight:900;margin-top:12px}.ways-weekly__comment{font-size:15px;line-height:1.8}.ways-weekly__store{display:inline-block;margin-top:8px;font-weight:800}.ways-weekly__more{margin-top:48px;padding-top:20px;border-top:1px solid #ddd;font-weight:800}`;
+function renderPreview(){const html=previewHTML();$('#preview').innerHTML=`<div class="ww"><div class="ww-kicker">WAYS WEEKLY / VOL.${esc($('#vol').value)}</div><h1>${esc($('#theme').value||'今週のWAYS')}</h1>${$('#intro').value?`<p class="ww-intro">${esc($('#intro').value).replace(/\n/g,'<br>')}</p>`:''}${selectedIds.map((id,i)=>{const x=game(id);if(!x)return'';return `<div class="ww-item"><div class="ww-media">${x.video?`<video controls muted playsinline preload="metadata" poster="${esc(x.thumbnailUrl||'')}" src="${esc(x.video)}"></video>`:`<img src="${esc(x.thumbnailUrl||'')}">`}<span class="ww-num">${String(i+1).padStart(2,'0')}</span></div>${pickId===id?'<div class="ww-pick">EDITOR\'S PICK</div>':''}<div class="ww-title">${esc(x.title)}</div>${comments[id]?`<div class="ww-comment">${esc(comments[id]).replace(/\n/g,'<br>')}</div>`:''}${x.storeUrl?`<a class="ww-store" href="${esc(x.storeUrl)}" target="_blank">ゲームを見る ↗</a>`:''}</div>`}).join('')}${$('#outro').value?`<p class="ww-outro">${esc($('#outro').value).replace(/\n/g,'<br>')}</p>`:''}</div>`}
+function renderAll(){renderGames();renderSelected();renderPreview();$('#count').textContent=selectedIds.length}
+function save(){const all=JSON.parse(localStorage.getItem(KEY)||'{}');const data=issue();all[data.vol||'draft']=data;localStorage.setItem(KEY,JSON.stringify(all));$('#saveStatus').textContent=`VOL.${data.vol||'draft'} を保存しました`;setTimeout(()=>$('#saveStatus').textContent='ローカル保存方式です。',1800)}
+function reset(){selectedIds=[];comments={};pickId='';$('#vol').value=String(Date.now()).slice(-3);$('#theme').value='';$('#intro').value='';$('#outro').value='';renderAll()}
+async function copy(text,label){await navigator.clipboard.writeText(text);$('#saveStatus').textContent=label;setTimeout(()=>$('#saveStatus').textContent='ローカル保存方式です。',1800)}
+$('#games').onclick=e=>{const b=e.target.closest('[data-add]');if(b)add(b.dataset.add)};
+$('#query').oninput=renderGames;
+$('#selected').oninput=e=>{const t=e.target.closest('[data-comment]');if(t){comments[t.dataset.comment]=t.value;renderPreview()}};
+$('#selected').onclick=e=>{const r=e.target.closest('[data-remove]');if(r){selectedIds=selectedIds.filter(id=>id!==r.dataset.remove);delete comments[r.dataset.remove];if(pickId===r.dataset.remove)pickId='';renderAll();return}const p=e.target.closest('[data-pick]');if(p){pickId=pickId===p.dataset.pick?'':p.dataset.pick;renderAll()}};
+$('#selected').addEventListener('dragstart',e=>{const el=e.target.closest('[data-drag]');if(el)dragId=el.dataset.drag});
+$('#selected').addEventListener('dragover',e=>e.preventDefault());
+$('#selected').addEventListener('drop',e=>{e.preventDefault();const el=e.target.closest('[data-drag]');if(!el||!dragId||el.dataset.drag===dragId)return;const from=selectedIds.indexOf(dragId),to=selectedIds.indexOf(el.dataset.drag);selectedIds.splice(from,1);selectedIds.splice(to,0,dragId);renderAll()});
+['vol','theme','intro','outro'].forEach(id=>$('#'+id).addEventListener('input',renderPreview));
+$('#saveBtn').onclick=save;$('#newBtn').onclick=reset;$('#copyHtml').onclick=()=>copy(previewHTML(),'WordPress用HTMLをコピーしました');$('#copyCss').onclick=()=>copy(commonCSS,'共通CSSをコピーしました');
+$('#exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify(issue(),null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`ways-weekly-${issue().vol||'draft'}.json`;a.click();URL.revokeObjectURL(a.href)};
+fetch(API,{cache:'no-store'}).then(r=>r.json()).then(d=>{items=(d.entries||[]).filter(x=>x.video);renderAll()}).catch(()=>{$('#games').innerHTML='<div class="status">WAYSの読み込みに失敗しました。</div>'});
+</script>
+</body>
+</html>
