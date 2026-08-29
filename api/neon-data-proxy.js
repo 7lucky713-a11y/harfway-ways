@@ -1,3 +1,5 @@
+import { getSql } from './ads-fair-core.js';
+
 const UPSTREAM = 'https://ep-damp-resonance-awphji1s.apirest.c-12.us-east-1.aws.neon.tech/neondb/rest/v1';
 const AUTH_UPSTREAM = 'https://ep-damp-resonance-awphji1s.neonauth.c-12.us-east-1.aws.neon.tech/neondb/auth';
 const TRUSTED_ORIGIN = 'https://harfway-playback.vercel.app';
@@ -68,6 +70,76 @@ async function resolveAuthorization(req) {
   return null;
 }
 
+function decodeJwtPayload(authorization) {
+  try {
+    const token = String(authorization || '').replace(/^Bearer\s+/i, '');
+    const part = token.split('.')[1];
+    if (!part) return null;
+    const normalized = part.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
+    return JSON.parse(Buffer.from(padded, 'base64').toString('utf8'));
+  } catch {
+    return null;
+  }
+}
+
+async function diagnoseAdminIdentity(path, authorization) {
+  if (path !== 'rpc/hwads_is_admin' || !authorization) return;
+  const payload = decodeJwtPayload(authorization);
+  if (!payload) {
+    console.log('[preview-admin-identity]', { jwtDecoded: false });
+    return;
+  }
+
+  const candidates = [
+    ['sub', payload.sub],
+    ['userId', payload.userId],
+    ['user_id', payload.user_id],
+    ['id', payload.id]
+  ].filter(([, value]) => typeof value === 'string' && value.length > 0);
+
+  try {
+    const sql = getSql();
+    let matchedClaim = null;
+    let matchedRole = null;
+    let matchesSohiOwner = false;
+
+    for (const [claim, value] of candidates) {
+      const rows = await sql`
+        SELECT
+          COALESCE(u.role, '') AS role,
+          EXISTS (
+            SELECT 1
+            FROM public.ad_campaigns c
+            WHERE c.title = 'ソヒ'
+              AND c.owner_user_id = u.id::text
+          ) AS owns_sohi
+        FROM neon_auth."user" u
+        WHERE u.id::text = ${value}
+        LIMIT 1
+      `;
+      if (rows[0]) {
+        matchedClaim = claim;
+        matchedRole = String(rows[0].role || '');
+        matchesSohiOwner = rows[0].owns_sohi === true;
+        break;
+      }
+    }
+
+    console.log('[preview-admin-identity]', {
+      jwtDecoded: true,
+      claimKeys: Object.keys(payload).sort(),
+      candidateClaims: candidates.map(([claim]) => claim),
+      matchedClaim,
+      matchedRole,
+      matchesSohiOwner,
+      jwtRoleClaim: typeof payload.role === 'string' ? payload.role : null
+    });
+  } catch (error) {
+    console.error('[preview-admin-identity] diagnose failed', String(error?.message || error));
+  }
+}
+
 function copyResponseHeaders(upstream, res) {
   const blocked = new Set([
     'connection', 'content-length', 'content-encoding', 'transfer-encoding',
@@ -100,6 +172,7 @@ export default async function handler(req, res) {
     sessionCookie: Boolean(req.headers.cookie),
     bridgedAuthorization: Boolean(authorization)
   });
+  await diagnoseAdminIdentity(path, authorization);
 
   let body;
   if (!['GET', 'HEAD'].includes(req.method || 'GET')) {
