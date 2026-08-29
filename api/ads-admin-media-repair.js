@@ -2,7 +2,7 @@ import { getSql } from './ads-fair-core.js';
 
 const AUTH_UPSTREAM = 'https://ep-damp-resonance-awphji1s.neonauth.c-12.us-east-1.aws.neon.tech/neondb/auth';
 const TRUSTED_ORIGIN = 'https://harfway-playback.vercel.app';
-const ADS_MEDIA_API = 'https://design-stock-harf-way.vercel.app/api/ads-media';
+const ADS_MEDIA_API = 'https://design-stock-nu.vercel.app/api/ads-media';
 const SUPPORTED = new Set(['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm']);
 
 function readableError(value) {
