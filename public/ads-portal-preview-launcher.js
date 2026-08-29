@@ -136,14 +136,31 @@
       .find((el) => normalize(el.textContent) === '掲載されたときの見え方') || null;
   }
 
-  function mount() {
-    if (document.getElementById(BUTTON_ID)) return true;
+  function findPreviewPanel() {
     const heading = findHeading();
-    if (!heading) return false;
-    const wrap = document.createElement('div');
-    wrap.id = BUTTON_ID;
-    wrap.innerHTML = '<button type="button"><span>実際の掲載プレビューを開く</span><b>↗</b></button><small>現在の入力内容を別ページで確認できます。PC / スマホ切替対応。</small>';
-    heading.insertAdjacentElement('afterend', wrap);
+    if (!heading) return null;
+    let node = heading.parentElement;
+    let best = null;
+    for (let i = 0; node && node !== document.body && i < 8; i += 1) {
+      const text = normalize(node.textContent || '');
+      const hasTabs = /プレイリスト/.test(text) && /切れ端/.test(text) && /WAYS/.test(text) && /SALE\s*WATCH/i.test(text);
+      const hasForm = !!node.querySelector('input[type="file"], textarea');
+      if (hasTabs && !hasForm) best = node;
+      node = node.parentElement;
+    }
+    return best;
+  }
+
+  function mount() {
+    const panel = findPreviewPanel();
+    if (!panel) return false;
+    let wrap = document.getElementById(BUTTON_ID);
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.id = BUTTON_ID;
+      wrap.innerHTML = '<button type="button"><span>実際の掲載プレビューを開く</span><b>↗</b></button><small>現在の入力内容を別ページで確認できます。PC / スマホ切替対応。</small>';
+    }
+    if (wrap.parentElement !== panel || panel.lastElementChild !== wrap) panel.appendChild(wrap);
     return true;
   }
 
@@ -175,8 +192,8 @@
 
   const style = document.createElement('style');
   style.textContent = `
-    #${BUTTON_ID}{display:grid;gap:6px;margin:10px 0 14px;font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}
-    #${BUTTON_ID} button{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;appearance:none;border:1px solid #171717;border-radius:10px;padding:11px 13px;background:#171717;color:#fff;font-weight:900;font-size:12px;cursor:pointer}
+    #${BUTTON_ID}{display:grid;gap:7px;margin:18px 0 0;padding-top:16px;border-top:1px solid #ded8cc;font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}
+    #${BUTTON_ID} button{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;appearance:none;border:1px solid #171717;border-radius:10px;padding:12px 14px;background:#171717;color:#fff;font-weight:900;font-size:12px;cursor:pointer}
     #${BUTTON_ID} button:hover{background:#2a2a2a}#${BUTTON_ID} button:disabled{opacity:.6;cursor:wait}
     #${BUTTON_ID} button b{color:#d8ff59;font-size:15px}#${BUTTON_ID} small{color:#8a857b;font-size:9px;line-height:1.5}
   `;
