@@ -1,6 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import { authorizeArchiveRequest, archiveCors } from './archive-core.js';
-import { memoryGithubMirrorStatus, readMemoryAcknowledgements, syncMemoryInboxSnapshot } from './memory-github-mirror.js';
+import { deleteMemoryAcknowledgement, memoryGithubMirrorStatus, readMemoryAcknowledgements, syncMemoryInboxSnapshot } from './memory-github-mirror.js';
 
 function text(value, max = 8000) {
   return String(value ?? '').trim().slice(0, max);
@@ -89,6 +89,14 @@ async function setMemoArchived(sql, id, archived) {
     SET status=${status},
         metadata=jsonb_set(COALESCE(metadata, '{}'::jsonb), '{status}', to_jsonb(${metadataStatus}::text), true),
         updated_at=now()
+    WHERE id=${id} AND content_type='memory_memo' AND source='memory-inbox'
+    RETURNING id, body_text, excerpt, metadata, status AS record_status, created_at, updated_at
+  `;
+  return rows[0] ? normalize(rows[0]) : null;
+}
+async function purgeMemo(sql, id) {
+  const rows = await sql`
+    DELETE FROM core.contents
     WHERE id=${id} AND content_type='memory_memo' AND source='memory-inbox'
     RETURNING id, body_text, excerpt, metadata, status AS record_status, created_at, updated_at
   `;
@@ -258,6 +266,39 @@ export default async function handler(req, res) {
         ? await syncMirror(sql)
         : { ok:true, skipped:true, reason:'preview_no_github_write', ...memoryGithubMirrorStatus() };
       return res.status(200).json({ ok:true, action, mirror });
+    }
+
+    if (action === 'purge') {
+      const id = text(body.id, 180);
+      if (!id) return res.status(400).json({ ok:false, error:'id_required' });
+      try {
+        const item = await purgeMemo(sql, id);
+        if (!item) return res.status(404).json({ ok:false, error:'memory_memo_not_found' });
+        const mirror = config.production
+          ? await syncMirror(sql)
+          : { ok:true, skipped:true, reason:'preview_no_github_write', ...memoryGithubMirrorStatus() };
+        let acknowledgementCleanup = { ok:true, skipped:true, reason:'preview_no_github_write', removed:false };
+        if (config.production) {
+          try {
+            acknowledgementCleanup = await deleteMemoryAcknowledgement(id);
+          } catch (error) {
+            console.error('[memory-memos-purge-ack]', error?.message || error);
+            acknowledgementCleanup = { ok:false, error:'memory_ack_cleanup_failed', removed:false };
+          }
+        }
+        return res.status(200).json({
+          ok:true,
+          action,
+          id,
+          item,
+          purged:true,
+          mirror,
+          acknowledgementCleanup
+        });
+      } catch (error) {
+        console.error('[memory-memos-purge]', error);
+        return res.status(500).json({ ok:false, error:'memory_memo_purge_failed', code:error?.code || null });
+      }
     }
 
     if (action === 'archive_confirmed') {
