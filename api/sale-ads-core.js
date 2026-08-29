@@ -1,6 +1,5 @@
 import { neon } from '@neondatabase/serverless';
 
-// SALE WATCH uses its own Preview-only ADS_DATABASE_URL until production approval.
 export const SALE_PLACEMENT = 'sale';
 export const SALE_DEFAULT_EVERY = 6;
 export const SALE_DEFAULT_CAP = 2;
@@ -39,14 +38,30 @@ export function cleanCampaignId(value) {
 }
 
 export async function loadSaleRule(sql) {
-  try {
+  const readRule = async () => {
     const rows = await sql`
       SELECT every_n_items, session_cap_24h, enabled
       FROM public.ad_placement_rules
       WHERE placement = ${SALE_PLACEMENT}
       LIMIT 1
     `;
-    const row = rows[0];
+    return rows[0] || null;
+  };
+
+  try {
+    let row = await readRule();
+
+    if (!row && process.env.VERCEL_ENV === 'production') {
+      await sql`
+        INSERT INTO public.ad_placement_rules
+          (placement, every_n_items, session_cap_24h, enabled, updated_at)
+        VALUES
+          (${SALE_PLACEMENT}, ${SALE_DEFAULT_EVERY}, ${SALE_DEFAULT_CAP}, true, now())
+        ON CONFLICT (placement) DO NOTHING
+      `;
+      row = await readRule();
+    }
+
     if (row) {
       return {
         everyNItems: Math.max(1, Number(row.every_n_items || SALE_DEFAULT_EVERY)),
@@ -56,10 +71,15 @@ export async function loadSaleRule(sql) {
       };
     }
   } catch (error) {
-    // During Preview the sale row may not exist yet. Do not alter live DB implicitly.
     if (!/ad_placement_rules/i.test(String(error?.message || ''))) throw error;
   }
-  return { everyNItems: SALE_DEFAULT_EVERY, sessionCap: SALE_DEFAULT_CAP, enabled: true, configured: false };
+
+  return {
+    everyNItems: SALE_DEFAULT_EVERY,
+    sessionCap: SALE_DEFAULT_CAP,
+    enabled: true,
+    configured: false,
+  };
 }
 
 export function normalizeCampaign(campaign) {
