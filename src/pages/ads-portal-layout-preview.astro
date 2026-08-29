@@ -1,0 +1,73 @@
+---
+const title = 'HARF-WAY ADS｜広告主ポータル UI Preview';
+---
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>{title}</title>
+    <style is:global>
+      :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f2eee4;color:#161511}
+      *{box-sizing:border-box}body{margin:0;background:#f2eee4;color:#161511}.page{max-width:1420px;margin:0 auto;padding:26px 18px 60px}.note{max-width:1380px;margin:0 auto 12px;padding:10px 13px;border:1px solid #d8cebf;border-radius:12px;background:#fffaf2;color:#746955;font-size:11px;line-height:1.6}.note b{color:#171715}.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(520px,1fr);gap:18px;align-items:start}.panel{min-width:0;border:1px solid #d8cebf;border-radius:24px;background:#fffdf8;padding:24px 24px 26px;box-shadow:0 18px 60px rgba(70,55,30,.05)}.eyebrow{margin:0 0 11px;color:#7d684d;font:800 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.19em}.panel h1,.panel h2{margin:0;letter-spacing:-.04em}.panel h1{font-size:24px}.panel h2{font-size:24px;max-width:260px}.lead{margin:15px 0 28px;color:#9c8c75;font-size:14px;line-height:1.7}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px 12px}.field{display:grid;gap:7px}.field.full{grid-column:1/-1}.field label,.section-label{font-weight:850;font-size:12px}.field input,.field textarea{width:100%;border:1px solid #d8cebf;border-radius:12px;background:#fff;padding:13px 12px;color:#675c4d;font:inherit}.field textarea{height:100px;resize:none}.upload{padding:20px 12px;border:1px dashed #b9ab95;border-radius:14px;background:#fff}.upload b{display:block;font-size:12px}.upload small{display:block;margin-top:8px;color:#8f806b;font-size:9px}.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.chip{padding:8px 11px;border:1px solid #d7cdbd;border-radius:999px;background:#fff;color:#5e5344;font-size:10px}.placement-choices{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:9px}.placement-choice{min-height:68px;border:2px solid #23221f;border-radius:13px;background:#fff;padding:11px;text-align:left}.placement-choice b{display:block;font-size:15px}.placement-choice small{display:block;margin-top:5px;color:#9a8a73;font-size:8px}.preview-panel{position:relative}.preview-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px}.preview-head .old-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;width:min(100%,360px)}.old-tabs button{min-height:72px;border:1px solid #d7cdbd;border-radius:12px;background:#fffdf8;color:#76664f;font-weight:850;font-size:10px}.old-tabs button.active{border-color:#171715;background:#171715;color:#fff}.preview-zone{display:flex;justify-content:center;align-items:flex-start;min-height:520px;padding:18px 0 10px}.preview-card{position:relative;width:330px;max-width:100%;aspect-ratio:9/16;border:8px solid #171715;border-radius:28px;overflow:hidden;background:#d9d0bd;box-shadow:0 18px 40px rgba(0,0,0,.07)}.preview-art{position:absolute;inset:0;background-image:linear-gradient(155deg,rgba(255,255,255,.45),transparent 36%),radial-gradient(circle at 70% 20%,rgba(32,24,12,.18),transparent 20%),repeating-linear-gradient(12deg,rgba(30,24,15,.1) 0 1px,transparent 1px 18px),linear-gradient(180deg,#ece5d4,#bdb29c)}.preview-art:before,.preview-art:after{content:'';position:absolute;border:1px solid rgba(38,31,22,.35);background:rgba(250,246,235,.28)}.preview-art:before{left:11%;top:20%;width:52%;height:24%;transform:skewY(-8deg)}.preview-art:after{right:10%;bottom:20%;width:48%;height:31%;transform:skewY(8deg)}.preview-copy{position:absolute;z-index:2;left:18px;right:18px;bottom:28px;color:#fff;text-shadow:0 1px 7px rgba(0,0,0,.45)}.preview-copy small{display:block;margin-bottom:15px;font:800 8px/1 ui-monospace,monospace;letter-spacing:.15em}.preview-copy b{display:block;font-size:20px}.preview-copy span{display:block;margin-top:14px;font-size:15px;font-weight:850}.preview-mid{position:absolute;z-index:2;top:48%;left:0;right:0;text-align:center;color:#fff;font-weight:900;font-size:14px;text-shadow:0 1px 5px rgba(0,0,0,.4)}#hwads-open-standalone-preview{display:grid;gap:7px;margin:18px 0 0;padding-top:16px;border-top:1px solid #ded8cc}#hwads-open-standalone-preview button{display:flex;align-items:center;justify-content:space-between;width:100%;border:1px solid #171717;border-radius:10px;padding:13px 14px;background:#171717;color:#fff;font-weight:900;font-size:12px}#hwads-open-standalone-preview button b{color:#d8ff59;font-size:15px}#hwads-open-standalone-preview small{color:#8a857b;font-size:9px;line-height:1.5}
+      @media(max-width:1040px){.grid{grid-template-columns:1fr}.preview-panel{min-height:720px}}
+      @media(max-width:700px){.page{padding:10px 8px 40px}.panel{padding:18px 14px;border-radius:18px}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.placement-choices{grid-template-columns:1fr 1fr}.preview-head{display:block}.preview-head .old-tabs{width:100%;grid-template-columns:1fr 1fr;margin-top:16px}.preview-zone{min-height:470px}.preview-card{width:300px}}
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <div class="note"><b>ログイン不要のUI確認用Previewです。</b> 実際の広告申込・認証・DB・R2・計測には接続していません。ここで使っている右側レイアウト制御JSは、広告主ポータルへ入れるものと同じです。</div>
+      <div class="grid">
+        <section class="panel">
+          <p class="eyebrow">NEW CAMPAIGN</p>
+          <h1>広告を申し込む</h1>
+          <p class="lead">保存すると「審査待ち」になります。HARF-WAYが承認するまで配信は始まりません。</p>
+          <div class="form-grid">
+            <div class="field"><label>作品名</label><input value="作品タイトル" /></div>
+            <div class="field"><label>キャッチ</label><input value="一番伝えたい一言" /></div>
+            <div class="field full"><label>紹介文</label><textarea>ゲームの特徴や、読者に伝えたいこと</textarea></div>
+            <div class="field"><label>ストアURL</label><input value="https://..." /></div>
+            <div class="field"><label>配信終了日</label><input value="年 / 月 / 日" /></div>
+            <div class="field full"><label>広告素材</label><div class="upload"><b>画像 / 短尺動画を選ぶ</b><small>JPG / PNG / WebP：3MBまで ／ MP4 / WebM：10MBまで</small></div></div>
+            <div class="field full"><span class="section-label">タグ</span><div class="chips"><span class="chip">ローグライク</span><span class="chip">デッキ構築</span><span class="chip">クリーチャー</span><span class="chip">短編ADV</span><span class="chip">ホラー</span><span class="chip">アクション</span><span class="chip">パズル</span><span class="chip">シミュレーション</span></div></div>
+            <div class="field full"><span class="section-label">掲載先</span><div class="placement-choices"><button class="placement-choice" type="button"><b>プレイリスト</b><small>楽曲の横にスポンサー枠</small></button><button class="placement-choice" type="button"><b>切れ端</b><small>週のメモにはまるPR</small></button><button class="placement-choice" type="button"><b>WAYS</b><small>縦動画フィードに自然に挿入</small></button><button class="placement-choice" type="button"><b>SALE WATCH</b><small>セール一覧へ自然に挿入</small></button></div></div>
+          </div>
+        </section>
+
+        <section class="panel preview-panel">
+          <div class="preview-head">
+            <div><p class="eyebrow">LIVE PREVIEW</p><h2>掲載されたときの見え方</h2></div>
+            <div class="old-tabs" aria-label="掲載先プレビュー">
+              <button type="button" data-fixture-placement="playlist">プレイリスト</button>
+              <button type="button" data-fixture-placement="scraps">切れ端</button>
+              <button type="button" data-fixture-placement="playback" class="active">WAYS</button>
+              <button type="button" data-fixture-placement="sale">SALE WATCH</button>
+            </div>
+          </div>
+          <div class="preview-zone">
+            <article class="preview-card">
+              <div class="preview-art"></div>
+              <div class="preview-mid">作品...</div>
+              <div class="preview-copy"><small>PR · SPONSORED</small><b id="fixtureTitle">作品タイトル</b><span id="fixtureCatch">キャッチコピー</span></div>
+            </article>
+          </div>
+          <div id="hwads-open-standalone-preview"><button type="button"><span>実画面で掲載位置を確認</span><b>↗</b></button><small>現在の入力内容と選択した画像 / 動画を、実際の公開画面へ反映して確認できます。PC / スマホ対応。</small></div>
+        </section>
+      </div>
+    </main>
+    <script is:inline>
+      (()=>{
+        const tabs=[...document.querySelectorAll('[data-fixture-placement]')];
+        const labels={playlist:['PLAYLIST','プレイリスト掲載'],scraps:['切れ端','切れ端掲載'],playback:['作品タイトル','キャッチコピー'],sale:['SALE WATCH','セール掲載']};
+        tabs.forEach((button)=>button.addEventListener('click',()=>{
+          tabs.forEach((item)=>item.classList.toggle('active',item===button));
+          const text=labels[button.dataset.fixturePlacement]||labels.playback;
+          document.getElementById('fixtureTitle').textContent=text[0];
+          document.getElementById('fixtureCatch').textContent=text[1];
+        }));
+        document.querySelector('#hwads-open-standalone-preview button')?.addEventListener('click',()=>alert('UI確認用Previewのため、実画面遷移は無効です。'));
+      })();
+    </script>
+    <script src="/ads-portal-preview-layout-v2.js"></script>
+  </body>
+</html>
