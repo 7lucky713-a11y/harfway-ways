@@ -2,7 +2,7 @@
 const doors = [
   {
     eyebrow: 'WATCH / RANDOM',
-    title: '眺める',
+    title: '動画から出会う',
     name: 'WAYS',
     copy: '短い動画をザッピング。何を見るか決めずに、偶然からゲームに出会う。',
     href: 'https://harfway-playback.vercel.app/',
@@ -11,7 +11,7 @@ const doors = [
   },
   {
     eyebrow: 'THEME / CURATION',
-    title: '選んでもらう',
+    title: 'テーマから選ぶ',
     name: 'PLAYLIST',
     copy: 'ひとつのテーマから、いくつものゲームへ。編集された棚をめくるように探す。',
     href: 'https://harfway-playlist-tv.vercel.app/',
@@ -19,40 +19,13 @@ const doors = [
     icon: '◎'
   },
   {
-    eyebrow: 'WALK / STREET',
-    title: '寄り道する',
-    name: 'ヨリミチストリート',
-    copy: '喫茶店、夜ふかし、菓子屋。ジャンルではなく、店と気分からゲームを見つける。',
-    href: 'https://harf-way.com/yorimichi/',
-    tone: 'street',
-    icon: '↗'
-  }
-];
-
-const shelves = [
-  {
-    title: '切れ端を読む',
-    label: 'SCRAPS',
-    copy: '短い感想、記録、あとから残った断片。',
-    href: 'https://harf-way-game-scrapbook.vercel.app/'
-  },
-  {
-    title: '持ち込みを見る',
-    label: 'SHOWCASE',
-    copy: '作り手から届いた「いま見てほしい30秒」。',
-    href: 'https://harfway-showcase-ui-v4.vercel.app/'
-  },
-  {
-    title: '一本だけ選ぶ',
-    label: 'TONIGHT',
-    copy: '今夜の気分に、一本だけ。',
-    href: 'https://harf-way.com/tonight/'
-  },
-  {
-    title: '文章から探す',
-    label: 'ARTICLES',
-    copy: 'レビューではなく、遊んだあとに残った話。',
-    href: 'https://harf-way.com/'
+    eyebrow: 'NOTES / FRAGMENTS',
+    title: '断片からたどる',
+    name: 'SCRAPS',
+    copy: '短い感想、動画、あとから残った記録。ひとつの断片から、気になったゲームをたどる。',
+    href: 'https://harf-way-game-scrapbook.vercel.app/',
+    tone: 'scraps',
+    icon: '✂'
   }
 ];
 ---
@@ -101,13 +74,17 @@ const shelves = [
       .brand span { font-weight: 500; color: var(--muted); margin-left: 8px; }
       .back { border-bottom: 1px solid currentColor; }
       .hero {
-        padding: clamp(56px, 8vw, 120px) 0 44px;
+        padding: clamp(56px, 8vw, 118px) 0 42px;
         display: grid;
         grid-template-columns: 1fr auto;
         gap: 24px;
         align-items: end;
       }
-      .kicker { font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .18em; margin-bottom: 20px; }
+      .kicker {
+        font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: .18em;
+        margin-bottom: 20px;
+      }
       h1 {
         margin: 0;
         max-width: 1050px;
@@ -118,7 +95,7 @@ const shelves = [
       }
       h1 em { font-style: normal; background: var(--acid); padding: 0 .08em .06em; }
       .hero-note {
-        width: 220px;
+        width: 235px;
         font-size: 13px;
         line-height: 1.75;
         color: var(--muted);
@@ -137,7 +114,7 @@ const shelves = [
       .door {
         position: relative;
         grid-column: span 4;
-        min-height: 470px;
+        min-height: 490px;
         padding: 24px;
         border: 1.5px solid var(--ink);
         overflow: hidden;
@@ -150,49 +127,120 @@ const shelves = [
       .door:nth-child(2):hover { transform: translateY(-7px) rotate(.25deg); }
       .door.video { background: #171717; color: white; }
       .door.playlist { background: var(--red); }
-      .door.street { background: var(--blue); }
+      .door.scraps { background: var(--blue); }
       .door-top { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
       .door .eyebrow { font: 700 10px/1 ui-monospace, monospace; letter-spacing: .14em; opacity: .72; }
       .icon { font-size: 30px; line-height: 1; }
-      .visual { position: absolute; inset: 72px 24px 140px; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+      .visual {
+        position: absolute;
+        inset: 72px 24px 148px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        pointer-events:none;
+      }
       .screen {
-        width: 100%; aspect-ratio: 16/10; border: 1px solid rgba(255,255,255,.55); background: repeating-linear-gradient(0deg, #111 0 6px, #222 7px 8px); box-shadow: inset 0 0 50px #000;
+        width: 100%;
+        aspect-ratio: 16/10;
+        border: 1px solid rgba(255,255,255,.55);
+        background: repeating-linear-gradient(0deg, #111 0 6px, #222 7px 8px);
+        box-shadow: inset 0 0 50px #000;
         position:relative;
       }
-      .screen::after { content:'RANDOM PLAY'; position:absolute; left:14px; bottom:12px; font:700 9px/1 monospace; letter-spacing:.13em; }
-      .record { width:min(240px, 72%); aspect-ratio:1; border-radius:50%; background: repeating-radial-gradient(circle, #191919 0 8px, #282828 9px 10px); display:grid; place-items:center; animation: spin 12s linear infinite; box-shadow: 0 18px 35px rgba(0,0,0,.24); }
-      .record::before { content:'PLAY'; display:grid; place-items:center; width:34%; aspect-ratio:1; border-radius:50%; background:var(--paper); font:900 12px/1 monospace; }
+      .screen::after {
+        content:'RANDOM PLAY';
+        position:absolute;
+        left:14px;
+        bottom:12px;
+        font:700 9px/1 monospace;
+        letter-spacing:.13em;
+      }
+      .record {
+        width:min(240px, 72%);
+        aspect-ratio:1;
+        border-radius:50%;
+        background: repeating-radial-gradient(circle, #191919 0 8px, #282828 9px 10px);
+        display:grid;
+        place-items:center;
+        animation: spin 12s linear infinite;
+        box-shadow: 0 18px 35px rgba(0,0,0,.24);
+      }
+      .record::before {
+        content:'PLAY';
+        display:grid;
+        place-items:center;
+        width:34%;
+        aspect-ratio:1;
+        border-radius:50%;
+        background:var(--paper);
+        font:900 12px/1 monospace;
+      }
       @keyframes spin { to { transform: rotate(360deg); } }
-      .signs { width:100%; display:flex; flex-wrap:wrap; justify-content:center; gap:8px; transform:rotate(-2deg); }
-      .signs span { border:2px solid var(--ink); padding:9px 12px; background:var(--paper); font-weight:900; font-size:13px; box-shadow:4px 4px 0 var(--ink); }
-      .signs span:nth-child(2n){ transform:translateY(12px) rotate(3deg); }
+      .paper-stack { width: 78%; height: 72%; position: relative; }
+      .paper-stack span {
+        position:absolute;
+        inset: 8% 7%;
+        border:2px solid var(--ink);
+        background:var(--paper);
+        box-shadow:7px 7px 0 var(--ink);
+      }
+      .paper-stack span:nth-child(1) { transform:rotate(-8deg) translate(-10px, 8px); }
+      .paper-stack span:nth-child(2) { transform:rotate(6deg) translate(12px, -3px); }
+      .paper-stack span:nth-child(3) { transform:rotate(-1deg); padding:22px 18px; }
+      .paper-stack span:nth-child(3)::before {
+        content:'PLAY / NOTE / MEMORY';
+        display:block;
+        font:900 10px/1 monospace;
+        letter-spacing:.08em;
+        border-bottom:2px solid var(--ink);
+        padding-bottom:12px;
+      }
+      .paper-stack span:nth-child(3)::after {
+        content:'短い記録から、もう一度ゲームへ。';
+        display:block;
+        margin-top:16px;
+        font-size:13px;
+        line-height:1.5;
+        font-weight:800;
+      }
       .door-copy { position:relative; z-index:2; }
       .door h2 { margin:0 0 6px; font-size: clamp(31px, 3.2vw, 52px); letter-spacing:-.055em; line-height:.95; }
       .door-name { font:800 12px/1 monospace; letter-spacing:.14em; margin-bottom:14px; }
       .door p { margin:0; max-width:34em; font-size:13px; line-height:1.7; opacity:.8; }
-      .shelves { display:grid; grid-template-columns:repeat(4,1fr); border-top:1.5px solid var(--ink); border-left:1.5px solid var(--ink); }
-      .shelf { min-height:190px; padding:22px; border-right:1.5px solid var(--ink); border-bottom:1.5px solid var(--ink); transition:background .18s ease; display:flex; flex-direction:column; justify-content:space-between; }
-      .shelf:hover { background:var(--acid); }
-      .shelf-label { font:700 10px/1 monospace; letter-spacing:.14em; color:var(--muted); }
-      .shelf h3 { margin:0 0 8px; font-size:22px; letter-spacing:-.035em; }
-      .shelf p { margin:0; font-size:12px; line-height:1.65; color:var(--muted); }
-      .shelf-arrow { align-self:flex-end; font-size:22px; }
-      .manifesto {
-        margin: 80px 0 36px;
-        padding: 48px 0;
+      .note-strip {
+        margin: 66px 0 18px;
+        padding: 19px 0;
         border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:24px;
+      }
+      .note-strip strong { font-size:13px; letter-spacing:-.01em; }
+      .note-strip span { color:var(--muted); font-size:11px; line-height:1.6; text-align:right; }
+      .manifesto {
+        margin: 44px 0 36px;
+        padding: 48px 0;
         display:grid;
         grid-template-columns: 1fr 2fr;
         gap:32px;
       }
       .manifesto small { font:700 10px/1 monospace; letter-spacing:.14em; }
       .manifesto p { margin:0; font-size:clamp(22px,3vw,43px); line-height:1.35; letter-spacing:-.04em; font-weight:800; }
-      footer { border-top:1px solid var(--line); min-height:100px; display:flex; align-items:center; justify-content:space-between; color:var(--muted); font-size:11px; }
+      footer {
+        border-top:1px solid var(--line);
+        min-height:100px;
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        color:var(--muted);
+        font-size:11px;
+      }
       @media (max-width: 900px) {
         .hero { grid-template-columns:1fr; }
-        .hero-note { width:auto; max-width:480px; }
-        .door { grid-column:span 12; min-height:410px; }
-        .shelves { grid-template-columns:1fr 1fr; }
+        .hero-note { width:auto; max-width:500px; }
+        .door { grid-column:span 12; min-height:420px; }
         .manifesto { grid-template-columns:1fr; }
       }
       @media (max-width: 560px) {
@@ -202,10 +250,10 @@ const shelves = [
         .hero { padding-top:42px; }
         h1 { font-size:clamp(45px,16vw,74px); }
         .doors { gap:9px; }
-        .door { padding:18px; min-height:370px; }
-        .visual { inset:64px 18px 130px; }
-        .shelves { grid-template-columns:1fr; }
-        .shelf { min-height:150px; }
+        .door { padding:18px; min-height:380px; }
+        .visual { inset:64px 18px 138px; }
+        .note-strip { align-items:flex-start; flex-direction:column; }
+        .note-strip span { text-align:left; }
         footer { align-items:flex-start; flex-direction:column; justify-content:center; gap:8px; }
       }
       @media (prefers-reduced-motion: reduce) {
@@ -225,14 +273,14 @@ const shelves = [
       <main>
         <section class="hero">
           <div>
-            <div class="kicker">A SMALL ENTRANCE FOR FINDING GAMES</div>
-            <h1>今日は、どうやって<br/><em>ゲームを見つける？</em></h1>
+            <div class="kicker">THREE WAYS TO FIND THE NEXT GAME</div>
+            <h1>今日は、どこから<br/><em>ゲームに出会う？</em></h1>
           </div>
-          <p class="hero-note">タイトルを知っていなくても大丈夫。動画、テーマ、街、断片。いまの気分に近い入口からどうぞ。</p>
+          <p class="hero-note">いまは、HARF-WAYの中でも広告配信に対応している3つの公開コンテンツを入口にしています。</p>
         </section>
 
-        <div class="section-label">START FROM YOUR MOOD / 01</div>
-        <section class="doors" aria-label="メインの入口">
+        <div class="section-label">CHOOSE AN ENTRANCE / 01</div>
+        <section class="doors" aria-label="公開コンテンツへの入口">
           {doors.map((door) => (
             <a class={`door ${door.tone}`} href={door.href} target="_blank" rel="noreferrer">
               <div class="door-top">
@@ -243,7 +291,7 @@ const shelves = [
               <div class="visual" aria-hidden="true">
                 {door.tone === 'video' && <div class="screen"></div>}
                 {door.tone === 'playlist' && <div class="record"></div>}
-                {door.tone === 'street' && <div class="signs"><span>喫茶</span><span>夜ふかし</span><span>菓子</span><span>庭</span><span>ネオン</span></div>}
+                {door.tone === 'scraps' && <div class="paper-stack"><span></span><span></span><span></span></div>}
               </div>
 
               <div class="door-copy">
@@ -255,23 +303,14 @@ const shelves = [
           ))}
         </section>
 
-        <div class="section-label">MORE WAYS IN / 02</div>
-        <section class="shelves" aria-label="その他の入口">
-          {shelves.map((item) => (
-            <a class="shelf" href={item.href} target="_blank" rel="noreferrer">
-              <div class="shelf-label">{item.label}</div>
-              <div>
-                <h3>{item.title}</h3>
-                <p>{item.copy}</p>
-              </div>
-              <div class="shelf-arrow">↗</div>
-            </a>
-          ))}
-        </section>
+        <div class="note-strip">
+          <strong>WAYS / PLAYLIST / SCRAPS</strong>
+          <span>この3つを、読者の入口と広告の配信面を兼ねる<br/>HARF-WAYの公開コンテンツ群として育てていきます。</span>
+        </div>
 
         <section class="manifesto">
           <small>ABOUT THIS PLACE</small>
-          <p>HARF-WAYは、ゲームを「正しく選ぶ」場所というより、知らなかった一本に寄り道するための場所です。</p>
+          <p>見る、選ぶ、たどる。同じゲームでも、入口が変われば出会い方も変わる。</p>
         </section>
       </main>
 
