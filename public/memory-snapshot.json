@@ -1,47 +1,49 @@
 {
-  "version": "0.2",
-  "updatedAt": "2026-08-29T14:40:00+09:00",
+  "version": "0.3",
+  "updatedAt": "2026-08-29T14:45:00+09:00",
   "headline": "HARF-WAYの現在地・次の一手・自分の気づきを1画面に置くセーブデータ。",
   "now": [
     {
       "project": "MEMORY",
-      "status": "PREVIEW",
-      "title": "自分メモ / INBOXを追加",
-      "detail": "気づき・改善案・思いつきを雑なまま保存できる。Preview中はブラウザ保存、本番化後は共有メモへ切り替える。"
+      "status": "PRODUCTION",
+      "title": "セーブデータ＋自分メモ / INBOX",
+      "detail": "気づき・改善案・思いつきを雑なまま保存。Productionでは既存管理キーでShared Content Coreの共有メモへ接続する。"
     },
     {
       "project": "COLLECTIVE KNOWLEDGE",
-      "status": "PREVIEW",
-      "title": "集合知 v0.1 をPreview検証中",
-      "detail": "Knowledge APIはPreviewで200 OK。Production DBにはまだ接続していない。"
+      "status": "PRODUCTION",
+      "title": "Chat間で使う外部共有メモリ",
+      "detail": "Knowledge APIはProductionのShared Content Coreを参照し、確認済み知識を次のChatへ引き継ぐ基盤として使う。"
     },
     {
       "project": "CONTROL CENTER",
       "status": "PRODUCTION",
-      "title": "運営ツールの共通入口として稼働中",
-      "detail": "Production公開済みツールの自動同期を行う管理入口。Knowledge入口からMEMORYへ入る構成をPreview中。"
+      "title": "運営ツールとMEMORYの共通入口",
+      "detail": "現役ツールの管理入口。MEMORY / KnowledgeをHARF-WAY運用のセーブデータとして接続する。"
     }
   ],
   "recentDecisions": [
     "MEMORYは読むだけでなく、気づきをその場で置ける自分メモ / INBOXを持つ。",
     "メモは未検証情報として扱い、そのまま集合知の正本にはしない。",
     "細かいKnowledge一覧は裏側の管理用にして、普段見る画面はMEMORYに分ける。",
-    "気づいたことはChatでもMEMORYでも残せるようにする。"
+    "気づいたことはChatでもMEMORYでも残せるようにする。",
+    "共有メモは既存管理キーで保護し、キー自体はMEMORYや集合知へ保存しない。"
   ],
   "nextActions": [
-    "MEMORYのメモ機能をPreviewで使ってみる。",
-    "問題なければ本番OK後にProductionへ反映する。",
-    "Production側ではメモを共有DBへ保存し、ChatGPTが直接読んで改善候補へ変換できるようにする。",
-    "メモから改善タスク / 集合知 / 保留へ振り分ける処理を追加する。"
+    "新しいChat開始時にMEMORY / 集合知を読む運用を各HARF-WAY Chatへ浸透させる。",
+    "MEMORYに入ったINBOXを改善タスク / 集合知 / 保留へ振り分ける処理を育てる。",
+    "各プロジェクトのVERIFY情報を実環境確認のたびにVERIFIEDへ昇格する。",
+    "長いChatでは切断前に現在地・次の一手をMEMORYと台帳へセーブする。"
   ],
   "recentLearnings": [
     "集合知とは別に、検証前の雑な気づきを受け止めるINBOXが必要。",
     "ユーザーのメモを即座に正本へ入れず、確認してから昇格する方が集合知の精度を保てる。",
-    "集合知はChatGPT本体の再学習ではなく、全Chatが参照する外部共有メモリとして作る方が安全。",
-    "PreviewでDB設定がない時にProduction DBへフォールバックしない方が誤書き込みを防げる。"
+    "共有メモは公開APIにせず、既存管理キーで保護してShared Content Coreへ保存する方が安全。",
+    "集合知はChatGPT本体の再学習ではなく、全Chatが参照する外部共有メモリとして作る方が安全。"
   ],
   "howToUse": [
     "気づいた瞬間はMEMORYの自分メモへ雑に書く。タイトルは不要。",
+    "Productionの共有メモは管理キーで接続する。キーはブラウザセッション内だけに保持する。",
     "Chatで話したいメモは『ChatGPTに渡す』で文章をコピーできる。",
     "こちらでメモを確認し、改善タスク・集合知・保留・廃止情報に振り分ける。",
     "新しいChatではMEMORYと集合知を読んで現在地から再開する。"
