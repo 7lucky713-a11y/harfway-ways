@@ -1,24 +1,30 @@
 ---
 import { neon } from '@neondatabase/serverless';
 
-const databaseUrl = process.env.SALVAGER_PREVIEW_DATABASE_URL || '';
-let result = {
-  configured: Boolean(databaseUrl),
-  host: null,
-  endpointId: null,
-  projectId: null,
-  branchId: null,
-  databaseName: null,
-  contentsTable: null,
-  error: null
-};
+const candidates = [
+  ['SALVAGER_PREVIEW_DATABASE_URL', process.env.SALVAGER_PREVIEW_DATABASE_URL || ''],
+  ['WAYS_DATABASE_URL', process.env.WAYS_DATABASE_URL || ''],
+  ['DATABASE_URL', process.env.DATABASE_URL || ''],
+  ['NEON_DATABASE_URL', process.env.NEON_DATABASE_URL || ''],
+  ['POSTGRES_URL', process.env.POSTGRES_URL || ''],
+  ['WAYS_ANALYTICS_DATABASE_URL', process.env.WAYS_ANALYTICS_DATABASE_URL || '']
+];
 
-if (databaseUrl) {
+async function probe(name, databaseUrl) {
+  const result = {
+    name,
+    configured: Boolean(databaseUrl),
+    endpointId: null,
+    databaseName: null,
+    projectId: null,
+    branchId: null,
+    contentsTable: null,
+    error: null
+  };
+  if (!databaseUrl) return result;
   try {
     const parsed = new URL(databaseUrl);
-    const host = parsed.hostname;
-    result.host = host;
-    result.endpointId = host.split('.')[0] || null;
+    result.endpointId = parsed.hostname.split('.')[0] || null;
     const sql = neon(databaseUrl);
     const rows = await sql`
       SELECT
@@ -35,8 +41,11 @@ if (databaseUrl) {
   } catch (error) {
     result.error = error?.code || error?.message || 'probe_failed';
   }
+  return result;
 }
 
-console.log('[MEW_LOG_DB_PROBE]', JSON.stringify(result));
+const results = [];
+for (const [name, value] of candidates) results.push(await probe(name, value));
+console.log('[MEW_LOG_DB_PROBE]', JSON.stringify(results));
 ---
 <!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><title>MEW LOG DB Probe</title></head><body><p>MEW LOG Preview DB probe.</p></body></html>
