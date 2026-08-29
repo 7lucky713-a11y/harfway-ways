@@ -58,9 +58,12 @@ function patchScraps(html) {
   return out;
 }
 
-function injectPreview(html, placement, id) {
-  const config = JSON.stringify({ placement, id }).replace(/</g, '\\u003c');
-  const payload = `<meta name="robots" content="noindex,nofollow"><script>window.__HWADS_LIVE_PREVIEW_CONFIG__=${config};</script><script defer src="/ads-live-preview-frame.js"></script>`;
+function injectPreview(html, placement, id, mode) {
+  const fair = mode === 'fair';
+  const config = JSON.stringify(fair ? { placement } : { placement, id }).replace(/</g, '\\u003c');
+  const globalName = fair ? '__HWADS_FAIR_PREVIEW_CONFIG__' : '__HWADS_LIVE_PREVIEW_CONFIG__';
+  const script = fair ? '/ads-fair-preview-frame.js' : '/ads-live-preview-frame.js';
+  const payload = `<meta name="robots" content="noindex,nofollow"><script>window.${globalName}=${config};</script><script defer src="${script}"></script>`;
   if (/<\/head>/i.test(html)) return html.replace(/<\/head>/i, `${payload}</head>`);
   return `${payload}${html}`;
 }
@@ -68,8 +71,10 @@ function injectPreview(html, placement, id) {
 export default async function handler(req, res) {
   const placement = safeToken(one(req.query?.placement), 20);
   const id = safeToken(one(req.query?.id));
+  const mode = safeToken(one(req.query?.mode), 20);
+  const fair = mode === 'fair';
   const source = SOURCES[placement];
-  if (!source || !id) {
+  if (!source || (!fair && !id)) {
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.status(400).send('Invalid preview request');
     return;
@@ -77,7 +82,7 @@ export default async function handler(req, res) {
 
   try {
     const upstream = await fetch(source, {
-      headers: { 'User-Agent': 'HARF-WAY-ADS-Live-Preview/1.0' },
+      headers: { 'User-Agent': fair ? 'HARF-WAY-ADS-Fair-Preview/1.0' : 'HARF-WAY-ADS-Live-Preview/1.0' },
       cache: 'no-store',
     });
     if (!upstream.ok) {
@@ -91,12 +96,12 @@ export default async function handler(req, res) {
     else if (placement === 'playlist') html = patchPlaylist(html);
     else if (placement === 'scraps') html = patchScraps(html);
     else if (placement === 'sale') html = patchSale(html);
-    html = injectPreview(html, placement, id);
+    html = injectPreview(html, placement, id, mode);
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
-    res.setHeader('X-HARFWAY-ADS-LIVE-PREVIEW', placement);
+    res.setHeader('X-HARFWAY-ADS-LIVE-PREVIEW', fair ? `${placement};fair-v2` : placement);
     res.status(200).send(html);
   } catch (error) {
     console.error('ADS live preview proxy failed', placement, error);
