@@ -1,0 +1,44 @@
+---
+const title = 'HARF-WAY ADS｜公平配信 v2 実画面テスト';
+---
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>{title}</title>
+    <style is:global>
+      :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0a0b0c;color:#f3f3ed;color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#0a0b0c;color:#f3f3ed}.bar{position:sticky;top:0;z-index:20;border-bottom:1px solid #2c3032;background:rgba(10,11,12,.96);backdrop-filter:blur(14px)}.barin{max-width:1440px;margin:auto;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:18px}.brand small{display:block;color:#dfff49;font:900 9px/1 ui-monospace,monospace;letter-spacing:.13em}.brand h1{margin:5px 0 3px;font-size:20px;letter-spacing:-.035em}.brand p{margin:0;color:#7f8588;font-size:10px}.tools{display:flex;gap:8px;align-items:center}.seg{display:flex;padding:3px;border:1px solid #353a3c;border-radius:999px;background:#121415}.seg button{border:0;min-height:34px;padding:0 12px;border-radius:999px;background:transparent;color:#777e82;font:900 9px/1 ui-monospace,monospace;cursor:pointer}.seg button.active{background:#f2f2ec;color:#0b0c0d}.main{max-width:1440px;margin:auto;padding:16px 18px 48px}.summary{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:12px;padding:14px 15px;border:1px solid #293026;border-radius:14px;background:#0f130e}.summary strong{color:#eaff71}.summary p{margin:0;color:#9da59a;font-size:11px;line-height:1.7}.status{flex:none;display:inline-flex;align-items:center;gap:6px;padding:7px 9px;border:1px solid #39432a;border-radius:999px;color:#cddc7d;font:900 8px/1 ui-monospace,monospace}.status:before{content:'';width:7px;height:7px;border-radius:50%;background:#dfff49}.tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-bottom:10px}.tab{min-height:48px;border:1px solid #303538;border-radius:10px;background:#121415;color:#858c90;text-align:left;padding:8px 10px;cursor:pointer}.tab b{display:block;font-size:10px}.tab span{display:block;margin-top:3px;color:#666d70;font-size:8px}.tab.active{border-color:#82963f;background:#192012;color:#e7ff78}.tab.active span{color:#9dab6b}.stage{display:flex;justify-content:center;align-items:flex-start;width:100%;overflow:auto;padding:12px;border:1px solid #292d2f;border-radius:18px;background:#070809}.device{width:100%;min-width:0;transition:width .2s ease}.device.mobile{width:390px;max-width:100%}.frame{width:100%;border:1px solid #3a3e40;border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 28px 90px rgba(0,0,0,.4)}.caption{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:8px 10px;border-bottom:1px solid #303437;background:#111314;color:#777e82;font:800 8px/1.3 ui-monospace,monospace}.caption b{color:#dfff49}iframe{display:block;width:100%;height:900px;border:0;background:#fff}.device.mobile iframe{height:780px}.reload{border:1px solid #3b4530;border-radius:10px;background:#161d12;color:#dfff49;padding:10px 12px;font-size:10px;font-weight:900;cursor:pointer}
+      @media(max-width:680px){.barin{align-items:flex-start;flex-direction:column}.tools{width:100%;justify-content:space-between}.main{padding:12px 8px 32px}.summary{flex-direction:column}.tabs{grid-template-columns:1fr 1fr}.stage{padding:5px;border-radius:12px}.device.mobile{width:100%}iframe,.device.mobile iframe{height:720px}}
+    </style>
+  </head>
+  <body>
+    <header class="bar"><div class="barin"><div class="brand"><small>HARF-WAY ADS / FAIR DELIVERY TEST</small><h1>公平配信 v2｜実画面テスト</h1><p>4媒体すべてを同じ配信判定器で確認。IMP / CLICK / STORE VISIT は記録しません。</p></div><div class="tools"><div class="seg" id="deviceSwitch"><button type="button" data-device="pc">PC</button><button type="button" data-device="mobile">スマホ</button></div><button class="reload" id="reload" type="button">再判定 ↻</button></div></div></header>
+    <main class="main">
+      <section class="summary"><p><strong>黄緑の枠が公平配信v2で選ばれた広告枠です。</strong><br>候補抽出 → タグ相性 → 配信ペースの遅れ → 消化率 → 同条件分散、の順で判定します。候補がない場合は「NO ACTIVE CAMPAIGN」と明示します。</p><span class="status" id="status">判定中</span></section>
+      <nav class="tabs" id="tabs">
+        <button class="tab" data-placement="playback" type="button"><b>WAYS</b><span>4作品ごと / cap 2</span></button>
+        <button class="tab" data-placement="playlist" type="button"><b>PLAYLIST</b><span>4作品ごと / cap 2</span></button>
+        <button class="tab" data-placement="scraps" type="button"><b>切れ端</b><span>3件ごと / cap 2</span></button>
+        <button class="tab" data-placement="sale" type="button"><b>SALE WATCH</b><span>6件ごと / cap 2</span></button>
+      </nav>
+      <section class="stage"><div class="device" id="device"><div class="frame"><div class="caption"><span id="deviceLabel">PC VIEWPORT</span><b>FAIR v2 / NOT COUNTED</b></div><iframe id="frame" title="公平配信 v2 実画面テスト"></iframe></div></div></section>
+    </main>
+    <script is:inline>
+      (()=>{
+        const labels={playback:'WAYS',playlist:'PLAYLIST',scraps:'切れ端',sale:'SALE WATCH'};
+        const params=new URL(location.href).searchParams;
+        let placement=Object.prototype.hasOwnProperty.call(labels,params.get('placement'))?params.get('placement'):'playback';
+        let device=params.get('device')==='mobile'?'mobile':'pc';
+        const frame=document.getElementById('frame'), box=document.getElementById('device'), status=document.getElementById('status');
+        function load(){document.querySelectorAll('[data-placement]').forEach(b=>b.classList.toggle('active',b.dataset.placement===placement));status.textContent=`${labels[placement]} を判定中`;frame.src=`/api/ads-live-frame?mode=fair&placement=${encodeURIComponent(placement)}&t=${Date.now()}`;}
+        function syncDevice(){box.classList.toggle('mobile',device==='mobile');document.getElementById('deviceLabel').textContent=device==='mobile'?'MOBILE VIEWPORT / 390px':'PC VIEWPORT';document.querySelectorAll('[data-device]').forEach(b=>b.classList.toggle('active',b.dataset.device===device));}
+        document.getElementById('tabs').onclick=e=>{const b=e.target.closest('[data-placement]');if(!b)return;placement=b.dataset.placement;load();};
+        document.getElementById('deviceSwitch').onclick=e=>{const b=e.target.closest('[data-device]');if(!b)return;device=b.dataset.device==='mobile'?'mobile':'pc';syncDevice();};
+        document.getElementById('reload').onclick=load;
+        window.addEventListener('message',e=>{if(e.origin!==location.origin||e.data?.type!=='hwads-fair-preview-ready')return;const d=e.data;status.textContent=d.candidateCount?`${labels[d.placement]}：${d.candidateCount}候補 / ${d.title||'選択済み'}`:`${labels[d.placement]}：候補0件`;});
+        syncDevice();load();
+      })();
+    </script>
+  </body>
+</html>
