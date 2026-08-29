@@ -7,6 +7,7 @@
     'harfway-playback-harf-way.vercel.app',
   ]);
   const TRACK_ENABLED = PROD_HOSTS.has(location.hostname);
+  const SERVE = TRACK_ENABLED ? `${ADS}/api/serve` : '/api/ads-fair-serve';
   const DEMO = new URLSearchParams(location.search).get('ads_demo') === '1';
   const contextTags = ['WAYS', 'インディーゲーム'];
 
@@ -324,7 +325,7 @@
   async function boot() {
     addStyles();
     try {
-      const d = await req(`${ADS}/api/serve?placement=${encodeURIComponent(PLACEMENT)}&tags=${encodeURIComponent(contextTags.join(','))}&sid=${encodeURIComponent(sid())}`);
+      const d = await req(`${SERVE}?placement=${encodeURIComponent(PLACEMENT)}&tags=${encodeURIComponent(contextTags.join(','))}&sid=${encodeURIComponent(sid())}`);
       everyN = Math.max(1, Number(d.rule?.everyNItems || DEFAULT_EVERY));
       ad = d.ad || (DEMO ? demoAd() : null);
     } catch {
