@@ -60,10 +60,6 @@ export default async function handler(req, res) {
   if (req.headers['content-type']) headers['content-type'] = req.headers['content-type'];
   if (req.headers.cookie) headers.cookie = req.headers.cookie;
   if (req.headers.authorization) headers.authorization = req.headers.authorization;
-  for (const [key, value] of Object.entries(req.headers || {})) {
-    if (!key.toLowerCase().startsWith('x-') || value == null) continue;
-    headers[key] = Array.isArray(value) ? value.join(', ') : String(value);
-  }
 
   let body;
   if (!['GET', 'HEAD'].includes(req.method || 'GET')) {
