@@ -54,6 +54,37 @@ try {
     ORDER BY tablename, policyname
   `;
 
+  const triggers = await sql`
+    SELECT
+      t.tgname AS trigger_name,
+      pg_get_triggerdef(t.oid, true) AS trigger_def,
+      n.nspname AS function_schema,
+      p.proname AS function_name,
+      pg_get_functiondef(p.oid) AS function_def
+    FROM pg_trigger t
+    JOIN pg_class c ON c.oid = t.tgrelid
+    JOIN pg_namespace cn ON cn.oid = c.relnamespace
+    JOIN pg_proc p ON p.oid = t.tgfoid
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE NOT t.tgisinternal
+      AND cn.nspname = 'public'
+      AND c.relname = 'ad_campaigns'
+    ORDER BY t.tgname
+  `;
+
+  const ownerGuardFunctions = await sql`
+    SELECT n.nspname AS schema_name, p.proname AS function_name,
+           p.prosecdef AS security_definer, pg_get_functiondef(p.oid) AS definition
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname IN ('public','auth')
+      AND (
+        pg_get_functiondef(p.oid) ILIKE '%not owner%'
+        OR pg_get_functiondef(p.oid) ILIKE '%owner_user_id%'
+      )
+    ORDER BY n.nspname, p.proname
+  `;
+
   const candidates = await sql`
     SELECT table_schema, table_name, column_name, data_type
     FROM information_schema.columns
@@ -89,6 +120,8 @@ try {
 
   console.log('[ads-admin-db-diagnose] functions', JSON.stringify(functions.map(x => ({...x, definition:redact(x.definition)}))));
   console.log('[ads-admin-db-diagnose] function-security', JSON.stringify(functionSecurity));
+  console.log('[ads-admin-db-diagnose] triggers', JSON.stringify(triggers.map(x => ({...x, trigger_def:redact(x.trigger_def), function_def:redact(x.function_def)}))));
+  console.log('[ads-admin-db-diagnose] owner-guard-functions', JSON.stringify(ownerGuardFunctions.map(x => ({...x, definition:redact(x.definition)}))));
   console.log('[ads-admin-db-diagnose] candidates', JSON.stringify(candidates));
   console.log('[ads-admin-db-diagnose] policies', JSON.stringify(policies.map(x => ({...x, qual:redact(x.qual), with_check:redact(x.with_check)}))));
   console.log('[ads-admin-db-diagnose] sohi-owner', JSON.stringify(sohiOwner));
