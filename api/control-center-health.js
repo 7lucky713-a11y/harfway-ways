@@ -2,7 +2,8 @@ const HUB_API='https://harfway-vercel-hub.vercel.app/api/entries';
 const GITHUB_OWNER='7lucky713-a11y';
 const GITHUB_REPOS_API=`https://api.github.com/users/${GITHUB_OWNER}/repos?per_page=100&sort=pushed&direction=desc&type=owner`;
 const GITHUB_SYNC_SINCE=Date.parse('2026-08-29T00:00:00.000Z');
-const LOCAL_REGISTRY_URL='https://raw.githubusercontent.com/7lucky713-a11y/harfway-ways/control-center-registry/public/harfway-tools.json';
+const LOCAL_REGISTRY_REF=process.env.VERCEL_ENV==='production'?'control-center-registry':'preview/control-center-registry-fix-20260829';
+const LOCAL_REGISTRY_URL=`https://raw.githubusercontent.com/7lucky713-a11y/harfway-ways/${LOCAL_REGISTRY_REF}/public/harfway-tools.json`;
 
 const BASELINE_HUB_IDS=new Set([
   'hub','play','scr','show','ads','clean','mochikomi-02','editors-pick','tv','pltv','petit',
@@ -13,8 +14,7 @@ const BASELINE_HUB_IDS=new Set([
 const KNOWN_TOOL_IDS=new Set([
   'ways','play','playback','archive','salvager','db-master','r2-media','analytics','showcase',
   'playlist','playlist-tv','scrapbook','yorimichi','yorimichi-editor','zine','zine-editor',
-  'design-stock','factory','cleanup','sale-watch','reader-entrance','ads','harfway-ads',
-  'shelf-admin','shelf-generator'
+  'design-stock','factory','cleanup','sale-watch','reader-entrance','ads','harfway-ads','memory'
 ]);
 
 const LOCAL_AUTO_ITEMS=[
@@ -50,8 +50,8 @@ const LOCAL_AUTO_ITEMS=[
   },
   {
     id:'harfway-ads',
-    public_url:'https://harfway-ads-prototype.vercel.app/',
-    admin_url:'https://harfway-ads-admin.vercel.app/',
+    public_url:'https://harfway-playback.vercel.app/ads-portal/',
+    admin_url:'https://harfway-playback.vercel.app/ads-admin/',
     metrics_url:'https://harfway-ads-placement-dashboard.vercel.app/',
     sync_source:'local-registry',
     manifest:{
@@ -61,23 +61,23 @@ const LOCAL_AUTO_ITEMS=[
       group:'OPERATE',
       role:'広告配信・入稿・計測',
       description:'HARF-WAYの自前広告ネットワーク。広告主向け入口、管理、配信枠、IMP上限、結果計測をまとめて扱う。',
-      public_url:'https://harfway-ads-prototype.vercel.app/',
-      admin_url:'https://harfway-ads-admin.vercel.app/',
+      public_url:'https://harfway-playback.vercel.app/ads-portal/',
+      admin_url:'https://harfway-playback.vercel.app/ads-admin/',
       metrics_url:'https://harfway-ads-placement-dashboard.vercel.app/'
     }
   },
   {
-    id:'shelf-admin',
-    admin_url:'https://harfway-playback.vercel.app/db-master-core',
+    id:'memory',
+    public_url:'https://harfway-playback.vercel.app/memory',
     sync_source:'local-registry',
     manifest:{
       harfway:true,
-      id:'shelf-admin',
-      name:'SHELF ADMIN / CORE',
-      group:'CREATE',
-      role:'棚生成・表示管理',
-      description:'Shared Content Coreの作品から棚を組むための表示・固定・画像ソース設定を管理。専用UI分離前はCore DB管理画面を入口にする。',
-      admin_url:'https://harfway-playback.vercel.app/db-master-core'
+      id:'memory',
+      name:'HARF-WAY MEMORY',
+      group:'OPERATE',
+      role:'セーブデータ・共有メモ',
+      description:'HARF-WAYとChatGPTの現在地、最近の決定、次の一手、ユーザーの気づきINBOXをまとめる共有メモリ入口。',
+      public_url:'https://harfway-playback.vercel.app/memory'
     }
   }
 ];
@@ -89,10 +89,10 @@ const CORE_CHECKS=[
   {id:'archive',name:'WAYS ARCHIVE',kind:'publish',url:'https://harfway-playback.vercel.app/archive/'},
   {id:'salvager',name:'ARCHIVE SALVAGER',kind:'core',url:'https://harfway-playback.vercel.app/salvage/'},
   {id:'db-master',name:'DB MASTER',kind:'core',url:'https://harfway-playback.vercel.app/db-master'},
-  {id:'shelf-admin',name:'SHELF ADMIN / CORE',kind:'create',url:'https://harfway-playback.vercel.app/db-master-core'},
+  {id:'memory',name:'HARF-WAY MEMORY',kind:'ops',url:'https://harfway-playback.vercel.app/memory'},
   {id:'r2-media',name:'R2 MEDIA MANAGER',kind:'core',url:'https://harfway-showcase-manager-v2.vercel.app/r2-media.html'},
   {id:'analytics',name:'ANALYTICS HUB',kind:'ops',url:'https://harfway-playback.vercel.app/analytics'},
-  {id:'ads',name:'HARF-WAY ADS',kind:'ops',url:'https://harfway-ads-admin.vercel.app/'},
+  {id:'ads',name:'HARF-WAY ADS',kind:'ops',url:'https://harfway-playback.vercel.app/ads-admin/'},
   {id:'showcase',name:'SHOWCASE',kind:'publish',url:'https://harfway-showcase-ui-v4.vercel.app/'},
   {id:'playlist',name:'PLAYLIST TV',kind:'publish',url:'https://harfway-playlist-tv.vercel.app/'},
   {id:'scrapbook',name:'GAME SCRAPBOOK',kind:'publish',url:'https://harf-way-game-scrapbook.vercel.app/'},
