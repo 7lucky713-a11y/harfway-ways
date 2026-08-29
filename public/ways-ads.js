@@ -7,9 +7,10 @@
     'harfway-playback-harf-way.vercel.app',
   ]);
   const TRACK_ENABLED = PROD_HOSTS.has(location.hostname);
-  const SERVE = TRACK_ENABLED ? `${ADS}/api/serve` : '/api/ads-fair-serve';
+  const SERVE = '/api/ads-fair-serve';
   const DEMO = new URLSearchParams(location.search).get('ads_demo') === '1';
   const contextTags = ['WAYS', 'インディーゲーム'];
+  const LAST_AD_KEY = `hwads_last_${PLACEMENT}`;
 
   let ad = null;
   let everyN = DEFAULT_EVERY;
@@ -33,6 +34,22 @@
       localStorage.setItem('hwads_sid', v);
     }
     return v;
+  };
+
+  const lastAdId = () => {
+    try {
+      const value = String(localStorage.getItem(LAST_AD_KEY) || '').trim().toLowerCase();
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value) ? value : '';
+    } catch {
+      return '';
+    }
+  };
+
+  const rememberAd = (value) => {
+    if (!value || value.__demo || !value.id) return;
+    try {
+      localStorage.setItem(LAST_AD_KEY, String(value.id).toLowerCase());
+    } catch {}
   };
 
   async function req(url, opt = {}) {
@@ -325,9 +342,17 @@
   async function boot() {
     addStyles();
     try {
-      const d = await req(`${SERVE}?placement=${encodeURIComponent(PLACEMENT)}&tags=${encodeURIComponent(contextTags.join(','))}&sid=${encodeURIComponent(sid())}`);
+      const params = new URLSearchParams({
+        placement: PLACEMENT,
+        tags: contextTags.join(','),
+        sid: sid(),
+      });
+      const previous = lastAdId();
+      if (previous) params.set('avoid', previous);
+      const d = await req(`${SERVE}?${params.toString()}`);
       everyN = Math.max(1, Number(d.rule?.everyNItems || DEFAULT_EVERY));
       ad = d.ad || (DEMO ? demoAd() : null);
+      rememberAd(ad);
     } catch {
       ad = DEMO ? demoAd() : null;
     }
