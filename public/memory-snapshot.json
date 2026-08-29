@@ -1,0 +1,49 @@
+{
+  "version": "0.1",
+  "updatedAt": "2026-08-29T14:30:00+09:00",
+  "headline": "HARF-WAYの現在地と、次にやることを1画面で見るセーブデータ。",
+  "now": [
+    {
+      "project": "COLLECTIVE KNOWLEDGE",
+      "status": "PREVIEW",
+      "title": "集合知 v0.1 をPreview検証中",
+      "detail": "Knowledge APIと共有知識画面はPreviewで200 OK。Production DBにはまだ接続していない。"
+    },
+    {
+      "project": "CONTROL CENTER",
+      "status": "PRODUCTION",
+      "title": "運営ツールの共通入口として稼働中",
+      "detail": "Production公開済みツールの自動同期を行う管理入口。今回のPreviewではMEMORY入口を追加する。"
+    },
+    {
+      "project": "SHARED CONTENT CORE",
+      "status": "READY",
+      "title": "ゲーム・記事・動画の共通基盤を集合知にも流用可能",
+      "detail": "既存のcontent registryを使い、knowledge種別として知識を保存できる構成を確認済み。"
+    }
+  ],
+  "recentDecisions": [
+    "細かいKnowledge一覧は裏側の管理用にして、普段見る画面はMEMORYに分ける。",
+    "気づいたことは普段どおりChatで伝え、再利用価値がある内容を集合知へ反映する。",
+    "新しいChatは共通ナレッジを読んでから作業を始め、作業後に新しい学びを書き戻す。",
+    "未確認情報を正本にせず、VERIFIED / KNOWN / VERIFY / DEPRECATEDで状態を分ける。"
+  ],
+  "nextActions": [
+    "MEMORY画面のPreviewを確認する。",
+    "問題なければ本番OK後にProductionへ反映する。",
+    "Production側ではShared Content CoreへKnowledge APIを接続し、Chat間で知識を蓄積できる状態へ進める。",
+    "各Chatで重要な決定・失敗原因・未完了・次の一手が出たらMEMORYと集合知を更新する。"
+  ],
+  "recentLearnings": [
+    "集合知はChatGPT本体の再学習ではなく、全Chatが参照する外部共有メモリとして作る方が安全。",
+    "秘密値や内部台帳の正本はprivate側に残し、Web側には共有可能な要約だけ出す二層構造が安全。",
+    "PreviewでDB設定がない時にProduction DBへフォールバックしない方が誤書き込みを防げる。",
+    "既存Shared Content Coreを流用できるため、新しいDBを増やさず集合知を育てられる。"
+  ],
+  "howToUse": [
+    "思いついたこと・違和感・決めたことは、そのままChatで伝える。",
+    "こちらで『一時メモ』『プロジェクト固有』『全体ルール』『廃止情報』に分類する。",
+    "新しいChatではMEMORYと集合知を読んで現在地から再開する。",
+    "こうゆうさんは必要な時だけMEMORYを見ればよく、Knowledgeの細かい管理は基本こちらで扱う。"
+  ]
+}
