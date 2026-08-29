@@ -43,7 +43,7 @@ async function sessionAuthorization(req) {
       cookie: String(cookie),
       origin: TRUSTED_ORIGIN,
       referer: `${TRUSTED_ORIGIN}/ads-admin/`,
-      'user-agent': req.headers['user-agent'] || 'HARF-WAY-ADS-Media-Repair/1.1'
+      'user-agent': req.headers['user-agent'] || 'HARF-WAY-ADS-Media-Repair/1.2'
     },
     redirect: 'manual'
   });
@@ -146,7 +146,10 @@ export default async function handler(req, res) {
   if (process.env.VERCEL_ENV !== 'preview') return res.status(404).json({ ok: false, error: 'not_found' });
 
   let stage = 'start';
-  const setStage = (value) => { stage = value; };
+  const setStage = (value) => {
+    stage = value;
+    console.log(`[ads-admin-media-repair] stage=${value}`);
+  };
 
   try {
     const campaignId = String(req.body?.campaignId || '').trim();
@@ -223,17 +226,18 @@ export default async function handler(req, res) {
 
     if (!mediaUrl) throw new Error('R2保存後の公開URLを確認できませんでした。');
 
-    console.log('[ads-admin-media-repair]', { campaignId, ok: true, mime: mediaMime, legacyPreserved: true });
+    console.log(`[ads-admin-media-repair] success mime=${mediaMime} legacyPreserved=true`);
     return res.status(200).json({ ok: true, mediaUrl, mediaMime, legacyPreserved: true });
   } catch (error) {
     const message = readableError(error) || 'repair_failed';
-    console.error('[ads-admin-media-repair] failed', {
+    const diagnostic = {
       stage,
       message,
       code: readableError(error?.code),
       detail: readableError(error?.detail),
       hint: readableError(error?.hint)
-    });
+    };
+    console.error(`[ads-admin-media-repair] failed ${JSON.stringify(diagnostic)}`);
     return res.status(500).json({ ok: false, error: 'repair_failed', message, stage });
   }
 }
