@@ -11,6 +11,10 @@ if (!url) {
   process.exit(0);
 }
 
+let dbHost = '';
+try { dbHost = new URL(url).hostname; } catch {}
+console.log('[ads-admin-db-diagnose] db-host', dbHost || 'invalid');
+
 const sql = neon(url);
 const redact = (s) => String(s ?? '')
   .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/ig, '<UUID>')
