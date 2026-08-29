@@ -117,28 +117,52 @@
     return backgrounds[0]?.el || null;
   }
 
+  function frameQualities(el) {
+    const style = getComputedStyle(el);
+    const radius = parseFloat(style.borderRadius) || 0;
+    const border = Math.max(
+      parseFloat(style.borderTopWidth) || 0,
+      parseFloat(style.borderRightWidth) || 0,
+      parseFloat(style.borderBottomWidth) || 0,
+      parseFloat(style.borderLeftWidth) || 0,
+    );
+    const clipped = /hidden|clip/.test(style.overflow) || /hidden|clip/.test(style.overflowX) || /hidden|clip/.test(style.overflowY);
+    return { radius, border, clipped };
+  }
+
   function markVisualFrame(panel) {
     panel.querySelectorAll('[data-hwads-inline-preview-frame]').forEach((el) => delete el.dataset.hwadsInlinePreviewFrame);
     const target = findVisualTarget(panel);
     if (!target) return null;
+
     const panelRect = panel.getBoundingClientRect();
+    const chain = [];
     let node = target;
-    let best = target;
-    let bestScore = -Infinity;
-    for (let i = 0; node && node !== panel && i < 7; i += 1) {
+    for (let i = 0; node && node !== panel && i < 8; i += 1) {
       const rect = visibleRect(node);
-      if (rect && rect.width <= Math.max(680, panelRect.width * .96)) {
-        const style = getComputedStyle(node);
-        const radius = parseFloat(style.borderRadius) || 0;
-        const enclosure = rect.width * rect.height;
-        const score = enclosure + (radius >= 12 ? 100000 : 0) + (/hidden|clip/.test(style.overflow) ? 70000 : 0);
-        if (score > bestScore) {
-          best = node;
-          bestScore = score;
-        }
-      }
+      if (rect && rect.width <= Math.max(720, panelRect.width * .98)) chain.push({ el: node, rect, ...frameQualities(node), depth: i });
       node = node.parentElement;
     }
+
+    if (!chain.length) return null;
+
+    const framed = chain
+      .filter((item) => item.radius >= 12 && (item.clipped || item.border >= 2))
+      .sort((a, b) => a.depth - b.depth);
+
+    const rounded = chain
+      .filter((item) => item.radius >= 12)
+      .sort((a, b) => a.depth - b.depth);
+
+    const fallback = [...chain].sort((a, b) => {
+      const aArea = a.rect.width * a.rect.height;
+      const bArea = b.rect.width * b.rect.height;
+      const aScore = (a.radius >= 8 ? 100000 : 0) + (a.clipped ? 70000 : 0) + (a.border >= 1 ? 50000 : 0) - a.depth * 1000 - aArea * .01;
+      const bScore = (b.radius >= 8 ? 100000 : 0) + (b.clipped ? 70000 : 0) + (b.border >= 1 ? 50000 : 0) - b.depth * 1000 - bArea * .01;
+      return bScore - aScore;
+    });
+
+    const best = framed[0]?.el || rounded[0]?.el || fallback[0]?.el || target;
     best.dataset.hwadsInlinePreviewFrame = '1';
     return best;
   }
@@ -191,14 +215,14 @@
       syncUi(panel, originalTabs(panel));
     };
     requestAnimationFrame(run);
-    [60, 180, 420, 800].forEach((delay) => window.setTimeout(run, delay));
+    [50, 120, 260, 520, 900].forEach((delay) => window.setTimeout(run, delay));
   }
 
   function setDevice(next, panel, tabs) {
     device = next === 'pc' ? 'pc' : 'mobile';
     try { sessionStorage.setItem(DEVICE_KEY, device); } catch {}
     syncUi(panel, tabs);
-    window.setTimeout(() => syncUi(panel, originalTabs(panel)), 100);
+    syncAfterPlacement(panel);
   }
 
   function mount() {
@@ -269,10 +293,39 @@
     #${UI_ID} .hwads-preview-device-buttons button{min-height:36px;border:0;border-radius:8px;background:transparent;padding:7px 9px;color:#756a5c}
     #${UI_ID} .hwads-preview-device-buttons button:hover{transform:none;background:#fffaf2}
     #${UI_ID} .hwads-preview-device-buttons button.active{background:#171715;color:#fff;box-shadow:0 2px 7px rgba(0,0,0,.12)}
-    [data-hwads-inline-preview-frame="1"]{transition:width .2s ease,max-width .2s ease!important}
-    [data-hwads-preview-device="pc"] [data-hwads-inline-preview-frame="1"]{width:min(100%,620px)!important;max-width:620px!important;margin-left:auto!important;margin-right:auto!important}
-    [data-hwads-preview-device="mobile"] [data-hwads-inline-preview-frame="1"]{width:min(100%,340px)!important;max-width:340px!important;margin-left:auto!important;margin-right:auto!important}
-    [data-hwads-preview-device="pc"][data-hwads-active-placement="playback"] [data-hwads-inline-preview-frame="1"]{max-width:520px!important}
+
+    [data-hwads-inline-preview-frame="1"]{
+      margin-left:auto!important;
+      margin-right:auto!important;
+      overflow:hidden!important;
+      transform:translateZ(0);
+      transition:width .2s ease,max-width .2s ease,aspect-ratio .2s ease,height .2s ease!important;
+    }
+    [data-hwads-preview-device="pc"] [data-hwads-inline-preview-frame="1"]{
+      width:min(100%,620px)!important;
+      max-width:620px!important;
+      height:auto!important;
+      min-height:0!important;
+      aspect-ratio:16/9!important;
+    }
+    [data-hwads-preview-device="mobile"] [data-hwads-inline-preview-frame="1"]{
+      width:min(100%,340px)!important;
+      max-width:340px!important;
+      height:auto!important;
+      min-height:0!important;
+      aspect-ratio:9/16!important;
+    }
+    [data-hwads-inline-preview-frame="1"]>img,
+    [data-hwads-inline-preview-frame="1"]>video,
+    [data-hwads-inline-preview-frame="1"] img[data-hwads-sample-media="1"],
+    [data-hwads-inline-preview-frame="1"] video[data-hwads-sample-media="1"]{
+      width:100%!important;
+      height:100%!important;
+      object-fit:cover!important;
+    }
+    [data-hwads-preview-device="pc"] .preview-zone{min-height:360px!important;align-items:center!important}
+    [data-hwads-preview-device="mobile"] .preview-zone{min-height:520px!important}
+
     @media(max-width:1120px){#${UI_ID} .hwads-preview-control-grid{grid-template-columns:1fr}#${UI_ID} .hwads-preview-device-group{justify-items:start}}
     @media(max-width:700px){#${UI_ID} .hwads-preview-placement-buttons{grid-template-columns:1fr 1fr}#${UI_ID} .hwads-preview-device-buttons{grid-template-columns:repeat(2,minmax(70px,1fr));width:100%}[data-hwads-preview-device="pc"] [data-hwads-inline-preview-frame="1"],[data-hwads-preview-device="mobile"] [data-hwads-inline-preview-frame="1"]{width:100%!important;max-width:100%!important}}
   `;
