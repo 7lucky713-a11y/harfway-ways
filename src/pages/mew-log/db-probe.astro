@@ -1,0 +1,42 @@
+---
+import { neon } from '@neondatabase/serverless';
+
+const databaseUrl = process.env.SALVAGER_PREVIEW_DATABASE_URL || '';
+let result = {
+  configured: Boolean(databaseUrl),
+  host: null,
+  endpointId: null,
+  projectId: null,
+  branchId: null,
+  databaseName: null,
+  contentsTable: null,
+  error: null
+};
+
+if (databaseUrl) {
+  try {
+    const parsed = new URL(databaseUrl);
+    const host = parsed.hostname;
+    result.host = host;
+    result.endpointId = host.split('.')[0] || null;
+    const sql = neon(databaseUrl);
+    const rows = await sql`
+      SELECT
+        current_database()::text AS database_name,
+        current_setting('neon.project_id', true)::text AS project_id,
+        current_setting('neon.branch_id', true)::text AS branch_id,
+        to_regclass('core.contents')::text AS contents_table
+    `;
+    const row = rows[0] || {};
+    result.databaseName = row.database_name || null;
+    result.projectId = row.project_id || null;
+    result.branchId = row.branch_id || null;
+    result.contentsTable = row.contents_table || null;
+  } catch (error) {
+    result.error = error?.code || error?.message || 'probe_failed';
+  }
+}
+
+console.log('[MEW_LOG_DB_PROBE]', JSON.stringify(result));
+---
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><title>MEW LOG DB Probe</title></head><body><p>MEW LOG Preview DB probe.</p></body></html>
