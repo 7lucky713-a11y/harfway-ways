@@ -1,6 +1,7 @@
 import { getSql } from './ads-fair-core.js';
 
 const AUTH_UPSTREAM = 'https://ep-damp-resonance-awphji1s.neonauth.c-12.us-east-1.aws.neon.tech/neondb/auth';
+const DATA_UPSTREAM = 'https://ep-damp-resonance-awphji1s.apirest.c-12.us-east-1.aws.neon.tech/neondb/rest/v1';
 const TRUSTED_ORIGIN = 'https://harfway-playback.vercel.app';
 
 function decodeJwtPayload(authorization) {
@@ -26,13 +27,36 @@ async function sessionAuthorization(req) {
       cookie: String(cookie),
       origin: TRUSTED_ORIGIN,
       referer: `${TRUSTED_ORIGIN}/ads-admin/`,
-      'user-agent': req.headers['user-agent'] || 'HARF-WAY-ADS-Admin-Status/1.0'
+      'user-agent': req.headers['user-agent'] || 'HARF-WAY-ADS-Admin-Status/1.1'
     },
     redirect: 'manual'
   });
   if (!response.ok) return null;
   const jwt = response.headers.get('set-auth-jwt');
   return jwt ? `Bearer ${jwt}` : null;
+}
+
+async function patchCampaign(campaignId, authorization, body) {
+  const response = await fetch(`${DATA_UPSTREAM}/ad_campaigns?id=eq.${encodeURIComponent(campaignId)}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: authorization,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation'
+    },
+    body: JSON.stringify(body),
+    cache: 'no-store'
+  });
+
+  const text = await response.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch {}
+  if (!response.ok) {
+    const message = data?.message || data?.error || data?.details || text || `status update failed (${response.status})`;
+    throw new Error(String(message));
+  }
+  if (!Array.isArray(data) || data.length !== 1) throw new Error('campaign status update was not applied');
+  return data[0];
 }
 
 export default async function handler(req, res) {
@@ -78,32 +102,17 @@ export default async function handler(req, res) {
     if (!before) return res.status(404).json({ ok: false, error: 'campaign_not_found' });
 
     const nextStatus = action === 'pause' ? 'paused' : 'active';
+    const patch = { status: nextStatus };
     if (action === 'activate' && before.status === 'pending') {
-      await sql`
-        UPDATE public.ad_campaigns
-        SET status = ${nextStatus}, approved_at = now(), updated_at = now()
-        WHERE id = ${campaignId}::uuid
-      `;
-    } else {
-      await sql`
-        UPDATE public.ad_campaigns
-        SET status = ${nextStatus}, updated_at = now()
-        WHERE id = ${campaignId}::uuid
-      `;
+      patch.approved_at = new Date().toISOString();
     }
 
-    const afterRows = await sql`
-      SELECT id::text AS id, title, status, approved_at
-      FROM public.ad_campaigns
-      WHERE id = ${campaignId}::uuid
-      LIMIT 1
-    `;
-    const after = afterRows[0];
-    console.log('[ads-admin-status]', { campaignId, action, before: before.status, after: after?.status || '' });
+    const after = await patchCampaign(campaignId, authorization, patch);
+    console.log(`[ads-admin-status] campaign=${campaignId} action=${action} before=${before.status} after=${after?.status || ''} via=data-api`);
     return res.status(200).json({ ok: true, campaign: after });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error || 'status_update_failed');
-    console.error('[ads-admin-status] failed', { message });
+    console.error(`[ads-admin-status] failed message=${JSON.stringify(message)}`);
     return res.status(500).json({ ok: false, error: 'status_update_failed', message });
   }
 }
