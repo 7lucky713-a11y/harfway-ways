@@ -69,7 +69,7 @@ export default async function handler(req, res) {
       ruleRows = await sql`
         SELECT placement, every_n_items, session_cap_24h, enabled
         FROM public.ad_placement_rules
-        WHERE placement = ANY(${PLACEMENTS})
+        WHERE placement IN ('playback', 'playlist', 'scraps', 'sale')
       `;
     } catch (error) {
       if (!/ad_placement_rules/i.test(String(error?.message || ''))) throw error;
