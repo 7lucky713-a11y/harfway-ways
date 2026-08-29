@@ -35,8 +35,8 @@
     },
     {
       "id": "harfway-ads",
-      "public_url": "https://harfway-ads-prototype.vercel.app/",
-      "admin_url": "https://harfway-ads-admin.vercel.app/",
+      "public_url": "https://harfway-playback.vercel.app/ads-portal/",
+      "admin_url": "https://harfway-playback.vercel.app/ads-admin/",
       "metrics_url": "https://harfway-ads-placement-dashboard.vercel.app/",
       "sync_source": "local-registry",
       "manifest": {
@@ -46,8 +46,8 @@
         "group": "OPERATE",
         "role": "広告配信・入稿・計測",
         "description": "HARF-WAYの自前広告ネットワーク。広告主向け入口、管理、配信枠、IMP上限、結果計測をまとめて扱う。",
-        "public_url": "https://harfway-ads-prototype.vercel.app/",
-        "admin_url": "https://harfway-ads-admin.vercel.app/",
+        "public_url": "https://harfway-playback.vercel.app/ads-portal/",
+        "admin_url": "https://harfway-playback.vercel.app/ads-admin/",
         "metrics_url": "https://harfway-ads-placement-dashboard.vercel.app/"
       }
     },
