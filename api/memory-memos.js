@@ -1,6 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import { authorizeArchiveRequest, archiveCors } from './archive-core.js';
-import { memoryGithubMirrorStatus, syncMemoryInboxSnapshot } from './memory-github-mirror.js';
+import { memoryGithubMirrorStatus, readMemoryAcknowledgements, syncMemoryInboxSnapshot } from './memory-github-mirror.js';
 
 function text(value, max = 8000) {
   return String(value ?? '').trim().slice(0, max);
@@ -29,6 +29,33 @@ function normalize(row = {}) {
 function containsSecretLikeContent(value) {
   const s = String(value || '');
   return /(?:api[_-]?key|password|passwd|secret|bearer\s+[a-z0-9._-]{12,}|token\s*[:=]\s*[a-z0-9._-]{12,})/i.test(s);
+}
+function confirmationStatus(result = {}) {
+  return {
+    ok: result.ok !== false,
+    configured: Boolean(result.configured),
+    skipped: Boolean(result.skipped),
+    reason: result.reason || null,
+    error: result.error || null,
+    count: Number(result.count || 0),
+    updatedAt: result.updatedAt || null,
+    targetPath: result.targetPath || 'knowledge/MEMORY_ACKS.json',
+    meaning: 'ChatGPTが本文を読んだ印。VERIFIED・対応完了・集合知化を意味しない。'
+  };
+}
+function applyConfirmations(items = [], acknowledgementResult = {}) {
+  const acks = acknowledgementResult?.acks && typeof acknowledgementResult.acks === 'object'
+    ? acknowledgementResult.acks
+    : {};
+  return items.map(item => {
+    const ack = acks[item.id];
+    return {
+      ...item,
+      confirmed: Boolean(ack?.confirmedAt),
+      confirmedAt: ack?.confirmedAt || null,
+      confirmationSource: ack?.source || null
+    };
+  });
 }
 async function readMemoRows(sql, recordStatus = 'active') {
   return sql`
@@ -67,6 +94,49 @@ async function setMemoArchived(sql, id, archived) {
   `;
   return rows[0] ? normalize(rows[0]) : null;
 }
+async function archiveMemoIds(sql, ids = []) {
+  const safeIds = [...new Set(ids.map(id => text(id, 180)).filter(Boolean))].slice(0, 300);
+  if (!safeIds.length) return [];
+  const idJson = JSON.stringify(safeIds);
+  const rows = await sql`
+    UPDATE core.contents
+    SET status='archived',
+        metadata=jsonb_set(COALESCE(metadata, '{}'::jsonb), '{status}', to_jsonb('ARCHIVED'::text), true),
+        updated_at=now()
+    WHERE content_type='memory_memo'
+      AND source='memory-inbox'
+      AND status='active'
+      AND id IN (SELECT jsonb_array_elements_text(${idJson}::jsonb))
+    RETURNING id, body_text, excerpt, metadata, status AS record_status, created_at, updated_at
+  `;
+  return rows.map(normalize);
+}
+async function readConfirmationsForEnvironment(config) {
+  if (!config?.production) {
+    return {
+      ok:true,
+      skipped:true,
+      reason:'preview_no_github_read',
+      configured:false,
+      acks:{},
+      count:0,
+      targetPath:'knowledge/MEMORY_ACKS.json'
+    };
+  }
+  try {
+    return await readMemoryAcknowledgements();
+  } catch (error) {
+    console.error('[memory-confirmations-read]', error?.message || error);
+    return {
+      ok:false,
+      error:'memory_confirmations_read_failed',
+      configured:Boolean(memoryGithubMirrorStatus().configured),
+      acks:{},
+      count:0,
+      targetPath:'knowledge/MEMORY_ACKS.json'
+    };
+  }
+}
 
 export default async function handler(req, res) {
   archiveCors(res);
@@ -83,6 +153,7 @@ export default async function handler(req, res) {
         storage:'browser-local',
         items:[],
         archivedItems:[],
+        confirmations:confirmationStatus({ ok:true, skipped:true, reason:'preview_no_github_read', configured:false }),
         mirror:{ ...memoryGithubMirrorStatus(), ok:true, skipped:true, reason:'preview_no_github_write' }
       });
     }
@@ -96,6 +167,7 @@ export default async function handler(req, res) {
       storage:'browser-local',
       items:[],
       archivedItems:[],
+      confirmations:confirmationStatus({ ok:true, skipped:true, reason:'database_not_configured', configured:false }),
       mirror:memoryGithubMirrorStatus(),
       error:req.method === 'GET' ? null : (config?.production ? 'memory_database_not_configured' : 'preview_database_not_configured')
     });
@@ -105,16 +177,18 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     try {
-      const [activeRows, archivedRows] = await Promise.all([
+      const [activeRows, archivedRows, acknowledgementResult] = await Promise.all([
         readActiveMemoRows(sql),
-        readArchivedMemoRows(sql)
+        readArchivedMemoRows(sql),
+        readConfirmationsForEnvironment(config)
       ]);
       return res.status(200).json({
         ok:true,
         environment:process.env.VERCEL_ENV || 'development',
         storage:config.production ? 'shared-content-core' : 'preview-core',
-        items:activeRows.map(normalize),
-        archivedItems:archivedRows.map(normalize),
+        items:applyConfirmations(activeRows.map(normalize), acknowledgementResult),
+        archivedItems:applyConfirmations(archivedRows.map(normalize), acknowledgementResult),
+        confirmations:confirmationStatus(acknowledgementResult),
         mirror:memoryGithubMirrorStatus()
       });
     } catch (error) {
@@ -140,7 +214,7 @@ export default async function handler(req, res) {
         VALUES (${id},'memory_memo','MEMORY MEMO',${`memory://${id}`},${content.slice(0,320)},${content},'active','memory-inbox',${metadata}::jsonb,now(),now())
         RETURNING id,body_text,excerpt,metadata,status AS record_status,created_at,updated_at
       `;
-      const item = normalize(rows[0]);
+      const item = { ...normalize(rows[0]), confirmed:false, confirmedAt:null, confirmationSource:null };
       const mirror = config.production
         ? await syncMirror(sql)
         : { ok:true, skipped:true, reason:'preview_no_github_write', ...memoryGithubMirrorStatus() };
@@ -159,11 +233,13 @@ export default async function handler(req, res) {
     const id = text(body.id || req.query?.id, 180);
     if (!id) return res.status(400).json({ ok:false, error:'id_required' });
     try {
-      const item = await setMemoArchived(sql, id, true);
+      let item = await setMemoArchived(sql, id, true);
+      const acknowledgementResult = await readConfirmationsForEnvironment(config);
+      if (item) item = applyConfirmations([item], acknowledgementResult)[0];
       const mirror = config.production
         ? await syncMirror(sql)
         : { ok:true, skipped:true, reason:'preview_no_github_write', ...memoryGithubMirrorStatus() };
-      return res.status(200).json({ ok:true, id, item, archived:true, legacyDelete:true, mirror });
+      return res.status(200).json({ ok:true, id, item, archived:true, legacyDelete:true, confirmations:confirmationStatus(acknowledgementResult), mirror });
     } catch (error) {
       console.error('[memory-memos-archive-legacy]', error);
       return res.status(500).json({ ok:false, error:'memory_memo_archive_failed', code:error?.code || null });
@@ -184,17 +260,49 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok:true, action, mirror });
     }
 
+    if (action === 'archive_confirmed') {
+      try {
+        const [activeRows, acknowledgementResult] = await Promise.all([
+          readActiveMemoRows(sql),
+          readConfirmationsForEnvironment(config)
+        ]);
+        if (config.production && !acknowledgementResult.ok) {
+          return res.status(503).json({ ok:false, error:'memory_confirmations_unavailable', confirmations:confirmationStatus(acknowledgementResult) });
+        }
+        const activeItems = applyConfirmations(activeRows.map(normalize), acknowledgementResult);
+        const confirmedIds = activeItems.filter(item => item.confirmed).map(item => item.id);
+        const archivedItems = await archiveMemoIds(sql, confirmedIds);
+        const items = applyConfirmations(archivedItems, acknowledgementResult);
+        const mirror = config.production
+          ? await syncMirror(sql)
+          : { ok:true, skipped:true, reason:'preview_no_github_write', ...memoryGithubMirrorStatus() };
+        return res.status(200).json({
+          ok:true,
+          action,
+          archivedCount:items.length,
+          items,
+          confirmations:confirmationStatus(acknowledgementResult),
+          mirror
+        });
+      } catch (error) {
+        console.error('[memory-memos-archive-confirmed]', error);
+        return res.status(500).json({ ok:false, error:'memory_memo_archive_confirmed_failed', code:error?.code || null });
+      }
+    }
+
     if (action === 'archive' || action === 'restore') {
       const id = text(body.id, 180);
       if (!id) return res.status(400).json({ ok:false, error:'id_required' });
       try {
         const archived = action === 'archive';
-        const item = await setMemoArchived(sql, id, archived);
+        let item = await setMemoArchived(sql, id, archived);
         if (!item) return res.status(404).json({ ok:false, error:'memory_memo_not_found' });
+        const acknowledgementResult = await readConfirmationsForEnvironment(config);
+        item = applyConfirmations([item], acknowledgementResult)[0];
         const mirror = config.production
           ? await syncMirror(sql)
           : { ok:true, skipped:true, reason:'preview_no_github_write', ...memoryGithubMirrorStatus() };
-        return res.status(200).json({ ok:true, action, item, mirror });
+        return res.status(200).json({ ok:true, action, item, confirmations:confirmationStatus(acknowledgementResult), mirror });
       } catch (error) {
         console.error(`[memory-memos-${action}]`, error);
         return res.status(500).json({ ok:false, error:`memory_memo_${action}_failed`, code:error?.code || null });
