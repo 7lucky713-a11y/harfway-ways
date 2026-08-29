@@ -86,6 +86,34 @@ async function getGithubFile(authToken, path) {
   return { ok: true, exists: true, sha: clean(data?.sha, 120), content };
 }
 
+async function putGithubFile(authToken, path, content, message) {
+  const encoded = Buffer.from(String(content || ''), 'utf8').toString('base64');
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const current = await getGithubFile(authToken, path);
+    if (!current.ok) return { ok:false, error:current.error, status:current.status || 0, attempt };
+    const body = {
+      message,
+      content: encoded,
+      branch: TARGET_BRANCH,
+      ...(current.sha ? { sha: current.sha } : {})
+    };
+    const url = `${GITHUB_API}/repos/${TARGET_REPO}/contents/${path}`;
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: { ...headers(authToken), 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await response.json().catch(() => ({}));
+    if (response.ok) {
+      return { ok:true, commitSha:clean(data?.commit?.sha, 120), attempt };
+    }
+    if (![409, 422].includes(response.status) || attempt === 3) {
+      return { ok:false, error:clean(data?.message || 'github_write_failed', 300), status:response.status, attempt };
+    }
+  }
+  return { ok:false, error:'github_write_retry_exhausted' };
+}
+
 export function memoryGithubMirrorStatus() {
   return {
     configured: Boolean(token()),
@@ -145,6 +173,68 @@ export async function readMemoryAcknowledgements() {
   }
 }
 
+export async function deleteMemoryAcknowledgement(memoId) {
+  const id = clean(memoId, 180);
+  const authToken = token();
+  const base = {
+    configured: Boolean(authToken),
+    targetRepo: TARGET_REPO,
+    targetBranch: TARGET_BRANCH,
+    targetPath: ACK_PATH,
+    productionOnly: true
+  };
+  if (!id) return { ok:false, error:'id_required', removed:false, ...base };
+  if (process.env.VERCEL_ENV !== 'production') {
+    return { ok:true, skipped:true, reason:'preview_no_github_write', removed:false, ...base };
+  }
+  if (!authToken) {
+    return { ok:false, skipped:true, error:'github_mirror_not_configured', removed:false, ...base };
+  }
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const current = await getGithubFile(authToken, ACK_PATH);
+    if (!current.ok) return { ...current, removed:false, ...base };
+    if (!current.exists || !current.content) return { ok:true, removed:false, count:0, ...base };
+
+    let parsed;
+    try { parsed = JSON.parse(current.content); }
+    catch { return { ok:false, error:'memory_ack_parse_failed', removed:false, ...base }; }
+    const acks = parsed?.acks && typeof parsed.acks === 'object' ? { ...parsed.acks } : {};
+    if (!Object.prototype.hasOwnProperty.call(acks, id)) {
+      return { ok:true, removed:false, count:Object.keys(acks).length, ...base };
+    }
+    delete acks[id];
+    const content = JSON.stringify({
+      version: Number(parsed?.version || 1),
+      updatedAt: new Date().toISOString(),
+      note: clean(parsed?.note || 'ChatGPT read acknowledgements only. Not VERIFIED.', 500),
+      acks
+    }, null, 2) + '\n';
+
+    const encoded = Buffer.from(content, 'utf8').toString('base64');
+    const body = {
+      message: 'memory: remove deleted memo acknowledgement',
+      content: encoded,
+      branch: TARGET_BRANCH,
+      sha: current.sha
+    };
+    const url = `${GITHUB_API}/repos/${TARGET_REPO}/contents/${ACK_PATH}`;
+    const response = await fetch(url, {
+      method:'PUT',
+      headers:{ ...headers(authToken), 'Content-Type':'application/json' },
+      body:JSON.stringify(body)
+    });
+    const data = await response.json().catch(() => ({}));
+    if (response.ok) {
+      return { ok:true, removed:true, count:Object.keys(acks).length, commitSha:clean(data?.commit?.sha, 120), attempt, ...base };
+    }
+    if (![409, 422].includes(response.status) || attempt === 3) {
+      return { ok:false, removed:false, error:clean(data?.message || 'github_write_failed', 300), status:response.status, attempt, ...base };
+    }
+  }
+  return { ok:false, removed:false, error:'github_ack_retry_exhausted', ...base };
+}
+
 export async function syncMemoryInboxSnapshot(items = []) {
   const authToken = token();
   const status = memoryGithubMirrorStatus();
@@ -157,44 +247,16 @@ export async function syncMemoryInboxSnapshot(items = []) {
   }
 
   const content = renderSnapshot(items);
-  const encoded = Buffer.from(content, 'utf8').toString('base64');
-
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
-    const current = await getGithubFile(authToken, TARGET_PATH);
-    if (!current.ok) return { ok: false, error: current.error, status: current.status || 0, attempt, ...status };
-
-    const body = {
-      message: 'memory: sync private inbox snapshot',
-      content: encoded,
-      branch: TARGET_BRANCH,
-      ...(current.sha ? { sha: current.sha } : {})
+  const result = await putGithubFile(authToken, TARGET_PATH, content, 'memory: sync private inbox snapshot');
+  if (result.ok) {
+    return {
+      ok:true,
+      synced:true,
+      count:Array.isArray(items) ? items.length : 0,
+      commitSha:result.commitSha || '',
+      attempt:result.attempt || 1,
+      ...status
     };
-    const url = `${GITHUB_API}/repos/${TARGET_REPO}/contents/${TARGET_PATH}`;
-    const response = await fetch(url, {
-      method: 'PUT',
-      headers: { ...headers(authToken), 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    const data = await response.json().catch(() => ({}));
-    if (response.ok) {
-      return {
-        ok: true,
-        synced: true,
-        count: Array.isArray(items) ? items.length : 0,
-        commitSha: clean(data?.commit?.sha, 120),
-        ...status
-      };
-    }
-    if (![409, 422].includes(response.status) || attempt === 3) {
-      return {
-        ok: false,
-        error: clean(data?.message || 'github_write_failed', 300),
-        status: response.status,
-        attempt,
-        ...status
-      };
-    }
   }
-
-  return { ok: false, error: 'github_mirror_retry_exhausted', ...status };
+  return { ...result, synced:false, ...status };
 }
