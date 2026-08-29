@@ -56,22 +56,54 @@ async function runReport(propertyId,token,body){
   return data;
 }
 
+function cleanPath(value){
+  let path=String(value||'/').trim()||'/';
+  if(!path.startsWith('/'))path=`/${path}`;
+  path=path.split(/[?#]/)[0].replace(/\/{2,}/g,'/');
+  if(path.length>1)path=path.replace(/\/+$/,'');
+  return path||'/';
+}
+
+function pathFromUrl(value){
+  try{return cleanPath(new URL(String(value||'')).pathname)}catch{return '/'}
+}
+
 function normalizeDefinitions(serviceDefinitions){
   const source=Array.isArray(serviceDefinitions)&&serviceDefinitions.length?serviceDefinitions:DEFAULT_ANALYTICS_SERVICES;
   const names=new Set();
-  const hostService=new Map();
+  const hostRoutes=new Map();
   const definitions=[];
   for(const raw of source){
     const serviceName=String(raw?.serviceName||'').trim().toLowerCase();
     if(!serviceName||names.has(serviceName))continue;
     const hosts=Array.isArray(raw?.hosts)?raw.hosts.map(x=>String(x||'').trim().toLowerCase()).filter(Boolean):[];
     if(!hosts.length)continue;
-    const def={...raw,serviceName,hosts:[...new Set(hosts)]};
+    const pathPrefix=cleanPath(raw?.pathPrefix||pathFromUrl(raw?.productionUrl));
+    const def={...raw,serviceName,hosts:[...new Set(hosts)],pathPrefix};
     definitions.push(def);
     names.add(serviceName);
-    def.hosts.forEach(host=>{if(!hostService.has(host))hostService.set(host,serviceName)});
+    for(const host of def.hosts){
+      if(!hostRoutes.has(host))hostRoutes.set(host,[]);
+      hostRoutes.get(host).push(def);
+    }
   }
-  return {definitions,hostService};
+  for(const routes of hostRoutes.values())routes.sort((a,b)=>b.pathPrefix.length-a.pathPrefix.length);
+  return {definitions,hostRoutes};
+}
+
+function matchesPath(pagePath,pathPrefix){
+  const path=cleanPath(pagePath);
+  const prefix=cleanPath(pathPrefix);
+  if(prefix==='/')return true;
+  return path===prefix||path.startsWith(`${prefix}/`);
+}
+
+function serviceFor(host,pagePath,hostRoutes){
+  const routes=hostRoutes.get(String(host||'').toLowerCase())||[];
+  for(const def of routes){
+    if(matchesPath(pagePath,def.pathPrefix))return def.serviceName;
+  }
+  return '';
 }
 
 export function ga4ConfigStatus(){
@@ -88,20 +120,21 @@ export function ga4ConfigStatus(){
 
 export async function getGa4Summary(days=7,serviceDefinitions=DEFAULT_ANALYTICS_SERVICES){
   const c=credentials();
-  const {definitions,hostService}=normalizeDefinitions(serviceDefinitions);
+  const {definitions,hostRoutes}=normalizeDefinitions(serviceDefinitions);
   if(!c.configured)return {ok:false,reason:'ga4_data_api_oidc_config_required',config:ga4ConfigStatus(),services:{},definitions};
   try{
     const token=await accessToken(c);
     const safeDays=Math.max(1,Math.min(365,Number(days)||7));
     const dateRanges=[{startDate:`${safeDays}daysAgo`,endDate:'today'}];
     const [traffic,eventReport]=await Promise.all([
-      runReport(c.propertyId,token,{dateRanges,dimensions:[{name:'hostName'}],metrics:[{name:'screenPageViews'},{name:'sessions'},{name:'activeUsers'}],limit:500}),
-      runReport(c.propertyId,token,{dateRanges,dimensions:[{name:'hostName'},{name:'eventName'}],metrics:[{name:'eventCount'}],limit:25000})
+      runReport(c.propertyId,token,{dateRanges,dimensions:[{name:'hostName'},{name:'pagePath'}],metrics:[{name:'screenPageViews'},{name:'sessions'},{name:'activeUsers'}],limit:5000}),
+      runReport(c.propertyId,token,{dateRanges,dimensions:[{name:'hostName'},{name:'pagePath'},{name:'eventName'}],metrics:[{name:'eventCount'}],limit:25000})
     ]);
     const services=Object.fromEntries(definitions.map(def=>[def.serviceName,empty()]));
     for(const row of traffic.rows||[]){
       const host=String(row.dimensionValues?.[0]?.value||'').toLowerCase();
-      const service=hostService.get(host);
+      const pagePath=String(row.dimensionValues?.[1]?.value||'/');
+      const service=serviceFor(host,pagePath,hostRoutes);
       if(!service||!services[service])continue;
       const s=services[service];
       s.pageViews+=number(row.metricValues?.[0]?.value);
@@ -110,8 +143,9 @@ export async function getGa4Summary(days=7,serviceDefinitions=DEFAULT_ANALYTICS_
     }
     for(const row of eventReport.rows||[]){
       const host=String(row.dimensionValues?.[0]?.value||'').toLowerCase();
-      const eventName=String(row.dimensionValues?.[1]?.value||'');
-      const service=hostService.get(host);
+      const pagePath=String(row.dimensionValues?.[1]?.value||'/');
+      const eventName=String(row.dimensionValues?.[2]?.value||'');
+      const service=serviceFor(host,pagePath,hostRoutes);
       if(!service||!eventName||!services[service])continue;
       const count=number(row.metricValues?.[0]?.value);
       services[service].eventCount+=count;
