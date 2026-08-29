@@ -10,6 +10,11 @@ import {
   frequencyCount,
 } from './ads-fair-core.js';
 
+function cleanCampaignId(value) {
+  const id = String(value || '').trim().toLowerCase();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id) ? id : '';
+}
+
 export default async function handler(req, res) {
   cors(res);
   if (req.method === 'OPTIONS') return res.status(204).end();
@@ -20,6 +25,7 @@ export default async function handler(req, res) {
 
   const sid = cleanSid(req.query?.sid);
   const tags = cleanTags(req.query?.tags);
+  const avoidCampaignId = cleanCampaignId(req.query?.avoid);
 
   try {
     const sql = getSql();
@@ -32,6 +38,7 @@ export default async function handler(req, res) {
         tags,
         frequencyBlocked: false,
         pacing: 'fair-v2',
+        rotation: { avoidCampaignId, applied: false, fallback: false },
         rule: { everyNItems: rule.everyNItems, sessionCap: rule.sessionCap },
       });
     }
@@ -53,15 +60,32 @@ export default async function handler(req, res) {
 
     let chosen = null;
     let frequencyBlocked = false;
-    for (const campaign of candidates) {
-      const seen = await frequencyCount(sql, campaign.id, placement, sid);
-      if (seen >= rule.sessionCap) {
-        frequencyBlocked = true;
-        continue;
+
+    const choose = async (allowAvoided) => {
+      for (const campaign of candidates) {
+        if (!allowAvoided && avoidCampaignId && String(campaign.id).toLowerCase() === avoidCampaignId) continue;
+        const seen = await frequencyCount(sql, campaign.id, placement, sid);
+        if (seen >= rule.sessionCap) {
+          frequencyBlocked = true;
+          continue;
+        }
+        return campaign;
       }
-      chosen = campaign;
-      break;
+      return null;
+    };
+
+    chosen = await choose(false);
+    let rotationFallback = false;
+    if (!chosen && avoidCampaignId) {
+      chosen = await choose(true);
+      rotationFallback = Boolean(chosen);
     }
+
+    const rotationApplied = Boolean(
+      avoidCampaignId &&
+      chosen &&
+      String(chosen.id).toLowerCase() !== avoidCampaignId
+    );
 
     return res.status(200).json({
       ok: true,
@@ -71,6 +95,11 @@ export default async function handler(req, res) {
       frequencyBlocked: Boolean(!chosen && candidates.length && frequencyBlocked),
       pacing: 'fair-v2',
       candidateCount: candidates.length,
+      rotation: {
+        avoidCampaignId,
+        applied: rotationApplied,
+        fallback: rotationFallback,
+      },
       rule: { everyNItems: rule.everyNItems, sessionCap: rule.sessionCap },
     });
   } catch (error) {
