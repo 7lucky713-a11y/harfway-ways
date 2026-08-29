@@ -15,11 +15,13 @@ function parseMetadata(value) {
 }
 function normalize(row = {}) {
   const meta = parseMetadata(row.metadata);
+  const archived = text(row.record_status, 32).toLowerCase() === 'archived';
   return {
     id: text(row.id, 180),
     project: text(meta.project || 'GLOBAL', 80).toUpperCase(),
     body: text(row.body_text || row.excerpt, 8000),
-    status: text(meta.status || 'INBOX', 32).toUpperCase(),
+    status: archived ? 'ARCHIVED' : text(meta.status || 'INBOX', 32).toUpperCase(),
+    archived,
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null
   };
@@ -28,14 +30,20 @@ function containsSecretLikeContent(value) {
   const s = String(value || '');
   return /(?:api[_-]?key|password|passwd|secret|bearer\s+[a-z0-9._-]{12,}|token\s*[:=]\s*[a-z0-9._-]{12,})/i.test(s);
 }
-async function readActiveMemoRows(sql) {
+async function readMemoRows(sql, recordStatus = 'active') {
   return sql`
-    SELECT id, body_text, excerpt, metadata, created_at, updated_at
+    SELECT id, body_text, excerpt, metadata, status AS record_status, created_at, updated_at
     FROM core.contents
-    WHERE content_type='memory_memo' AND source='memory-inbox' AND status='active'
-    ORDER BY created_at DESC
+    WHERE content_type='memory_memo' AND source='memory-inbox' AND status=${recordStatus}
+    ORDER BY updated_at DESC, created_at DESC
     LIMIT 300
   `;
+}
+async function readActiveMemoRows(sql) {
+  return readMemoRows(sql, 'active');
+}
+async function readArchivedMemoRows(sql) {
+  return readMemoRows(sql, 'archived');
 }
 async function syncMirror(sql) {
   try {
@@ -45,6 +53,19 @@ async function syncMirror(sql) {
     console.error('[memory-github-mirror]', error?.message || error);
     return { ok:false, error:'github_mirror_failed', ...memoryGithubMirrorStatus() };
   }
+}
+async function setMemoArchived(sql, id, archived) {
+  const status = archived ? 'archived' : 'active';
+  const metadataStatus = archived ? 'ARCHIVED' : 'INBOX';
+  const rows = await sql`
+    UPDATE core.contents
+    SET status=${status},
+        metadata=jsonb_set(COALESCE(metadata, '{}'::jsonb), '{status}', to_jsonb(${metadataStatus}::text), true),
+        updated_at=now()
+    WHERE id=${id} AND content_type='memory_memo' AND source='memory-inbox'
+    RETURNING id, body_text, excerpt, metadata, status AS record_status, created_at, updated_at
+  `;
+  return rows[0] ? normalize(rows[0]) : null;
 }
 
 export default async function handler(req, res) {
@@ -61,6 +82,7 @@ export default async function handler(req, res) {
         environment:process.env.VERCEL_ENV || 'development',
         storage:'browser-local',
         items:[],
+        archivedItems:[],
         mirror:{ ...memoryGithubMirrorStatus(), ok:true, skipped:true, reason:'preview_no_github_write' }
       });
     }
@@ -73,6 +95,7 @@ export default async function handler(req, res) {
       environment: process.env.VERCEL_ENV || 'development',
       storage:'browser-local',
       items:[],
+      archivedItems:[],
       mirror:memoryGithubMirrorStatus(),
       error:req.method === 'GET' ? null : (config?.production ? 'memory_database_not_configured' : 'preview_database_not_configured')
     });
@@ -82,12 +105,16 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     try {
-      const rows = await readActiveMemoRows(sql);
+      const [activeRows, archivedRows] = await Promise.all([
+        readActiveMemoRows(sql),
+        readArchivedMemoRows(sql)
+      ]);
       return res.status(200).json({
         ok:true,
         environment:process.env.VERCEL_ENV || 'development',
         storage:config.production ? 'shared-content-core' : 'preview-core',
-        items:rows.map(normalize),
+        items:activeRows.map(normalize),
+        archivedItems:archivedRows.map(normalize),
         mirror:memoryGithubMirrorStatus()
       });
     } catch (error) {
@@ -111,7 +138,7 @@ export default async function handler(req, res) {
       const rows = await sql`
         INSERT INTO core.contents (id,content_type,title,url,excerpt,body_text,status,source,metadata,created_at,updated_at)
         VALUES (${id},'memory_memo','MEMORY MEMO',${`memory://${id}`},${content.slice(0,320)},${content},'active','memory-inbox',${metadata}::jsonb,now(),now())
-        RETURNING id,body_text,excerpt,metadata,created_at,updated_at
+        RETURNING id,body_text,excerpt,metadata,status AS record_status,created_at,updated_at
       `;
       const item = normalize(rows[0]);
       const mirror = config.production
@@ -132,18 +159,14 @@ export default async function handler(req, res) {
     const id = text(body.id || req.query?.id, 180);
     if (!id) return res.status(400).json({ ok:false, error:'id_required' });
     try {
-      await sql`
-        UPDATE core.contents
-        SET status='archived', updated_at=now()
-        WHERE id=${id} AND content_type='memory_memo' AND source='memory-inbox'
-      `;
+      const item = await setMemoArchived(sql, id, true);
       const mirror = config.production
         ? await syncMirror(sql)
         : { ok:true, skipped:true, reason:'preview_no_github_write', ...memoryGithubMirrorStatus() };
-      return res.status(200).json({ ok:true, id, mirror });
+      return res.status(200).json({ ok:true, id, item, archived:true, legacyDelete:true, mirror });
     } catch (error) {
-      console.error('[memory-memos-delete]', error);
-      return res.status(500).json({ ok:false, error:'memory_memo_delete_failed', code:error?.code || null });
+      console.error('[memory-memos-archive-legacy]', error);
+      return res.status(500).json({ ok:false, error:'memory_memo_archive_failed', code:error?.code || null });
     }
   }
 
@@ -153,11 +176,32 @@ export default async function handler(req, res) {
       try { body = JSON.parse(body || '{}'); } catch { body = {}; }
     }
     const action = text(body.action || 'sync_all', 80);
-    if (action !== 'sync_all') return res.status(400).json({ ok:false, error:'unsupported_action' });
-    const mirror = config.production
-      ? await syncMirror(sql)
-      : { ok:true, skipped:true, reason:'preview_no_github_write', ...memoryGithubMirrorStatus() };
-    return res.status(200).json({ ok:true, action, mirror });
+
+    if (action === 'sync_all') {
+      const mirror = config.production
+        ? await syncMirror(sql)
+        : { ok:true, skipped:true, reason:'preview_no_github_write', ...memoryGithubMirrorStatus() };
+      return res.status(200).json({ ok:true, action, mirror });
+    }
+
+    if (action === 'archive' || action === 'restore') {
+      const id = text(body.id, 180);
+      if (!id) return res.status(400).json({ ok:false, error:'id_required' });
+      try {
+        const archived = action === 'archive';
+        const item = await setMemoArchived(sql, id, archived);
+        if (!item) return res.status(404).json({ ok:false, error:'memory_memo_not_found' });
+        const mirror = config.production
+          ? await syncMirror(sql)
+          : { ok:true, skipped:true, reason:'preview_no_github_write', ...memoryGithubMirrorStatus() };
+        return res.status(200).json({ ok:true, action, item, mirror });
+      } catch (error) {
+        console.error(`[memory-memos-${action}]`, error);
+        return res.status(500).json({ ok:false, error:`memory_memo_${action}_failed`, code:error?.code || null });
+      }
+    }
+
+    return res.status(400).json({ ok:false, error:'unsupported_action' });
   }
 
   return res.status(405).json({ ok:false, error:'method_not_allowed' });
