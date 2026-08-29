@@ -1,5 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 
+// SALE WATCH reads the live advertising database through ADS_DATABASE_URL.
 export const SALE_PLACEMENT = 'sale';
 export const SALE_DEFAULT_EVERY = 6;
 export const SALE_DEFAULT_CAP = 2;
