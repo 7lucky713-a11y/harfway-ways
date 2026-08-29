@@ -46,6 +46,12 @@ async function probe(name, databaseUrl) {
 
 const results = [];
 for (const [name, value] of candidates) results.push(await probe(name, value));
+const automation = {
+  neonApiKeyConfigured: Boolean(process.env.NEON_API_KEY),
+  neonProjectIdConfigured: Boolean(process.env.NEON_PROJECT_ID),
+  neonOrgIdConfigured: Boolean(process.env.NEON_ORG_ID)
+};
 console.log('[MEW_LOG_DB_PROBE]', JSON.stringify(results));
+console.log('[MEW_LOG_NEON_AUTOMATION]', JSON.stringify(automation));
 ---
 <!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><title>MEW LOG DB Probe</title></head><body><p>MEW LOG Preview DB probe.</p></body></html>
