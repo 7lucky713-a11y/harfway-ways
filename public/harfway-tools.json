@@ -64,6 +64,22 @@
         "description": "Shared Content Coreの作品から棚を組むための表示・固定・画像ソース設定を管理。専用UI分離前はCore DB管理画面を入口にする。",
         "admin_url": "https://harfway-playback.vercel.app/db-master-core"
       }
+    },
+    {
+      "id": "mew-log",
+      "public_url": "https://harfway-playback.vercel.app/mew-log/",
+      "admin_url": "https://harfway-playback.vercel.app/mew-log/admin/",
+      "sync_source": "local-registry",
+      "manifest": {
+        "harfway": true,
+        "id": "mew-log",
+        "name": "MEW LOG",
+        "group": "CREATE",
+        "role": "Mewgenics個人プレイアーカイブ",
+        "description": "日記・画像・動画・ビルド・キャラメモをNeon/R2へ蓄積し、あとから攻略や読み物へ育てる1ゲーム専門アーカイブ。",
+        "public_url": "https://harfway-playback.vercel.app/mew-log/",
+        "admin_url": "https://harfway-playback.vercel.app/mew-log/admin/"
+      }
     }
   ]
 }

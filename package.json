@@ -4,10 +4,11 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "node scripts/build-scrapbook-mirror.mjs && node scripts/patch-ways-ads-r2-prod.mjs && node scripts/inject-analytics-auto-sync.mjs && node scripts/inject-control-center-page-manifests.mjs && astro build && node scripts/inject-ads-capacity-panel.mjs && node scripts/inject-ads-admin-health.mjs && node scripts/verify-analytics-auto-sync.mjs",
+    "build": "node scripts/build-scrapbook-mirror.mjs && node scripts/patch-ways-ads-r2-prod.mjs && node scripts/inject-analytics-auto-sync.mjs && node scripts/inject-control-center-page-manifests.mjs && astro build && node scripts/inject-mew-log-neon-runtime.mjs && node scripts/inject-ads-capacity-panel.mjs && node scripts/inject-ads-admin-health.mjs && node scripts/verify-analytics-auto-sync.mjs",
     "preview": "astro preview"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.864.0",
     "@neondatabase/neon-js": "^0.6.2-beta",
     "@neondatabase/serverless": "^1.0.0",
     "@vercel/oidc": "^2.0.0",
