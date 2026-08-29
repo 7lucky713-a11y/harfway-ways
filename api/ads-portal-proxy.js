@@ -38,6 +38,7 @@ function patchRootHtml(text) {
   const scripts = [
     '<script src="/ads-portal-r2-shim.js"></script>',
     '<script src="/ads-portal-preview-launcher.js"></script>',
+    '<script src="/ads-portal-preview-layout-v3.js"></script>',
   ];
   const missing = scripts.filter((script) => !text.includes(script));
   if (!missing.length) return text;
@@ -68,7 +69,7 @@ export default async function handler(req, res) {
     const headers = cleanHeaders(upstream.headers);
     for (const [key, value] of Object.entries(headers)) res.setHeader(key, value);
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
-    res.setHeader('X-HARFWAY-ADS-PORTAL', 'video-10mb-r2-image-3mb-sale-placement-standalone-preview');
+    res.setHeader('X-HARFWAY-ADS-PORTAL', 'video-10mb-r2-image-3mb-sale-placement-standalone-preview-device-layout-v3');
 
     if (path === '/') {
       res.setHeader('Cache-Control', 'no-store');
