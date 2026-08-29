@@ -14,6 +14,10 @@ const ga4Summary=s=>s?{
   gameViews:num(s.events?.game_view),plays:num(s.events?.video_start),completes:num(s.events?.video_complete),storeClicks:num(s.events?.store_click),
   editorSaves:num(s.events?.editor_save),pageCreates:num(s.events?.page_create),exports:num(s.events?.project_export)+num(s.events?.export_json)+num(s.events?.export_html)
 }:null;
+const saleGa4Summary=s=>s?{
+  pageViews:num(s.pageViews),sessions:num(s.sessions),activeUsers:num(s.activeUsers),eventCount:num(s.eventCount),
+  storeClicks:num(s.events?.store_click),contentClicks:num(s.events?.content_click),filterChanges:num(s.events?.sale_filter),searches:num(s.events?.sale_search)
+}:null;
 
 async function jsonFetch(url,options={}){
   try{
@@ -30,7 +34,6 @@ async function jsonFetch(url,options={}){
 function showcaseTotal(data,event){return num(data?.totals?.find?.(x=>x.event_type===event)?.count)}
 function showcaseSessions(data){return num(data?.totals?.find?.(x=>x.event_type==='showcase_page_view')?.sessions)}
 function collection(def){return {enabled:true,provider:'ga4',measurementId:GA4_MEASUREMENT_ID,serviceName:def.serviceName,contentType:def.contentType,productionUrl:def.productionUrl,source:def.source||'built_in'}}
-function customCollection(def){return {enabled:true,provider:'custom_event_db',serviceName:def.serviceName,contentType:def.contentType,productionUrl:def.productionUrl,source:def.source||'built_in'}}
 
 export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
@@ -54,7 +57,7 @@ export default async function handler(req,res){
     const waysSummary=ways.ok?{
       pageViews:num(ways.data?.summary?.page_views),sessions:num(ways.data?.summary?.sessions),gameViews:num(ways.data?.summary?.game_views),plays:num(ways.data?.summary?.plays),completes:num(ways.data?.summary?.completes),storeClicks:num(ways.data?.summary?.store_clicks),articleClicks:num(ways.data?.summary?.article_clicks),tagClicks:num(ways.data?.summary?.tag_clicks)
     }:null;
-    const saleWatchSummary=saleWatch.ok?{
+    const saleWatchCustomSummary=saleWatch.ok?{
       pageViews:num(saleWatch.data?.summary?.page_views),sessions:num(saleWatch.data?.summary?.sessions),storeClicks:num(saleWatch.data?.summary?.store_clicks),contentClicks:num(saleWatch.data?.summary?.content_clicks),filterChanges:num(saleWatch.data?.summary?.filter_changes),searches:num(saleWatch.data?.summary?.searches)
     }:null;
     const showcaseSummary=showcase.ok?{
@@ -73,7 +76,25 @@ export default async function handler(req,res){
         continue;
       }
       if(name==='sale-watch'){
-        services['sale-watch']={connected:saleWatch.ok,reportingConnected:saleWatch.ok,reportingProvider:'custom',collection:customCollection(def),period:`last_${days}_days`,status:saleWatch.status,summary:saleWatchSummary,games:saleWatch.data?.games||[],devices:saleWatch.data?.devices||[],error:saleWatch.ok?null:saleWatch.data?.error,label:def.label,autoSynced:false,expectedEvents:def.expectedEvents||[]};
+        const routedGa4=saleGa4Summary(ga4For('sale-watch'));
+        const reporting=ga4.ok||saleWatch.ok;
+        services['sale-watch']={
+          connected:reporting,
+          reportingConnected:reporting,
+          reportingProvider:ga4.ok?(saleWatch.ok?'ga4_data_api+custom':'ga4_data_api'):'custom',
+          collection:collection(def),
+          period:ga4.ok?ga4Period:`last_${days}_days`,
+          status:ga4.ok?200:saleWatch.status,
+          summary:routedGa4||saleWatchCustomSummary,
+          ga4Summary:routedGa4,
+          customSummary:saleWatchCustomSummary,
+          games:saleWatch.data?.games||[],
+          devices:saleWatch.data?.devices||[],
+          error:reporting?null:(saleWatch.data?.error||ga4.reason||'sale_watch_unavailable'),
+          label:def.label,
+          autoSynced:false,
+          expectedEvents:def.expectedEvents||[]
+        };
         continue;
       }
       if(name==='showcase'){
@@ -113,7 +134,7 @@ export default async function handler(req,res){
         services:ga4.ok?ga4.services:{},
         customDimensions:['service_name','content_type','game_id']
       },
-      registry:{...registry.summary,hubConnected:registry.hubConnected,services:definitions.map(def=>({serviceName:def.serviceName,label:def.label,contentType:def.contentType,productionUrl:def.productionUrl,source:def.source,hosts:def.hosts}))},
+      registry:{...registry.summary,hubConnected:registry.hubConnected,services:definitions.map(def=>({serviceName:def.serviceName,label:def.label,contentType:def.contentType,productionUrl:def.productionUrl,pathPrefix:def.pathPrefix,source:def.source,hosts:def.hosts}))},
       core:{connected:core.ok,count:(core.data?.games||[]).length}
     });
   }catch(error){
