@@ -18,6 +18,6 @@ const title='HARF-WAY ADS｜広告主ポータル UI Preview';
 </div>
 </main>
 <script is:inline>(()=>{const tabs=[...document.querySelectorAll('[data-fixture]')];const labels={playlist:['PLAYLIST','プレイリスト掲載'],scraps:['切れ端','切れ端掲載'],playback:['作品タイトル','キャッチコピー'],sale:['SALE WATCH','セール掲載']};tabs.forEach(b=>b.addEventListener('click',()=>{tabs.forEach(x=>x.classList.toggle('active',x===b));const t=labels[b.dataset.fixture]||labels.playback;document.getElementById('fixtureTitle').textContent=t[0];document.getElementById('fixtureCatch').textContent=t[1]}));document.querySelector('#hwads-open-standalone-preview button')?.addEventListener('click',()=>alert('UI確認用Previewのため、実画面遷移は無効です。'))})();</script>
-<script is:inline src="/ads-portal-preview-layout-v2.js"></script>
+<script is:inline src="/ads-portal-preview-layout-v3.js"></script>
 </body>
 </html>
