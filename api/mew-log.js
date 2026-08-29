@@ -1,5 +1,5 @@
 import { neon } from '@neondatabase/serverless';
-import { archiveDatabaseConfig, archiveCors } from './archive-core.js';
+import { archiveCors } from './archive-core.js';
 
 const PRODUCTION_BRANCH_ID = 'br-noisy-boat-awncea92';
 
@@ -28,26 +28,27 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'read_only_probe' });
 
-  const config = archiveDatabaseConfig();
-  if (config.production) {
+  const production = process.env.VERCEL_ENV === 'production';
+  if (production) {
     return res.status(403).json({
       ok: false,
       error: 'production_disabled',
-      environment: process.env.VERCEL_ENV || 'production'
+      environment: 'production'
     });
   }
 
-  if (!config.url) {
+  const databaseUrl = process.env.MEW_LOG_PREVIEW_DATABASE_URL || '';
+  if (!databaseUrl) {
     return res.status(503).json({
       ok: false,
       error: 'preview_database_not_configured',
       environment: process.env.VERCEL_ENV || 'preview',
-      expectedEnv: 'SALVAGER_PREVIEW_DATABASE_URL'
+      expectedEnv: 'MEW_LOG_PREVIEW_DATABASE_URL'
     });
   }
 
   try {
-    const sql = neon(config.url);
+    const sql = neon(databaseUrl);
     const info = await getDatabaseIdentity(sql);
     const branchId = clean(info.branch_id, 80);
     const projectId = clean(info.project_id, 80);
@@ -59,7 +60,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       environment: process.env.VERCEL_ENV || 'preview',
-      mode: config.mode || 'preview-core',
+      mode: 'mew-log-preview-core',
       databaseConfigured: true,
       databaseName: clean(info.database_name, 120),
       projectId: projectId || null,
