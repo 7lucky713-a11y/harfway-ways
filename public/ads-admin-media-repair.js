@@ -21,6 +21,20 @@
     }
   }
 
+  function readable(value) {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    if (value instanceof Error) return value.message || String(value);
+    if (typeof value === 'object') {
+      for (const key of ['message', 'error', 'detail', 'details', 'hint', 'code']) {
+        const nested = readable(value[key]);
+        if (nested) return nested;
+      }
+      try { return JSON.stringify(value); } catch {}
+    }
+    return String(value);
+  }
+
   window.fetch = async function hwAdsAdminRepairFetch(input, init) {
     const url = requestUrl(input);
     const method = requestMethod(input, init);
@@ -74,14 +88,15 @@
           legacy_media_not_found: 'この案件には復旧できる旧メディアが見つかりませんでした。'
         };
         const stage = data?.stage ? `\n処理段階: ${data.stage}` : '';
-        throw new Error(messages[data?.error] || data?.message || (typeof data?.error === 'string' ? data.error : '') || `復旧に失敗しました (${res.status})${stage}`);
+        const detail = messages[data?.error] || readable(data?.message) || readable(data?.error) || `復旧に失敗しました (${res.status})`;
+        throw new Error(`${detail}${stage}`);
       }
 
       button.textContent = data.alreadyRepaired ? 'すでに復旧済みです' : 'R2へ復旧しました';
       setTimeout(() => document.querySelector('#reload')?.click(), 900);
     } catch (error) {
       console.error('[HARF-WAY ADS] legacy media repair failed', error);
-      alert(error instanceof Error ? error.message : 'メディアを復旧できませんでした。');
+      alert(readable(error) || 'メディアを復旧できませんでした。');
       button.disabled = false;
       button.textContent = '旧メディアをR2へ復旧';
     }
