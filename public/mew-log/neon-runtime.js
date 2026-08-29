@@ -2,7 +2,9 @@
   const API = '/api/mew-log';
   const MEDIA_API = '/api/mew-log-media';
   const LOCAL_KEY = 'mewlog_entries_v1';
+  const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
   const MAX_VIDEO_BYTES = 20 * 1024 * 1024;
+  const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
   const VIDEO_TYPES = new Set(['video/mp4', 'video/webm']);
   const isAdmin = location.pathname.includes('/mew-log/admin');
 
@@ -19,6 +21,25 @@
     } catch {
       return '';
     }
+  }
+
+  function mediaKind(type, url = '') {
+    const mime = String(type || '').toLowerCase();
+    if (mime.startsWith('image/')) return 'image';
+    if (mime.startsWith('video/')) return 'video';
+    const path = String(url || '').toLowerCase().split('?')[0];
+    if (/\.(jpe?g|png|webp|gif)$/.test(path)) return 'image';
+    if (/\.(mp4|webm)$/.test(path)) return 'video';
+    return '';
+  }
+
+  function mediaMarkup(entry, className = '') {
+    const src = mediaSrc(entry?.mediaUrl);
+    if (!src) return '';
+    const kind = mediaKind(entry?.mediaType, src);
+    if (kind === 'image') return `<img class="${esc(className)}" src="${esc(src)}" alt="${esc(entry?.title || '')}" loading="lazy" />`;
+    if (kind === 'video') return `<video class="${esc(className)}" controls playsinline preload="metadata" src="${esc(src)}"></video>`;
+    return '';
   }
 
   function localEntries() {
@@ -46,6 +67,17 @@
     return data;
   }
 
+  function friendlyMediaError(value) {
+    const message = String(value?.message || value || 'unknown error');
+    if (message === 'r2_write_permission_denied' || /access\s*denied/i.test(message)) {
+      return 'R2の書き込み権限がありません。CloudflareのR2 API Tokenを「Object Read & Write」にしてください。';
+    }
+    if (message === 'unsupported_media_type') return 'JPEG / PNG / WebP / GIF / MP4 / WebM を選んでください。';
+    if (message === 'image_too_large') return '画像は8MBまでです。';
+    if (message === 'video_too_large') return '動画は20MBまでです。';
+    return message;
+  }
+
   async function mediaApi(method = 'GET', action = '', body) {
     const suffix = action ? `?action=${encodeURIComponent(action)}` : '';
     const response = await fetch(`${MEDIA_API}${suffix}`, {
@@ -55,7 +87,7 @@
       body: body ? JSON.stringify(body) : undefined
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok || !data.ok) throw new Error(data.error || `media_http_${response.status}`);
+    if (!response.ok || !data.ok) throw new Error(friendlyMediaError(data.error || `media_http_${response.status}`));
     return data;
   }
 
@@ -68,14 +100,18 @@
       body: JSON.stringify({ key })
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok || !data.ok) throw new Error(data.error || `media_delete_${response.status}`);
+    if (!response.ok || !data.ok) throw new Error(friendlyMediaError(data.error || `media_delete_${response.status}`));
   }
 
-  async function uploadVideo(file, onProgress) {
-    if (!file || !VIDEO_TYPES.has(String(file.type || '').toLowerCase())) throw new Error('MP4 または WebM を選んでください。');
-    if (!file.size || file.size > MAX_VIDEO_BYTES) throw new Error('動画は20MBまでです。');
+  async function uploadMedia(file, onProgress) {
+    const type = String(file?.type || '').toLowerCase();
+    const isImage = IMAGE_TYPES.has(type);
+    const isVideo = VIDEO_TYPES.has(type);
+    if (!file || (!isImage && !isVideo)) throw new Error('JPEG / PNG / WebP / GIF / MP4 / WebM を選んでください。');
+    if (!file.size || (isImage && file.size > MAX_IMAGE_BYTES)) throw new Error('画像は8MBまでです。');
+    if (isVideo && file.size > MAX_VIDEO_BYTES) throw new Error('動画は20MBまでです。');
 
-    onProgress?.('動画アップロードを準備しています…', '');
+    onProgress?.('メディアアップロードを準備しています…', '');
     const started = await mediaApi('POST', 'start', {
       fileName: file.name,
       contentType: file.type,
@@ -88,7 +124,7 @@
       const part = index + 1;
       const start = index * chunkBytes;
       const end = Math.min(file.size, start + chunkBytes);
-      onProgress?.(`動画をR2へ保存中… ${part} / ${parts}`, '');
+      onProgress?.(`R2へ保存中… ${part} / ${parts}`, '');
       const response = await fetch(MEDIA_API, {
         method: 'PUT',
         cache: 'no-store',
@@ -102,10 +138,10 @@
         body: file.slice(start, end)
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.ok) throw new Error(data.error || `動画パート${part}の保存に失敗しました。`);
+      if (!response.ok || !data.ok) throw new Error(friendlyMediaError(data.error || `メディアパート${part}の保存に失敗しました。`));
     }
 
-    onProgress?.('動画を仕上げています…', '');
+    onProgress?.('メディアを仕上げています…', '');
     return mediaApi('POST', 'complete', {
       uploadId: started.uploadId,
       fileName: file.name,
@@ -153,7 +189,7 @@
     }
     const notice = document.querySelector('.notice');
     if (notice && ok) {
-      notice.textContent = 'Neon Preview branchへ保存中。動画メモはMP4 / WebM・20MBまでR2へ保存できます。Production DB / Production公開にはまだ反映しません。';
+      notice.textContent = 'Neon Preview branchへ保存中。全種類で画像 / 動画をR2へ添付できます。Production DB / Production公開にはまだ反映しません。';
     }
   }
 
@@ -183,16 +219,13 @@
 
       const list = currentFilter === 'all' ? entries : entries.filter((x) => x.type === currentFilter);
       grid.innerHTML = list.length
-        ? list.map((x) => {
-            const src = x.type === 'video' ? mediaSrc(x.mediaUrl) : '';
-            return `<article class="card ${x.type === 'video' ? 'video' : ''}">
+        ? list.map((x) => `<article class="card ${x.type === 'video' ? 'video' : ''}">
               <small>${esc(String(x.type || '').toUpperCase())} / ${esc(x.createdAt)}</small>
               <h3>${esc(x.title)}</h3>
-              ${src ? `<video class="entry-video" controls playsinline preload="metadata" src="${esc(src)}"></video>` : ''}
+              ${mediaMarkup(x, 'entry-media')}
               <p>${esc(x.memo)}</p>
               <div class="tags">${[x.cat, x.className, ...(x.tags || [])].filter(Boolean).map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</div>
-            </article>`;
-          }).join('')
+            </article>`).join('')
         : '<div class="empty">まだこの種類の記録はありません。管理画面から追加できます。</div>';
     }
 
@@ -217,7 +250,6 @@
     const tagsEl = document.getElementById('tags');
     const memoEl = document.getElementById('memo');
     const mediaFileEl = document.getElementById('mediaFile');
-    const mediaFieldEl = document.getElementById('mediaField');
     const mediaStatusEl = document.getElementById('mediaStatus');
     const currentMediaEl = document.getElementById('currentMedia');
     const clearInputsEl = document.getElementById('clearInputs');
@@ -248,10 +280,10 @@
     try {
       const status = await mediaApi('GET');
       r2Ready = Boolean(status.configured);
-      if (r2Ready) setMediaStatus('R2動画ストレージ：接続OK', 'good');
+      if (r2Ready) setMediaStatus('R2メディアストレージ：接続OK', 'good');
     } catch (error) {
       r2Ready = false;
-      setMediaStatus(`R2動画ストレージ：未接続（${error?.message || 'unknown'}）`, 'bad');
+      setMediaStatus(`R2メディアストレージ：未接続（${friendlyMediaError(error)}）`, 'bad');
     }
 
     function selectedEntry() {
@@ -259,15 +291,13 @@
     }
 
     function updateMediaControls() {
-      const isVideo = typeEl.value === 'video';
-      if (mediaFieldEl) mediaFieldEl.style.opacity = isVideo ? '1' : '.45';
-      if (mediaFileEl) mediaFileEl.disabled = !isVideo || !r2Ready;
+      if (mediaFileEl) mediaFileEl.disabled = !r2Ready;
       const current = selectedEntry();
-      const src = current && isVideo ? mediaSrc(current.mediaUrl) : '';
+      const markup = current ? mediaMarkup(current, '') : '';
       if (currentMediaEl) {
-        currentMediaEl.classList.toggle('on', Boolean(src));
-        currentMediaEl.innerHTML = src
-          ? `<strong>現在の動画</strong><video controls playsinline preload="metadata" src="${esc(src)}"></video><span class="media-help">新しいファイルを選ばなければ、この動画をそのまま残します。</span>`
+        currentMediaEl.classList.toggle('on', Boolean(markup));
+        currentMediaEl.innerHTML = markup
+          ? `<strong>現在のメディア</strong>${markup}<span class="media-help">新しいファイルを選ばなければ、このメディアをそのまま残します。</span>`
           : '';
       }
     }
@@ -278,27 +308,24 @@
       typeEl.value = 'diary';
       if (mediaFileEl) mediaFileEl.value = '';
       updateMediaControls();
-      if (r2Ready) setMediaStatus('R2動画ストレージ：接続OK', 'good');
+      if (r2Ready) setMediaStatus('R2メディアストレージ：接続OK', 'good');
     }
 
     function render() {
       const sorted = [...entries].sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')) || String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
       listEl.innerHTML = sorted.length
-        ? sorted.map((x) => {
-            const src = x.type === 'video' ? mediaSrc(x.mediaUrl) : '';
-            return `<article class="item">
+        ? sorted.map((x) => `<article class="item">
               <div>
                 <small>${esc(String(x.type || '').toUpperCase())} / ${esc(x.createdAt)}</small>
                 <h3>${esc(x.title)}</h3>
-                ${src ? `<video controls playsinline preload="metadata" src="${esc(src)}"></video>` : ''}
+                ${mediaMarkup(x, '')}
                 <p>${esc(x.memo)}</p>
               </div>
               <div class="btns">
                 <button data-remote-edit="${esc(x.id)}">編集</button>
                 <button class="del" data-remote-del="${esc(x.id)}">削除</button>
               </div>
-            </article>`;
-          }).join('')
+            </article>`).join('')
         : '<div class="empty">まだ記録がありません。</div>';
 
       document.querySelectorAll('[data-remote-edit]').forEach((button) => {
@@ -356,9 +383,9 @@
 
       try {
         const file = mediaFileEl?.files?.[0] || null;
-        if (typeEl.value === 'video' && file) {
-          if (!r2Ready) throw new Error('R2動画ストレージが未接続です。');
-          uploaded = await uploadVideo(file, setMediaStatus);
+        if (file) {
+          if (!r2Ready) throw new Error('R2メディアストレージが未接続です。');
+          uploaded = await uploadMedia(file, setMediaStatus);
           media = {
             mediaUrl: uploaded.mediaUrl || '',
             mediaKey: uploaded.mediaKey || '',
@@ -366,8 +393,6 @@
             mediaSize: Number(uploaded.mediaSize || file.size),
             mediaName: uploaded.mediaName || file.name
           };
-        } else if (typeEl.value !== 'video') {
-          media = { mediaUrl: '', mediaKey: '', mediaType: '', mediaSize: 0, mediaName: '' };
         }
 
         setMediaStatus('記録をNeonへ保存しています…', '');
@@ -387,15 +412,17 @@
           try { await deleteMedia(previous.mediaKey); } catch (error) { console.warn('[mew-log] old media cleanup failed', error); }
         }
         entries = await loadRemote();
+        const savedMedia = Boolean(media.mediaUrl);
         clearForm();
         render();
-        setMediaStatus(typeEl.value === 'video' && media.mediaUrl ? '動画と記録を保存しました。' : '記録を保存しました。', 'good');
+        setMediaStatus(savedMedia ? 'メディアと記録を保存しました。' : '記録を保存しました。', 'good');
       } catch (error) {
         if (uploaded?.mediaKey) {
           try { await deleteMedia(uploaded.mediaKey); } catch {}
         }
-        setMediaStatus(`保存できませんでした：${error?.message || 'unknown error'}`, 'bad');
-        alert(`保存できませんでした：${error?.message || 'unknown error'}`);
+        const message = friendlyMediaError(error);
+        setMediaStatus(`保存できませんでした：${message}`, 'bad');
+        alert(`保存できませんでした：${message}`);
       } finally {
         if (submit) submit.disabled = false;
       }
