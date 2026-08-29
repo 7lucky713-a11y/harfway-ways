@@ -1,5 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import { authorizeArchiveRequest, archiveCors } from './archive-core.js';
+import { memoryGithubMirrorStatus, syncMemoryInboxSnapshot } from './memory-github-mirror.js';
 
 function text(value, max = 8000) {
   return String(value ?? '').trim().slice(0, max);
@@ -27,6 +28,24 @@ function containsSecretLikeContent(value) {
   const s = String(value || '');
   return /(?:api[_-]?key|password|passwd|secret|bearer\s+[a-z0-9._-]{12,}|token\s*[:=]\s*[a-z0-9._-]{12,})/i.test(s);
 }
+async function readActiveMemoRows(sql) {
+  return sql`
+    SELECT id, body_text, excerpt, metadata, created_at, updated_at
+    FROM core.contents
+    WHERE content_type='memory_memo' AND source='memory-inbox' AND status='active'
+    ORDER BY created_at DESC
+    LIMIT 300
+  `;
+}
+async function syncMirror(sql) {
+  try {
+    const rows = await readActiveMemoRows(sql);
+    return await syncMemoryInboxSnapshot(rows.map(normalize));
+  } catch (error) {
+    console.error('[memory-github-mirror]', error?.message || error);
+    return { ok:false, error:'github_mirror_failed', ...memoryGithubMirrorStatus() };
+  }
+}
 
 export default async function handler(req, res) {
   archiveCors(res);
@@ -37,7 +56,13 @@ export default async function handler(req, res) {
   const auth = await authorizeArchiveRequest(req);
   if (!auth.ok) {
     if (process.env.VERCEL_ENV !== 'production' && req.method === 'GET') {
-      return res.status(200).json({ ok:true, environment:process.env.VERCEL_ENV || 'development', storage:'browser-local', items:[] });
+      return res.status(200).json({
+        ok:true,
+        environment:process.env.VERCEL_ENV || 'development',
+        storage:'browser-local',
+        items:[],
+        mirror:{ ...memoryGithubMirrorStatus(), ok:true, skipped:true, reason:'preview_no_github_write' }
+      });
     }
     return res.status(auth.status || 401).json({ ok:false, error:auth.error || 'unauthorized' });
   }
@@ -48,6 +73,7 @@ export default async function handler(req, res) {
       environment: process.env.VERCEL_ENV || 'development',
       storage:'browser-local',
       items:[],
+      mirror:memoryGithubMirrorStatus(),
       error:req.method === 'GET' ? null : (config?.production ? 'memory_database_not_configured' : 'preview_database_not_configured')
     });
   }
@@ -56,18 +82,13 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     try {
-      const rows = await sql`
-        SELECT id, body_text, excerpt, metadata, created_at, updated_at
-        FROM core.contents
-        WHERE content_type='memory_memo' AND source='memory-inbox' AND status='active'
-        ORDER BY created_at DESC
-        LIMIT 300
-      `;
+      const rows = await readActiveMemoRows(sql);
       return res.status(200).json({
         ok:true,
         environment:process.env.VERCEL_ENV || 'development',
         storage:config.production ? 'shared-content-core' : 'preview-core',
-        items:rows.map(normalize)
+        items:rows.map(normalize),
+        mirror:memoryGithubMirrorStatus()
       });
     } catch (error) {
       console.error('[memory-memos-read]', error);
@@ -92,7 +113,11 @@ export default async function handler(req, res) {
         VALUES (${id},'memory_memo','MEMORY MEMO',${`memory://${id}`},${content.slice(0,320)},${content},'active','memory-inbox',${metadata}::jsonb,now(),now())
         RETURNING id,body_text,excerpt,metadata,created_at,updated_at
       `;
-      return res.status(200).json({ ok:true, storage:config.production?'shared-content-core':'preview-core', item:normalize(rows[0]) });
+      const item = normalize(rows[0]);
+      const mirror = config.production
+        ? await syncMirror(sql)
+        : { ok:true, skipped:true, reason:'preview_no_github_write', ...memoryGithubMirrorStatus() };
+      return res.status(200).json({ ok:true, storage:config.production?'shared-content-core':'preview-core', item, mirror });
     } catch (error) {
       console.error('[memory-memos-write]', error);
       return res.status(500).json({ ok:false, error:'memory_memo_write_failed', code:error?.code || null });
@@ -112,11 +137,27 @@ export default async function handler(req, res) {
         SET status='archived', updated_at=now()
         WHERE id=${id} AND content_type='memory_memo' AND source='memory-inbox'
       `;
-      return res.status(200).json({ ok:true, id });
+      const mirror = config.production
+        ? await syncMirror(sql)
+        : { ok:true, skipped:true, reason:'preview_no_github_write', ...memoryGithubMirrorStatus() };
+      return res.status(200).json({ ok:true, id, mirror });
     } catch (error) {
       console.error('[memory-memos-delete]', error);
       return res.status(500).json({ ok:false, error:'memory_memo_delete_failed', code:error?.code || null });
     }
+  }
+
+  if (req.method === 'PATCH') {
+    let body = req.body || {};
+    if (typeof body === 'string') {
+      try { body = JSON.parse(body || '{}'); } catch { body = {}; }
+    }
+    const action = text(body.action || 'sync_all', 80);
+    if (action !== 'sync_all') return res.status(400).json({ ok:false, error:'unsupported_action' });
+    const mirror = config.production
+      ? await syncMirror(sql)
+      : { ok:true, skipped:true, reason:'preview_no_github_write', ...memoryGithubMirrorStatus() };
+    return res.status(200).json({ ok:true, action, mirror });
   }
 
   return res.status(405).json({ ok:false, error:'method_not_allowed' });
