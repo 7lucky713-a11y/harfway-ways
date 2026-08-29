@@ -1,4 +1,5 @@
 const UPSTREAM = 'https://ep-damp-resonance-awphji1s.apirest.c-12.us-east-1.aws.neon.tech/neondb/rest/v1';
+const AUTH_UPSTREAM = 'https://ep-damp-resonance-awphji1s.neonauth.c-12.us-east-1.aws.neon.tech/neondb/auth';
 const TRUSTED_ORIGIN = 'https://harfway-playback.vercel.app';
 
 function rawPath(req) {
@@ -19,7 +20,11 @@ function copyQuery(req) {
 
 function buildRequestHeaders(req) {
   const headers = {};
-  const blocked = new Set(['host', 'connection', 'content-length', 'accept-encoding', 'origin', 'referer']);
+  const blocked = new Set([
+    'host', 'connection', 'content-length', 'accept-encoding', 'origin', 'referer',
+    'x-forwarded-host', 'x-forwarded-proto', 'x-forwarded-for', 'x-vercel-id',
+    'x-vercel-deployment-url', 'x-vercel-proxied-for', 'x-real-ip'
+  ]);
   for (const [key, value] of Object.entries(req.headers || {})) {
     if (blocked.has(key.toLowerCase()) || value == null) continue;
     headers[key] = Array.isArray(value) ? value.join(', ') : String(value);
@@ -28,6 +33,39 @@ function buildRequestHeaders(req) {
   headers.referer = `${TRUSTED_ORIGIN}/ads-admin/`;
   headers['user-agent'] = req.headers['user-agent'] || 'HARF-WAY-ADS-Preview-Data-Proxy/1.0';
   return headers;
+}
+
+async function resolveAuthorization(req) {
+  if (req.headers.authorization) return String(req.headers.authorization);
+  const cookie = req.headers.cookie;
+  if (!cookie) return null;
+
+  try {
+    const response = await fetch(`${AUTH_UPSTREAM}/get-session`, {
+      method: 'GET',
+      headers: {
+        accept: 'application/json',
+        cookie: String(cookie),
+        origin: TRUSTED_ORIGIN,
+        referer: `${TRUSTED_ORIGIN}/ads-admin/`,
+        'user-agent': req.headers['user-agent'] || 'HARF-WAY-ADS-Preview-Data-Proxy/1.0'
+      },
+      redirect: 'manual'
+    });
+    if (!response.ok) return null;
+
+    const jwt = response.headers.get('set-auth-jwt');
+    if (jwt) return `Bearer ${jwt}`;
+
+    const data = await response.json().catch(() => null);
+    const fallback = data?.session?.token;
+    if (typeof fallback === 'string' && fallback.split('.').length === 3) {
+      return `Bearer ${fallback}`;
+    }
+  } catch (error) {
+    console.error('Neon Data API preview token bridge failed', error);
+  }
+  return null;
 }
 
 function copyResponseHeaders(upstream, res) {
@@ -53,6 +91,15 @@ export default async function handler(req, res) {
   const path = rawPath(req);
   const target = `${UPSTREAM}/${path}${copyQuery(req)}`;
   const headers = buildRequestHeaders(req);
+  const authorization = await resolveAuthorization(req);
+  if (authorization) headers.authorization = authorization;
+
+  console.log('[preview-data-auth]', {
+    path,
+    incomingAuthorization: Boolean(req.headers.authorization),
+    sessionCookie: Boolean(req.headers.cookie),
+    bridgedAuthorization: Boolean(authorization)
+  });
 
   let body;
   if (!['GET', 'HEAD'].includes(req.method || 'GET')) {
