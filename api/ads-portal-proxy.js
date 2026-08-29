@@ -23,6 +23,14 @@ function patchPortalJs(text) {
     .replaceAll(
       'JPG / PNG / WebP / MP4 / WebM・3MBまで',
       'JPG / PNG / WebP：3MBまで ／ MP4 / WebM：10MBまで'
+    )
+    .replaceAll(
+      'playlist:"プレイリスト",scraps:"切れ端",playback:"WAYS"',
+      'playlist:"プレイリスト",scraps:"切れ端",playback:"WAYS",sale:"SALE WATCH"'
+    )
+    .replaceAll(
+      'placements:["playlist","scraps","playback"]',
+      'placements:["playlist","scraps","playback","sale"]'
     );
 }
 
@@ -43,7 +51,7 @@ export default async function handler(req, res) {
 
   try {
     const upstream = await fetch(`${UPSTREAM}${path}`, {
-      headers: { 'User-Agent': 'HARF-WAY-ADS-Portal-Proxy/2.0' }
+      headers: { 'User-Agent': 'HARF-WAY-ADS-Portal-Proxy/2.1' }
     });
 
     if (!upstream.ok) {
@@ -55,7 +63,7 @@ export default async function handler(req, res) {
     const headers = cleanHeaders(upstream.headers);
     for (const [key, value] of Object.entries(headers)) res.setHeader(key, value);
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
-    res.setHeader('X-HARFWAY-ADS-PORTAL', 'video-10mb-r2-image-3mb');
+    res.setHeader('X-HARFWAY-ADS-PORTAL', 'video-10mb-r2-image-3mb-sale-placement');
 
     if (path === '/') {
       res.setHeader('Cache-Control', 'no-store');
