@@ -36,7 +36,46 @@
   @media(max-width:860px){.app{display:block!important}.name{font-size:14px!important}.cat{font-size:10px!important}}
   @media(max-width:520px){.name{font-size:14px!important}.cat{font-size:9px!important}.filter label,.field label{font-size:9px!important}.field input,.field select,.field textarea{font-size:11px!important}}
   </style>`;
-  const out=html.replace('<title>WAYS WEEKLY EDITOR v7</title>','<title>WAYS WEEKLY EDITOR</title>').replace('</head>',overrides+'</head>');
+  const outputPatch=`<script>
+  (function(){
+    var waysWpCss='.ways-weekly{box-sizing:border-box;max-width:960px;margin:48px auto;color:#111;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}.ways-weekly *{box-sizing:border-box}.ways-weekly__hero{background:#0a0b0c;color:#fff;border-radius:20px;padding:clamp(24px,5vw,52px);margin-bottom:34px;overflow:hidden}.ways-weekly__kicker{display:inline-block;color:#efff35;font-size:12px;font-weight:900;letter-spacing:.16em;margin-bottom:14px}.ways-weekly__title{font-size:clamp(38px,7vw,74px);font-weight:950;line-height:.96;letter-spacing:-.055em;margin:0;color:#fff}.ways-weekly__intro{font-size:17px;line-height:1.95;margin:22px 0 0;max-width:760px;color:#e9e9e5}.ways-weekly__item{padding:34px 0 42px;border-bottom:1px solid #d7d7d0}.ways-weekly__media{position:relative;background:#000;border-radius:16px;overflow:hidden}.ways-weekly__media video{display:block;width:100%;height:auto;background:#000}.ways-weekly__num{position:absolute;left:12px;top:12px;display:inline-flex;align-items:center;justify-content:center;min-width:42px;height:32px;padding:0 9px;background:#0a0b0c;color:#efff35;border:1px solid rgba(255,255,255,.22);border-radius:999px;font-size:12px;font-weight:900;letter-spacing:.08em}.ways-weekly__pick{display:inline-block;margin-top:16px;background:#efff35;color:#111;padding:7px 10px;border-radius:999px;font-size:11px;font-weight:950;letter-spacing:.08em}.ways-weekly__game-title{font-size:clamp(27px,4vw,42px);font-weight:950;line-height:1.12;letter-spacing:-.035em;margin:14px 0 0;color:#111}.ways-weekly__comment{font-size:16px;line-height:1.9;margin:15px 0 0;color:#2f3133}.ways-weekly__store{display:inline-flex;align-items:center;justify-content:center;margin-top:18px;padding:12px 16px;background:#0a0b0c;color:#fff;text-decoration:none;border-radius:999px;font-size:14px;font-weight:900}.ways-weekly__outro{margin:34px 0 0;padding:24px 26px;border-left:5px solid #efff35;background:#f3f4ef;font-size:16px;line-height:1.9}.ways-weekly__footer{margin-top:34px;background:#0a0b0c;border-radius:16px;padding:22px 24px}.ways-weekly__more{display:inline-flex;color:#efff35;text-decoration:none;font-size:16px;font-weight:950}';
+    function wh(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+    function wbr(v){return wh(v).replace(/\\n/g,'<br>')}
+    function styledContentHTML(){
+      var d=issue();
+      var out='<div class="ways-weekly" style="box-sizing:border-box;max-width:960px;margin:48px auto;color:#111;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Noto Sans JP,sans-serif;">';
+      out+='<header class="ways-weekly__hero" style="box-sizing:border-box;background:#0a0b0c;color:#fff;border-radius:20px;padding:clamp(24px,5vw,52px);margin:0 0 34px;overflow:hidden;">';
+      out+='<div class="ways-weekly__kicker" style="display:inline-block;color:#efff35;font-size:12px;font-weight:900;letter-spacing:.16em;margin:0 0 14px;">WAYS WEEKLY / VOL.'+wh(d.vol)+'</div>';
+      out+='<div class="ways-weekly__title" style="font-size:clamp(38px,7vw,74px);font-weight:950;line-height:.96;letter-spacing:-.055em;margin:0!important;color:#fff!important;">'+wh(d.theme||'今週のWAYS')+'</div>';
+      if(d.intro)out+='<p class="ways-weekly__intro" style="font-size:17px;line-height:1.95;margin:22px 0 0!important;max-width:760px;color:#e9e9e5!important;">'+wbr(d.intro)+'</p>';
+      out+='</header>';
+      (d.selectedIds||[]).forEach(function(id,i){
+        var x=game(id);if(!x)return;
+        out+='<section class="ways-weekly__item" style="box-sizing:border-box;padding:34px 0 42px;border-bottom:1px solid #d7d7d0;">';
+        out+='<div class="ways-weekly__media" style="position:relative;background:#000;border-radius:16px;overflow:hidden;">';
+        out+='<video controls muted playsinline preload="metadata" poster="'+wh(x.thumbnailUrl||'')+'" src="'+wh(x.video||'')+'" style="display:block!important;width:100%!important;height:auto!important;margin:0!important;background:#000;"></video>';
+        out+='<span class="ways-weekly__num" style="position:absolute;left:12px;top:12px;display:inline-flex;align-items:center;justify-content:center;min-width:42px;height:32px;padding:0 9px;background:#0a0b0c;color:#efff35;border:1px solid rgba(255,255,255,.22);border-radius:999px;font-size:12px;font-weight:900;letter-spacing:.08em;">'+String(i+1).padStart(2,'0')+'</span></div>';
+        if(d.pickId===id)out+='<div class="ways-weekly__pick" style="display:inline-block;margin:16px 0 0;background:#efff35;color:#111;padding:7px 10px;border-radius:999px;font-size:11px;font-weight:950;letter-spacing:.08em;">EDITOR\'S PICK</div>';
+        out+='<div class="ways-weekly__game-title" style="font-size:clamp(27px,4vw,42px);font-weight:950;line-height:1.12;letter-spacing:-.035em;margin:14px 0 0!important;color:#111!important;">'+wh(x.title)+'</div>';
+        if(d.comments&&d.comments[id])out+='<p class="ways-weekly__comment" style="font-size:16px;line-height:1.9;margin:15px 0 0!important;color:#2f3133!important;">'+wbr(d.comments[id])+'</p>';
+        if(x.storeUrl)out+='<a class="ways-weekly__store" href="'+wh(x.storeUrl)+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;justify-content:center;margin:18px 0 0;padding:12px 16px;background:#0a0b0c;color:#fff!important;text-decoration:none!important;border-radius:999px;font-size:14px;font-weight:900;">ゲームを見る ↗</a>';
+        out+='</section>';
+      });
+      if(d.outro)out+='<p class="ways-weekly__outro" style="margin:34px 0 0!important;padding:24px 26px;border-left:5px solid #efff35;background:#f3f4ef;font-size:16px;line-height:1.9;color:#111!important;">'+wbr(d.outro)+'</p>';
+      out+='<div class="ways-weekly__footer" style="margin:34px 0 0;background:#0a0b0c;border-radius:16px;padding:22px 24px;"><a class="ways-weekly__more" href="https://harfway-playback.vercel.app/" style="display:inline-flex;color:#efff35!important;text-decoration:none!important;font-size:16px;font-weight:950;">もっとWAYSを掘る →</a></div></div>';
+      return out;
+    }
+    function styledRenderPreview(){var f=document.getElementById('previewFrame');if(!f)return;f.srcdoc='<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:20px;background:#fff;color:#111}'+waysWpCss+'</style>'+styledContentHTML()}
+    window.renderPreview=styledRenderPreview;
+    var bundle=document.getElementById('copyBundle'),htmlBtn=document.getElementById('copyHtml'),cssBtn=document.getElementById('copyCss');
+    if(bundle){bundle.textContent='WPデザイン込み';bundle.onclick=function(){copy('<style>'+waysWpCss+'</style>'+styledContentHTML(),'WPデザイン込みでコピーしました')}}
+    if(htmlBtn)htmlBtn.onclick=function(){copy(styledContentHTML(),'デザイン付きHTMLをコピーしました')};
+    if(cssBtn)cssBtn.onclick=function(){copy(waysWpCss,'CSSコピーしました')};
+    var note=document.querySelector('.note');if(note)note.textContent='WordPressへ貼る重要スタイルはHTML内にも埋め込み済み。テーマCSSに負けにくい出力です。';
+    styledRenderPreview();
+  })();
+  <\/script>`;
+  const out=html.replace('<title>WAYS WEEKLY EDITOR v7</title>','<title>WAYS WEEKLY EDITOR</title>').replace('</head>',overrides+'</head>').replace('</body>',outputPatch+'</body>');
   document.open();document.write(out);document.close();
 })();
 </script>
