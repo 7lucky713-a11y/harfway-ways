@@ -20,8 +20,8 @@ function removeExternalScript(html, pattern) {
 
 function patchCommon(html) {
   let out = html;
-  out = removeExternalScript(out, 'ga4[^"\']*\\.js');
-  out = removeExternalScript(out, 'analytics[^"\']*\\.js');
+  out = removeExternalScript(out, "ga4[^\"']*\\.js");
+  out = removeExternalScript(out, "analytics[^\"']*\\.js");
   return out;
 }
 
@@ -34,8 +34,8 @@ function patchPlayback(html) {
 
 function patchSale(html) {
   let out = patchCommon(html);
-  out = removeExternalScript(out, 'sale-ads[^"\']*\\.js');
-  out = removeExternalScript(out, 'ga4-sale-watch[^"\']*\\.js');
+  out = removeExternalScript(out, "sale-ads[^\"']*\\.js");
+  out = removeExternalScript(out, "ga4-sale-watch[^\"']*\\.js");
   return out;
 }
 
@@ -70,7 +70,8 @@ export default async function handler(req, res) {
   const id = safeToken(one(req.query?.id));
   const source = SOURCES[placement];
   if (!source || !id) {
-    res.status(400).setHeader('Content-Type', 'text/plain; charset=utf-8').send('Invalid preview request');
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.status(400).send('Invalid preview request');
     return;
   }
 
@@ -80,7 +81,8 @@ export default async function handler(req, res) {
       cache: 'no-store',
     });
     if (!upstream.ok) {
-      res.status(502).setHeader('Content-Type', 'text/plain; charset=utf-8').send(`Upstream unavailable (${upstream.status})`);
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.status(502).send(`Upstream unavailable (${upstream.status})`);
       return;
     }
 
@@ -98,6 +100,7 @@ export default async function handler(req, res) {
     res.status(200).send(html);
   } catch (error) {
     console.error('ADS live preview proxy failed', placement, error);
-    res.status(502).setHeader('Content-Type', 'text/plain; charset=utf-8').send('Preview page is temporarily unavailable');
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.status(502).send('Preview page is temporarily unavailable');
   }
 }
