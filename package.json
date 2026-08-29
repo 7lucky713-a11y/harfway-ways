@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "node scripts/build-scrapbook-mirror.mjs && node scripts/patch-ways-ads-r2-prod.mjs && node scripts/inject-analytics-auto-sync.mjs && node scripts/inject-control-center-page-manifests.mjs && node scripts/patch-ads-admin-preview-auth.mjs && astro build && node scripts/inject-ads-capacity-panel.mjs && node scripts/inject-ads-admin-health.mjs && node scripts/verify-analytics-auto-sync.mjs",
+    "build": "node scripts/build-scrapbook-mirror.mjs && node scripts/patch-ways-ads-r2-prod.mjs && node scripts/inject-analytics-auto-sync.mjs && node scripts/inject-control-center-page-manifests.mjs && astro build && node scripts/inject-ads-admin-preview-auth.mjs && node scripts/inject-ads-capacity-panel.mjs && node scripts/inject-ads-admin-health.mjs && node scripts/verify-analytics-auto-sync.mjs",
     "preview": "astro preview"
   },
   "dependencies": {
