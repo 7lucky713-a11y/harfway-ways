@@ -1,0 +1,46 @@
+---
+const title = 'HARF-WAY ADS｜上帯トリム確認';
+---
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>{title}</title>
+<style is:global>
+*{box-sizing:border-box}body{margin:0;background:#f2eee4;color:#171715;font-family:Inter,ui-sans-serif,system-ui,sans-serif}.page{max-width:1320px;margin:auto;padding:18px}.grid{display:grid;grid-template-columns:minmax(340px,.82fr) minmax(560px,1.18fr);gap:18px}.panel{min-width:0;padding:24px;border:1px solid #d8cebf;border-radius:24px;background:#fffdf8}.eyebrow{margin:0 0 10px;color:#7d684d;font:800 10px/1 ui-monospace,monospace;letter-spacing:.17em}.panel h1,.panel h2{margin:0;letter-spacing:-.04em}.panel h1{font-size:25px}.panel h2{font-size:24px}.lead{margin:14px 0 20px;color:#8c7d68;font-size:13px;line-height:1.7}.upload{display:grid;gap:8px;padding:18px;border:1px dashed #b9ab95;border-radius:14px;background:#fff}.upload input{width:100%}.tip{margin-top:14px;padding:13px;border-radius:12px;background:#f3eee4;font-size:11px;line-height:1.7}.preview-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}.old-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;width:390px;max-width:100%}.old-tabs button{min-height:64px;border:1px solid #d7cdbd;border-radius:11px;background:#fffdf8;color:#76664f;font-size:9px;font-weight:850}.old-tabs button.active{background:#171715;color:#fff;border-color:#171715}.fixture-stage{display:flex;justify-content:center;align-items:flex-start;padding:18px 0 8px;min-height:610px}.fixture-screen{position:relative;width:324px;height:576px;overflow:hidden;border:1px solid #d8cebf;border-radius:22px;background:#fff}.fixture-top-strip{height:68px;display:flex;align-items:center;justify-content:center;background:repeating-linear-gradient(18deg,#584439 0 18px,#8c6d55 18px 36px);color:#fff;font-size:11px;font-weight:900;letter-spacing:.08em}.squares{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:14px}.squares span{aspect-ratio:1;border-radius:10px;background:#a9b294}.supporter{display:grid;grid-template-columns:118px 1fr;gap:14px;margin:0 14px;padding:12px;border:1px solid #c7bba8;border-radius:12px;background:#f7f1e7}.fixture-creative{display:flex;align-items:center;justify-content:center;min-height:96px;border-radius:10px;overflow:hidden;background:#344d38;color:#fff;font-weight:900;position:relative}.supporter-copy{display:flex;flex-direction:column;justify-content:center;min-width:0}.supporter-copy small{font:800 8px/1.5 ui-monospace,monospace;letter-spacing:.12em}.supporter-copy b{margin-top:8px}.supporter-copy p{margin:8px 0 0;color:#8a7c68;font-size:9px;line-height:1.5}.fixture-foot{padding:18px 14px;color:#aaa;font-size:9px}.notice{margin-bottom:14px;padding:11px 13px;border:1px solid #d8cebf;border-radius:12px;background:#fffaf2;font-size:11px;color:#766b5b}.notice b{color:#171715}@media(max-width:980px){.grid{grid-template-columns:1fr}.old-tabs{margin-top:14px;width:100%}}@media(max-width:620px){.page{padding:8px}.panel{padding:16px;border-radius:18px}.old-tabs{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<main class="page">
+<div class="notice"><b>広告主ポータルの見た目確認専用Previewです。</b> 認証・DB・R2・計測には接続していません。</div>
+<div class="grid">
+<section class="panel">
+<p class="eyebrow">REGRESSION TEST</p><h1>上の帯だけ消す</h1><p class="lead">プレイリスト / 切れ端の広告主向けプレビューで、広告枠より上に見えていた横長の帯だけを非表示にする確認画面です。</p>
+<div class="upload"><b>必要なら画像も選べます</b><input type="file" accept="image/png,image/jpeg,image/webp,video/mp4,video/webm"><small>選んだ素材はPRカード側へ入ります。上帯を素材と誤認しないことも同時に確認できます。</small></div>
+<div class="tip">確認ポイント：<br>① プレイリストは上の横長帯だけ消え、4つの棚は残る<br>② 切れ端は上帯だけ消え、PRカードは残る<br>③ 画像を選んでも上帯や棚へ素材が入らない<br>④ PC / スマホ切替で収縮・見切れが起きない</div>
+</section>
+<section class="panel preview-panel">
+<div class="preview-head"><div><p class="eyebrow">LIVE PREVIEW</p><h2>掲載されたときの見え方</h2></div><div class="old-tabs"><button type="button" data-fixture="playlist" class="active">プレイリスト</button><button type="button" data-fixture="scraps">切れ端</button><button type="button" data-fixture="playback">WAYS</button><button type="button" data-fixture="sale">SALE WATCH</button></div></div>
+<div class="fixture-stage"><div class="fixture-screen"><div class="fixture-top-strip">この横長帯だけが消えればOK</div><div class="squares"><span></span><span></span><span></span><span></span></div><article class="supporter"><div class="fixture-creative">作品タイトル</div><div class="supporter-copy"><small id="fixturePr">PLAYLIST SUPPORTER / PR</small><b>作品タイトル</b><p>キャッチコピーがここに入ります。</p></div></article><div class="fixture-foot">HARF-WAY AD PREVIEW</div></div></div>
+</section>
+</div>
+</main>
+<script is:inline>
+(() => {
+  const labels={playlist:'PLAYLIST SUPPORTER / PR',scraps:'SPONSORED / PR',playback:'PR · SPONSORED',sale:'SALE WATCH / PR'};
+  const buttons=[...document.querySelectorAll('[data-fixture]')];
+  const strip=document.querySelector('.fixture-top-strip');
+  const squares=document.querySelector('.squares');
+  buttons.forEach((button)=>button.addEventListener('click',()=>{
+    buttons.forEach((b)=>b.classList.toggle('active',b===button));
+    const id=button.dataset.fixture;
+    document.getElementById('fixturePr').textContent=labels[id]||labels.playlist;
+    if(strip) strip.style.display=(id==='playlist'||id==='scraps')?'flex':'none';
+    if(squares) squares.style.display=id==='playlist'?'grid':'none';
+  }));
+})();
+</script>
+<script is:inline src="/ads-portal-preview-layout-v4.js"></script>
+<script is:inline src="/ads-portal-preview-media-guard-v4.js"></script>
+<script is:inline src="/ads-portal-preview-top-strip-trim-v5.js"></script>
+<script is:inline src="/ads-portal-preview-viewport-fit-v4.js"></script>
+</body>
+</html>
