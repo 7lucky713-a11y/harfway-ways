@@ -1,0 +1,97 @@
+---
+const doors = [
+  {
+    eyebrow: 'WATCH / RANDOM',
+    title: '眺める',
+    name: 'WAYS',
+    copy: '短い動画をザッピング。何を見るか決めずに、偶然からゲームに出会う。',
+    href: '/',
+    tone: 'video',
+    icon: '▶'
+  },
+  {
+    eyebrow: 'THEME / CURATION',
+    title: '選んでもらう',
+    name: 'PLAYLIST',
+    copy: 'ひとつのテーマから、いくつものゲームへ。編集された棚をめくるように探す。',
+    href: 'https://harfway-playlist-tv.vercel.app/',
+    tone: 'playlist',
+    icon: '◎'
+  },
+  {
+    eyebrow: 'NOTES / ARCHIVE',
+    title: '断片からたどる',
+    name: 'SCRAPS',
+    copy: '短い感想や記録からゲームへ。気になった言葉を手がかりに、過去の一本を掘り起こす。',
+    href: 'https://harf-way-game-scrapbook.vercel.app/',
+    tone: 'scraps',
+    icon: '✂'
+  },
+  {
+    eyebrow: 'PRICE / NOW',
+    title: '安い今を探す',
+    name: 'SALE WATCH',
+    copy: 'HARF-WAYで紹介したゲームの現在のSteamセール。価格や割引率から、遊ぶ一本を探す。',
+    href: '/sales',
+    tone: 'sale',
+    icon: '↓'
+  }
+];
+---
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="HARF-WAYのゲーム発見コンテンツへの入口。動画、テーマ、断片、セールからゲームを探せます。" />
+  <title>HARF-WAY ENTRANCE</title>
+  <style>
+    :root{--ink:#151515;--paper:#f2eee4;--line:rgba(21,21,21,.22);--muted:#706c64;--acid:#efff42;--red:#ff6855;--cyan:#82d8dd;--sale:#171717}
+    *{box-sizing:border-box}html{background:var(--paper);scroll-behavior:smooth}body{margin:0;min-height:100vh;color:var(--ink);background:linear-gradient(rgba(21,21,21,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(21,21,21,.035) 1px,transparent 1px),var(--paper);background-size:32px 32px;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu Gothic",sans-serif}a{color:inherit;text-decoration:none}.wrap{width:min(1440px,calc(100% - 32px));margin:auto}
+    header{min-height:72px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);font-size:11px;letter-spacing:.08em}.brand{font-weight:950;font-size:14px}.brand span{font-weight:500;color:var(--muted);margin-left:8px}.back{border-bottom:1px solid currentColor}
+    .hero{padding:clamp(54px,8vw,112px) 0 42px;display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:40px;align-items:end}.kicker{font:800 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.18em;margin-bottom:18px}.hero h1{margin:0;font-size:clamp(48px,8vw,124px);line-height:.88;letter-spacing:-.072em;font-weight:950;max-width:1050px}.hero h1 em{font-style:normal;background:var(--acid);padding:0 .08em .05em}.hero-note{margin:0;color:var(--muted);font-size:13px;line-height:1.8;padding-bottom:7px}
+    .section-label{display:flex;align-items:center;gap:12px;margin:38px 0 15px;font:800 10px/1 ui-monospace,monospace;letter-spacing:.14em}.section-label:after{content:"";height:1px;background:var(--line);flex:1}
+    .doors{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.door{position:relative;min-height:410px;border:1.5px solid var(--ink);padding:23px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;transition:transform .2s ease,box-shadow .2s ease}.door:hover{transform:translateY(-6px);box-shadow:9px 9px 0 var(--ink)}.door.video{background:#171717;color:white}.door.playlist{background:var(--red)}.door.scraps{background:var(--cyan)}.door.sale{background:var(--sale);color:white}.door-top{display:flex;justify-content:space-between;align-items:flex-start;position:relative;z-index:3}.eyebrow{font:800 9px/1 ui-monospace,monospace;letter-spacing:.15em;opacity:.72}.icon{font-size:28px;line-height:1}.visual{position:absolute;inset:65px 24px 130px;display:grid;place-items:center;pointer-events:none}.screen{width:min(100%,520px);aspect-ratio:16/9;border:1px solid #ffffff55;background:repeating-linear-gradient(0deg,#111 0 6px,#222 7px 8px);box-shadow:inset 0 0 45px #000;position:relative}.screen:after{content:'RANDOM PLAY';position:absolute;left:13px;bottom:11px;font:800 8px/1 monospace;letter-spacing:.14em}.record{width:min(215px,55%);aspect-ratio:1;border-radius:50%;background:repeating-radial-gradient(circle,#191919 0 8px,#2b2b2b 9px 10px);display:grid;place-items:center;animation:spin 12s linear infinite;box-shadow:0 18px 35px #0004}.record:before{content:'PLAY';width:34%;aspect-ratio:1;border-radius:50%;background:var(--paper);display:grid;place-items:center;font:950 11px/1 monospace}.papers{width:min(360px,80%);height:170px;position:relative}.paper{position:absolute;width:72%;height:120px;background:var(--paper);border:2px solid var(--ink);box-shadow:7px 7px 0 #111;padding:14px;color:var(--ink);font:900 12px/1.4 monospace}.paper:nth-child(1){left:0;top:22px;transform:rotate(-6deg)}.paper:nth-child(2){right:0;top:0;transform:rotate(5deg)}.paper span{display:block;border-bottom:2px solid currentColor;margin:8px 0;width:70%}.sale-board{width:min(430px,88%);display:grid;grid-template-columns:1fr 1fr;gap:8px;transform:rotate(-2deg)}.ticket{border:1px solid #ffffff88;padding:13px 14px;background:#0c0c0c;display:flex;justify-content:space-between;align-items:center;font:900 14px/1 monospace}.ticket strong{font-size:28px;color:var(--acid)}.ticket:nth-child(2){transform:translateY(16px)}.ticket:nth-child(3){transform:translateX(18px)}.ticket:nth-child(4){transform:translate(18px,16px)}
+    @keyframes spin{to{transform:rotate(360deg)}}.door-copy{position:relative;z-index:3}.door h2{margin:0 0 7px;font-size:clamp(34px,4vw,58px);line-height:.94;letter-spacing:-.055em}.door-name{font:900 11px/1 monospace;letter-spacing:.14em;margin-bottom:13px}.door p{margin:0;max-width:42em;font-size:12px;line-height:1.7;opacity:.82}
+    .why{margin:72px 0 32px;padding:42px 0;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr 2fr;gap:34px}.why small{font:800 10px/1 monospace;letter-spacing:.14em}.why p{margin:0;font-size:clamp(21px,2.7vw,39px);line-height:1.35;letter-spacing:-.035em;font-weight:850}.why p span{background:var(--acid);padding:0 .08em}
+    footer{min-height:92px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;color:var(--muted);font-size:10px}
+    @media(max-width:850px){.hero{grid-template-columns:1fr}.hero-note{max-width:540px}.doors{grid-template-columns:1fr}.door{min-height:390px}.why{grid-template-columns:1fr}}
+    @media(max-width:560px){.wrap{width:calc(100% - 20px)}header{min-height:58px}.brand span{display:none}.hero{padding-top:40px;gap:20px}.hero h1{font-size:clamp(44px,15vw,72px)}.door{min-height:360px;padding:17px}.visual{inset:58px 17px 125px}.sale-board{width:94%}.ticket{padding:10px;font-size:11px}.ticket strong{font-size:22px}.why{margin-top:52px;padding:30px 0}footer{flex-direction:column;justify-content:center;align-items:flex-start;gap:7px}}
+    @media(prefers-reduced-motion:reduce){.record{animation:none}.door{transition:none}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="brand" href="https://harf-way.com/">HARF-WAY <span>/ ENTRANCE</span></a>
+    <a class="back" href="https://harf-way.com/">HARF-WAY.COM ↗</a>
+  </header>
+  <main>
+    <section class="hero">
+      <div><div class="kicker">FOUR WAYS TO FIND A GAME</div><h1>今日は、どうやって<br><em>ゲームを見つける？</em></h1></div>
+      <p class="hero-note">動画、テーマ、短い記録、そして今の値段。タイトルを知らなくても使える、HARF-WAYのゲーム発見入口です。</p>
+    </section>
+    <div class="section-label">CHOOSE YOUR WAY / 01</div>
+    <section class="doors" aria-label="HARF-WAYのゲーム発見コンテンツ">
+      {doors.map((door) => (
+        <a class={`door ${door.tone}`} href={door.href} target={door.href.startsWith('http') ? '_blank' : undefined} rel={door.href.startsWith('http') ? 'noreferrer' : undefined}>
+          <div class="door-top"><span class="eyebrow">{door.eyebrow}</span><span class="icon">{door.icon}</span></div>
+          <div class="visual" aria-hidden="true">
+            {door.tone === 'video' && <div class="screen"></div>}
+            {door.tone === 'playlist' && <div class="record"></div>}
+            {door.tone === 'scraps' && <div class="papers"><div class="paper">PLAY LOG<span></span><span></span></div><div class="paper">SCRAP<span></span><span></span></div></div>}
+            {door.tone === 'sale' && <div class="sale-board"><div class="ticket">SALE <strong>↓</strong></div><div class="ticket">PRICE <strong>¥</strong></div><div class="ticket">OFF <strong>%</strong></div><div class="ticket">NOW <strong>●</strong></div></div>}
+          </div>
+          <div class="door-copy"><h2>{door.title}</h2><div class="door-name">{door.name} ↗</div><p>{door.copy}</p></div>
+        </a>
+      ))}
+    </section>
+    <section class="why">
+      <small>WHAT'S HERE</small>
+      <p>HARF-WAYで紹介したゲームを、<span>「見る・選ぶ・読む・安く買う」</span>の4つの入口からもう一度見つけられます。</p>
+    </section>
+  </main>
+  <footer><span>HARF-WAY / GAME DISCOVERY ENTRANCE</span><span>WAYS · PLAYLIST · SCRAPS · SALE WATCH</span></footer>
+</div>
+</body>
+</html>
