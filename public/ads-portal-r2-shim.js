@@ -31,6 +31,11 @@
     return bytes;
   }
 
+  function supportedMime(value) {
+    const mime = String(value || '').toLowerCase();
+    return mime === 'image/jpeg' || mime === 'image/png' || mime === 'image/webp' || mime === 'video/mp4' || mime === 'video/webm';
+  }
+
   let progressEl;
   function progress(message) {
     if (!progressEl) {
@@ -63,19 +68,20 @@
     return data;
   }
 
-  async function uploadVideo(row, authorization) {
+  async function uploadMedia(row, authorization) {
     const bytes = decodeBase64(String(row.data_base64 || ''));
     const metadata = {
       campaignId: row.campaign_id,
-      fileName: row.file_name || 'video',
-      contentType: row.mime_type || 'video/mp4',
+      fileName: row.file_name || 'media',
+      contentType: row.mime_type || 'application/octet-stream',
       size: Number(row.size_bytes || bytes.byteLength)
     };
-    if (!metadata.contentType.startsWith('video/')) return null;
+    if (!supportedMime(metadata.contentType)) return null;
     if (metadata.size !== bytes.byteLength) throw new Error('素材サイズの確認に失敗しました。');
-    if (metadata.size > 10 * 1024 * 1024) throw new Error('動画は10MBまでです。');
+    const max = metadata.contentType.startsWith('video/') ? 10 * 1024 * 1024 : 3 * 1024 * 1024;
+    if (metadata.size > max) throw new Error(metadata.contentType.startsWith('video/') ? '動画は10MBまでです。' : '画像は3MBまでです。');
 
-    progress('広告動画を準備中…');
+    progress('広告素材を準備中…');
     const started = await api('start', authorization, metadata);
     const chunkBytes = Number(started.chunkBytes || 2500000);
     const parts = Math.ceil(bytes.byteLength / chunkBytes);
@@ -84,7 +90,7 @@
       const part = index + 1;
       const start = index * chunkBytes;
       const end = Math.min(bytes.byteLength, start + chunkBytes);
-      progress(`広告動画を保存中… ${part} / ${parts}`);
+      progress(`広告素材を保存中… ${part} / ${parts}`);
       const res = await nativeFetch(`${ADS_MEDIA_API}?action=part`, {
         method: 'PUT',
         headers: {
@@ -97,12 +103,12 @@
         body: bytes.slice(start, end)
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || `動画の分割保存に失敗しました (${res.status})`);
+      if (!res.ok) throw new Error(data.error || `素材の分割保存に失敗しました (${res.status})`);
     }
 
-    progress('広告動画を仕上げています…');
+    progress('広告素材を仕上げています…');
     const completed = await api('complete', authorization, { ...metadata, uploadId: started.uploadId, parts });
-    progress('広告動画を保存しました');
+    progress('広告素材を保存しました');
     setTimeout(clearProgress, 900);
     return completed;
   }
@@ -116,13 +122,13 @@
       const text = await requestText(input, init);
       const parsed = JSON.parse(text || '{}');
       const row = Array.isArray(parsed) ? parsed[0] : parsed;
-      if (!row?.campaign_id || !row?.data_base64 || !String(row.mime_type || '').startsWith('video/')) {
+      if (!row?.campaign_id || !row?.data_base64 || !supportedMime(row.mime_type)) {
         return nativeFetch(input, init);
       }
 
       const authorization = mergedHeaders(input, init).get('authorization') || '';
       if (!/^Bearer\s+\S+/i.test(authorization)) throw new Error('ログイン情報を確認できませんでした。');
-      await uploadVideo(row, authorization);
+      await uploadMedia(row, authorization);
 
       return new Response('', {
         status: 201,
@@ -131,8 +137,8 @@
       });
     } catch (error) {
       clearProgress();
-      console.error('[HARF-WAY ADS] R2 video upload failed', error);
-      return new Response(JSON.stringify({ message: error instanceof Error ? error.message : '動画を保存できませんでした。' }), {
+      console.error('[HARF-WAY ADS] R2 media upload failed', error);
+      return new Response(JSON.stringify({ message: error instanceof Error ? error.message : '素材を保存できませんでした。' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       });
