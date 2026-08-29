@@ -12,6 +12,13 @@
     { id: 'sale', re: /SALE\s*WATCH|\bSALE\b|セール/i },
   ];
 
+  let latestMediaFile = null;
+  let sampleMediaUrl = '';
+  let sampleVideoEl = null;
+  let sampleTarget = null;
+  let sampleRestore = null;
+  let sampleSyncTimer = 0;
+
   const normalize = (v) => String(v || '').replace(/[\u3000\s]+/g, ' ').trim();
 
   function labelText(el) {
@@ -86,13 +93,17 @@
     return known.filter((tag) => controls.some((el) => normalize(el.textContent) === tag && selectedControl(el))).slice(0, 6);
   }
 
+  function currentFile(scope) {
+    return latestMediaFile || scope.querySelector('input[type="file"]')?.files?.[0] || null;
+  }
+
   function readDraft() {
     const scope = formScope();
     const title = findField(scope, [/作品名/i,/ゲーム名/i,/タイトル/i,/title/i]);
     const catchField = findField(scope, [/キャッチコピー/i,/キャッチ/i,/一番伝えたい/i,/catch/i]);
     const description = findField(scope, [/紹介文/i,/特徴/i,/説明/i,/description/i], { multiline: true });
     const storeUrl = findField(scope, [/ストアURL/i,/作品URL/i,/リンク先/i,/store.*url/i,/url/i], { url: true });
-    const fileInput = scope.querySelector('input[type="file"]');
+    const mediaFile = currentFile(scope);
     return {
       id: `preview-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       createdAt: Date.now(),
@@ -102,9 +113,9 @@
       storeUrl: normalize(storeUrl?.value),
       placements: readPlacements(scope),
       tags: readTags(scope),
-      mediaFile: fileInput?.files?.[0] || null,
-      mediaName: fileInput?.files?.[0]?.name || '',
-      mediaType: fileInput?.files?.[0]?.type || '',
+      mediaFile,
+      mediaName: mediaFile?.name || '',
+      mediaType: mediaFile?.type || '',
     };
   }
 
@@ -151,6 +162,133 @@
     return best;
   }
 
+  function visibleRect(el) {
+    if (!el?.isConnected) return null;
+    const style = getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) return null;
+    const rect = el.getBoundingClientRect();
+    return rect.width >= 120 && rect.height >= 72 ? rect : null;
+  }
+
+  function findSampleTarget(panel) {
+    if (!panel) return null;
+    const mediaCandidates = [...panel.querySelectorAll('img,video')]
+      .filter((el) => !el.closest(`#${BUTTON_ID}`) && !el.dataset.hwadsSampleMedia)
+      .map((el) => ({ el, rect: visibleRect(el) }))
+      .filter((x) => x.rect)
+      .sort((a, b) => (b.rect.width * b.rect.height) - (a.rect.width * a.rect.height));
+    if (mediaCandidates[0]) return { kind: 'media', el: mediaCandidates[0].el };
+
+    const bgCandidates = [...panel.querySelectorAll('div,section,article,figure')]
+      .filter((el) => !el.closest(`#${BUTTON_ID}`))
+      .map((el) => ({ el, rect: visibleRect(el), bg: getComputedStyle(el).backgroundImage }))
+      .filter((x) => x.rect && x.bg && x.bg !== 'none')
+      .sort((a, b) => (b.rect.width * b.rect.height) - (a.rect.width * a.rect.height));
+    return bgCandidates[0] ? { kind: 'background', el: bgCandidates[0].el } : null;
+  }
+
+  function restoreSampleTarget() {
+    if (sampleVideoEl) {
+      sampleVideoEl.remove();
+      sampleVideoEl = null;
+    }
+    if (sampleRestore) {
+      try { sampleRestore(); } catch {}
+    }
+    sampleRestore = null;
+    sampleTarget = null;
+  }
+
+  function revokeSampleUrl() {
+    if (sampleMediaUrl) URL.revokeObjectURL(sampleMediaUrl);
+    sampleMediaUrl = '';
+  }
+
+  function applySampleMedia() {
+    if (!latestMediaFile) return;
+    const panel = findPreviewPanel();
+    const targetInfo = findSampleTarget(panel);
+    if (!targetInfo?.el) return;
+
+    if (sampleTarget && sampleTarget !== targetInfo.el) restoreSampleTarget();
+    if (!sampleMediaUrl) sampleMediaUrl = URL.createObjectURL(latestMediaFile);
+    sampleTarget = targetInfo.el;
+
+    if (latestMediaFile.type.startsWith('image/')) {
+      if (targetInfo.kind === 'media') {
+        const el = targetInfo.el;
+        if (el.tagName === 'IMG') {
+          if (!el.dataset.hwadsOriginalSrc) el.dataset.hwadsOriginalSrc = el.currentSrc || el.src || '';
+          const original = el.dataset.hwadsOriginalSrc;
+          sampleRestore = () => { if (original) el.src = original; delete el.dataset.hwadsOriginalSrc; };
+          el.src = sampleMediaUrl;
+          el.style.objectFit = 'cover';
+          el.dataset.hwadsSampleMedia = '1';
+          return;
+        }
+        if (el.tagName === 'VIDEO') {
+          const original = el.currentSrc || el.src || '';
+          sampleRestore = () => { el.src = original; delete el.dataset.hwadsSampleMedia; };
+          el.src = sampleMediaUrl;
+          el.muted = true;
+          el.loop = true;
+          el.playsInline = true;
+          el.autoplay = true;
+          el.dataset.hwadsSampleMedia = '1';
+          el.play().catch(() => {});
+          return;
+        }
+      }
+      const el = targetInfo.el;
+      const original = el.style.backgroundImage;
+      sampleRestore = () => { el.style.backgroundImage = original; delete el.dataset.hwadsSampleMedia; };
+      el.style.backgroundImage = `url("${sampleMediaUrl}")`;
+      el.style.backgroundSize = 'cover';
+      el.style.backgroundPosition = 'center';
+      el.dataset.hwadsSampleMedia = '1';
+      return;
+    }
+
+    if (latestMediaFile.type.startsWith('video/')) {
+      const host = targetInfo.kind === 'media' ? (targetInfo.el.parentElement || targetInfo.el) : targetInfo.el;
+      if (!host) return;
+      const hostStyle = getComputedStyle(host);
+      const previousPosition = host.style.position;
+      if (hostStyle.position === 'static') host.style.position = 'relative';
+      sampleRestore = () => { host.style.position = previousPosition; if (targetInfo.el) delete targetInfo.el.dataset.hwadsSampleMedia; };
+      if (!sampleVideoEl || sampleVideoEl.parentElement !== host) {
+        sampleVideoEl?.remove();
+        sampleVideoEl = document.createElement('video');
+        sampleVideoEl.dataset.hwadsSampleMedia = '1';
+        Object.assign(sampleVideoEl.style, {
+          position: 'absolute', inset: '0', width: '100%', height: '100%', objectFit: 'cover', zIndex: '3', borderRadius: 'inherit', background: '#090a0b'
+        });
+        sampleVideoEl.muted = true;
+        sampleVideoEl.loop = true;
+        sampleVideoEl.playsInline = true;
+        sampleVideoEl.autoplay = true;
+        sampleVideoEl.preload = 'metadata';
+        host.appendChild(sampleVideoEl);
+      }
+      sampleVideoEl.src = sampleMediaUrl;
+      targetInfo.el.dataset.hwadsSampleMedia = '1';
+      sampleVideoEl.play().catch(() => {});
+    }
+  }
+
+  function scheduleSampleSync(delay = 80) {
+    window.clearTimeout(sampleSyncTimer);
+    sampleSyncTimer = window.setTimeout(applySampleMedia, delay);
+  }
+
+  function setLatestMedia(file) {
+    if (!file) return;
+    latestMediaFile = file;
+    restoreSampleTarget();
+    revokeSampleUrl();
+    scheduleSampleSync(30);
+  }
+
   function mount() {
     const panel = findPreviewPanel();
     if (!panel) return false;
@@ -158,11 +296,23 @@
     if (!wrap) {
       wrap = document.createElement('div');
       wrap.id = BUTTON_ID;
-      wrap.innerHTML = '<button type="button"><span>実画面で掲載位置を確認</span><b>↗</b></button><small>公開中の4媒体を切り替えながら、PC / スマホ両方で「どこにどう出るか」を確認できます。</small>';
+      wrap.innerHTML = '<button type="button"><span>実画面で掲載位置を確認</span><b>↗</b></button><small>現在の入力内容と選択した画像 / 動画を、実際の公開画面へ反映して確認できます。PC / スマホ切替対応。</small>';
     }
     if (wrap.parentElement !== panel || panel.lastElementChild !== wrap) panel.appendChild(wrap);
+    scheduleSampleSync();
     return true;
   }
+
+  document.addEventListener('change', (event) => {
+    const input = event.target?.closest?.('input[type="file"]');
+    if (!input) return;
+    const file = input.files?.[0] || null;
+    if (file && /^(image|video)\//i.test(file.type || '')) setLatestMedia(file);
+  }, true);
+
+  document.addEventListener('click', (event) => {
+    if (latestMediaFile && !event.target.closest?.(`#${BUTTON_ID}`)) scheduleSampleSync(120);
+  }, true);
 
   document.addEventListener('click', async (event) => {
     const button = event.target.closest?.(`#${BUTTON_ID} button`);
@@ -204,4 +354,9 @@
     const observer = new MutationObserver(() => { if (mount()) observer.disconnect(); });
     observer.observe(document.documentElement, { childList: true, subtree: true });
   }
+
+  window.addEventListener('beforeunload', () => {
+    restoreSampleTarget();
+    revokeSampleUrl();
+  });
 })();
