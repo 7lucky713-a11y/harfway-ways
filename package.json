@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "node scripts/inject-analytics-auto-sync.mjs && astro build && node scripts/inject-ads-capacity-panel.mjs && node scripts/verify-analytics-auto-sync.mjs",
+    "build": "node scripts/inject-analytics-auto-sync.mjs && astro build && node scripts/inject-ads-capacity-panel.mjs && node scripts/inject-ads-admin-media-repair.mjs && node scripts/verify-analytics-auto-sync.mjs",
     "preview": "astro preview"
   },
   "dependencies": {
