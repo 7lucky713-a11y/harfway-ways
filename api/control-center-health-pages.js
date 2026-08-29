@@ -1,6 +1,26 @@
 import baseHandler from './control-center-health.js';
 
-const PREVIEW_BUNDLE_ORIGINS=[];
+const PREVIEW_PAGE_ITEMS=[
+  {
+    id:'my-game-shelf',
+    project_slug:'harfway-playlist-tv',
+    public_url:'https://harfway-playlist-tv.vercel.app/shelf-live.html',
+    admin_url:'https://harfway-playlist-tv.vercel.app/thumbnail-manager.html',
+    sync_source:'preview-page-manifest',
+    manifest:{
+      harfway:true,
+      id:'my-game-shelf',
+      name:'MY GAME SHELF',
+      project_slug:'harfway-playlist-tv',
+      group:'PUBLISH',
+      role:'自分のゲーム棚・再発見',
+      description:'HARF-WAYが拾ってきたゲームを読者が自分の棚に持ち帰り、自分タグ・メモ・MEMORY CARDで整理する読者向け棚。',
+      public_url:'https://harfway-playlist-tv.vercel.app/shelf-live.html',
+      admin_url:'https://harfway-playlist-tv.vercel.app/thumbnail-manager.html',
+      control_center:{sync:true,scope:'page'}
+    }
+  }
+];
 
 function captureResponse(){
   return {
@@ -45,7 +65,8 @@ function bundleOrigin(item={}){
 
 function pageItem(raw={},parent={}){
   const manifest=raw.manifest||raw;
-  if(manifest?.harfway!==true||manifest?.control_center?.sync===false)return null;
+  const control=manifest?.control_center||{};
+  if(manifest?.harfway!==true||control.sync===false||control.scope!=='page')return null;
   const id=String(manifest.id||raw.id||'').trim();
   if(!id)return null;
   return {
@@ -55,7 +76,7 @@ function pageItem(raw={},parent={}){
     admin_url:manifest.admin_url||raw.admin_url||'',
     metrics_url:manifest.metrics_url||raw.metrics_url||'',
     sync_source:'page-manifest',
-    manifest:{...manifest,control_center:{...(manifest.control_center||{}),scope:'page'}}
+    manifest:{...manifest,control_center:{...control,scope:'page'}}
   };
 }
 
@@ -87,13 +108,6 @@ async function discoverPages(hubItems=[]){
     seenOrigins.add(origin);
     parents.push({origin,parent:item});
   }
-  if(process.env.VERCEL_ENV!=='production'){
-    for(const origin of PREVIEW_BUNDLE_ORIGINS){
-      if(!origin||seenOrigins.has(origin))continue;
-      seenOrigins.add(origin);
-      parents.push({origin,parent:{id:'preview-page-manifest',project_slug:'preview'}});
-    }
-  }
   const bundles=await Promise.all(parents.slice(0,30).map(x=>loadBundle(x.origin,x.parent)));
   return {
     scanned:bundles.length,
@@ -115,7 +129,8 @@ export default async function handler(req,res){
   const existing=Array.isArray(base?.hub?.autoItems)?base.hub.autoItems:[];
   const seen=new Set(existing.map(itemKey).filter(Boolean));
   const pageItems=[];
-  for(const item of pageDiscovery.items){
+  const candidates=[...pageDiscovery.items,...(process.env.VERCEL_ENV==='production'?[]:PREVIEW_PAGE_ITEMS)];
+  for(const item of candidates){
     const key=itemKey(item);
     if(!key||seen.has(key))continue;
     seen.add(key);
@@ -139,6 +154,7 @@ export default async function handler(req,res){
       source:'production-origin-harfway-tools-json',
       scannedOrigins:pageDiscovery.scanned,
       connectedBundles:pageDiscovery.connected,
+      previewFixture:process.env.VERCEL_ENV!=='production',
       autoItems:pageItems,
       bundles:pageDiscovery.bundles.map(x=>({origin:x.origin,connected:x.connected,status:x.status,itemCount:x.items.length}))
     }
