@@ -76,6 +76,10 @@ function toEntry(row) {
     className: metadata.className || '',
     tags: Array.isArray(metadata.tags) ? metadata.tags : [],
     mediaUrl: metadata.mediaUrl || row.featured_image_url || '',
+    mediaKey: metadata.mediaKey || '',
+    mediaType: metadata.mediaType || '',
+    mediaSize: Number(metadata.mediaSize || 0),
+    mediaName: metadata.mediaName || '',
     createdAt: metadata.createdAt || (row.created_at ? new Date(row.created_at).toISOString().slice(0, 10) : ''),
     updatedAt: row.updated_at || null
   };
@@ -113,8 +117,12 @@ async function upsertEntry(sql, body) {
   const className = clean(body.className, 160);
   const tags = normalizeTags(body.tags);
   const mediaUrl = clean(body.mediaUrl, 2000);
+  const mediaKey = clean(body.mediaKey, 2000);
+  const mediaType = clean(body.mediaType, 120);
+  const mediaSize = Math.max(0, Number(body.mediaSize || 0) || 0);
+  const mediaName = clean(body.mediaName, 240);
   const createdAt = clean(body.createdAt, 32) || new Date().toISOString().slice(0, 10);
-  const metadata = JSON.stringify({ cat, className, tags, mediaUrl, createdAt });
+  const metadata = JSON.stringify({ cat, className, tags, mediaUrl, mediaKey, mediaType, mediaSize, mediaName, createdAt });
   const contentType = `mew_${type}`;
   const url = `/mew-log/entry/${encodeURIComponent(shortId)}`;
   const excerpt = memo.slice(0, 280);
