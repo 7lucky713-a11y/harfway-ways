@@ -78,6 +78,7 @@ try {
     FROM pg_proc p
     JOIN pg_namespace n ON n.oid = p.pronamespace
     WHERE n.nspname IN ('public','auth')
+      AND p.prokind IN ('f','p')
       AND (
         pg_get_functiondef(p.oid) ILIKE '%not owner%'
         OR pg_get_functiondef(p.oid) ILIKE '%owner_user_id%'
