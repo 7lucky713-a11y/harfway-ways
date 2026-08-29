@@ -23,7 +23,7 @@ function copyQuery(req) {
 function buildRequestHeaders(req) {
   const headers = {};
   const blocked = new Set([
-    'host', 'connection', 'content-length', 'accept-encoding', 'origin', 'referer',
+    'host', 'connection', 'content-length', 'accept-encoding', 'origin', 'referer', 'authorization',
     'x-forwarded-host', 'x-forwarded-proto', 'x-forwarded-for', 'x-vercel-id',
     'x-vercel-deployment-url', 'x-vercel-proxied-for', 'x-real-ip'
   ]);
@@ -38,36 +38,42 @@ function buildRequestHeaders(req) {
 }
 
 async function resolveAuthorization(req) {
-  if (req.headers.authorization) return String(req.headers.authorization);
+  const incoming = req.headers.authorization ? String(req.headers.authorization) : null;
   const cookie = req.headers.cookie;
-  if (!cookie) return null;
 
-  try {
-    const response = await fetch(`${AUTH_UPSTREAM}/get-session`, {
-      method: 'GET',
-      headers: {
-        accept: 'application/json',
-        cookie: String(cookie),
-        origin: TRUSTED_ORIGIN,
-        referer: `${TRUSTED_ORIGIN}/ads-admin/`,
-        'user-agent': req.headers['user-agent'] || 'HARF-WAY-ADS-Preview-Data-Proxy/1.0'
-      },
-      redirect: 'manual'
-    });
-    if (!response.ok) return null;
+  if (cookie) {
+    try {
+      const response = await fetch(`${AUTH_UPSTREAM}/get-session`, {
+        method: 'GET',
+        headers: {
+          accept: 'application/json',
+          cookie: String(cookie),
+          origin: TRUSTED_ORIGIN,
+          referer: `${TRUSTED_ORIGIN}/ads-admin/`,
+          'user-agent': req.headers['user-agent'] || 'HARF-WAY-ADS-Preview-Data-Proxy/1.0'
+        },
+        redirect: 'manual'
+      });
 
-    const jwt = response.headers.get('set-auth-jwt');
-    if (jwt) return `Bearer ${jwt}`;
+      if (response.ok) {
+        const jwt = response.headers.get('set-auth-jwt');
+        if (jwt) return { value: `Bearer ${jwt}`, source: 'set-auth-jwt' };
 
-    const data = await response.json().catch(() => null);
-    const fallback = data?.session?.token;
-    if (typeof fallback === 'string' && fallback.split('.').length === 3) {
-      return `Bearer ${fallback}`;
+        if (incoming) return { value: incoming, source: 'incoming-fallback' };
+
+        const data = await response.json().catch(() => null);
+        const fallback = data?.session?.token;
+        if (typeof fallback === 'string' && fallback.split('.').length === 3) {
+          return { value: `Bearer ${fallback}`, source: 'session-token-fallback' };
+        }
+      }
+    } catch (error) {
+      console.error('Neon Data API preview token bridge failed', error);
     }
-  } catch (error) {
-    console.error('Neon Data API preview token bridge failed', error);
   }
-  return null;
+
+  if (incoming) return { value: incoming, source: 'incoming' };
+  return { value: null, source: 'none' };
 }
 
 function decodeJwtPayload(authorization) {
@@ -100,9 +106,7 @@ async function diagnoseAdminIdentity(path, authorization) {
 
   try {
     const sql = getSql();
-    let matchedClaim = null;
-    let matchedRole = null;
-    let matchesSohiOwner = false;
+    const matches = [];
 
     for (const [claim, value] of candidates) {
       const rows = await sql`
@@ -118,21 +122,18 @@ async function diagnoseAdminIdentity(path, authorization) {
         WHERE u.id::text = ${value}
         LIMIT 1
       `;
-      if (rows[0]) {
-        matchedClaim = claim;
-        matchedRole = String(rows[0].role || '');
-        matchesSohiOwner = rows[0].owns_sohi === true;
-        break;
-      }
+      matches.push({
+        claim,
+        found: Boolean(rows[0]),
+        role: rows[0] ? String(rows[0].role || '') : null,
+        ownsSohi: rows[0]?.owns_sohi === true
+      });
     }
 
     console.log('[preview-admin-identity]', {
       jwtDecoded: true,
       claimKeys: Object.keys(payload).sort(),
-      candidateClaims: candidates.map(([claim]) => claim),
-      matchedClaim,
-      matchedRole,
-      matchesSohiOwner,
+      matches,
       jwtRoleClaim: typeof payload.role === 'string' ? payload.role : null
     });
   } catch (error) {
@@ -163,14 +164,16 @@ export default async function handler(req, res) {
   const path = rawPath(req);
   const target = `${UPSTREAM}/${path}${copyQuery(req)}`;
   const headers = buildRequestHeaders(req);
-  const authorization = await resolveAuthorization(req);
+  const resolvedAuthorization = await resolveAuthorization(req);
+  const authorization = resolvedAuthorization.value;
   if (authorization) headers.authorization = authorization;
 
   console.log('[preview-data-auth]', {
     path,
     incomingAuthorization: Boolean(req.headers.authorization),
     sessionCookie: Boolean(req.headers.cookie),
-    bridgedAuthorization: Boolean(authorization)
+    authorizationSource: resolvedAuthorization.source,
+    authorizationReady: Boolean(authorization)
   });
   await diagnoseAdminIdentity(path, authorization);
 
