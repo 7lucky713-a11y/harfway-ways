@@ -86,6 +86,21 @@ try {
     ORDER BY n.nspname, p.proname
   `;
 
+  const statusConstraints = await sql`
+    SELECT conname, pg_get_constraintdef(oid, true) AS definition
+    FROM pg_constraint
+    WHERE conrelid = 'public.ad_campaigns'::regclass
+      AND contype = 'c'
+    ORDER BY conname
+  `;
+
+  const statusCounts = await sql`
+    SELECT status, count(*)::int AS count
+    FROM public.ad_campaigns
+    GROUP BY status
+    ORDER BY status
+  `;
+
   const candidates = await sql`
     SELECT table_schema, table_name, column_name, data_type
     FROM information_schema.columns
@@ -123,6 +138,8 @@ try {
   console.log('[ads-admin-db-diagnose] function-security', JSON.stringify(functionSecurity));
   console.log('[ads-admin-db-diagnose] triggers', JSON.stringify(triggers.map(x => ({...x, trigger_def:redact(x.trigger_def), function_def:redact(x.function_def)}))));
   console.log('[ads-admin-db-diagnose] owner-guard-functions', JSON.stringify(ownerGuardFunctions.map(x => ({...x, definition:redact(x.definition)}))));
+  console.log('[ads-admin-db-diagnose] status-constraints', JSON.stringify(statusConstraints));
+  console.log('[ads-admin-db-diagnose] status-counts', JSON.stringify(statusCounts));
   console.log('[ads-admin-db-diagnose] candidates', JSON.stringify(candidates));
   console.log('[ads-admin-db-diagnose] policies', JSON.stringify(policies.map(x => ({...x, qual:redact(x.qual), with_check:redact(x.with_check)}))));
   console.log('[ads-admin-db-diagnose] sohi-owner', JSON.stringify(sohiOwner));
