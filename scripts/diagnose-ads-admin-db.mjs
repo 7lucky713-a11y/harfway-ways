@@ -26,7 +26,8 @@ try {
            p.prosecdef AS security_definer, pg_get_functiondef(p.oid) AS definition
     FROM pg_proc p
     JOIN pg_namespace n ON n.oid = p.pronamespace
-    WHERE p.proname IN ('hwads_is_admin','ad_is_admin')
+    WHERE (n.nspname = 'public' AND p.proname IN ('hwads_is_admin','ad_is_admin'))
+       OR (n.nspname = 'auth' AND p.proname = 'user_id')
     ORDER BY n.nspname, p.proname
   `;
 
