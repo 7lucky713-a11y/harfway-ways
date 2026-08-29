@@ -101,6 +101,19 @@ try {
     ORDER BY status
   `;
 
+  await sql`
+    DO $probe$
+    BEGIN
+      CREATE TEMP TABLE hwads_status_probe(status text) ON COMMIT DROP;
+      ALTER TABLE hwads_status_probe
+        ADD CONSTRAINT hwads_status_probe_check
+        CHECK (status = ANY (ARRAY['draft'::text,'pending'::text,'active'::text,'paused'::text,'completed'::text,'rejected'::text]));
+      INSERT INTO hwads_status_probe(status) VALUES ('paused');
+    END
+    $probe$;
+  `;
+  console.log('[ads-admin-db-diagnose] paused-migration-probe OK (temporary table only)');
+
   const candidates = await sql`
     SELECT table_schema, table_name, column_name, data_type
     FROM information_schema.columns
