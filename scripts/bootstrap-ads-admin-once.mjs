@@ -23,7 +23,7 @@ if(!ownerId) throw new Error('Eligible owner id missing');
 
 await sql`
   UPDATE neon_auth."user"
-  SET role='admin', updated_at=now()
+  SET role='admin'
   WHERE id::text=${ownerId} AND role='user'
 `;
 
