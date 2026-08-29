@@ -1,0 +1,37 @@
+---
+const title = 'HARF-WAY ADS｜画像プレビュー回帰チェック';
+---
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>{title}</title>
+<style is:global>
+*{box-sizing:border-box}body{margin:0;background:#f2eee4;color:#171715;font-family:Inter,ui-sans-serif,system-ui,sans-serif}.page{max-width:1280px;margin:auto;padding:20px}.notice{margin-bottom:14px;padding:12px 14px;border:1px solid #d8cebf;border-radius:12px;background:#fffaf2;font-size:12px;color:#766b5b}.notice b{color:#171715}.grid{display:grid;grid-template-columns:minmax(340px,.85fr) minmax(520px,1.15fr);gap:18px}.panel{min-width:0;padding:24px;border:1px solid #d8cebf;border-radius:24px;background:#fffdf8}.eyebrow{margin:0 0 10px;color:#7d684d;font:800 10px/1 ui-monospace,monospace;letter-spacing:.17em}.panel h1,.panel h2{margin:0;letter-spacing:-.04em}.panel h1{font-size:25px}.panel h2{font-size:24px}.lead{margin:14px 0 22px;color:#8c7d68;font-size:13px;line-height:1.7}.upload{display:grid;gap:8px;padding:18px;border:1px dashed #b9ab95;border-radius:14px;background:#fff}.upload input{width:100%}.tip{margin-top:14px;padding:12px;border-radius:12px;background:#f3eee4;font-size:11px;line-height:1.65}.preview-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}.old-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;width:360px;max-width:100%}.old-tabs button{min-height:66px;border:1px solid #d7cdbd;border-radius:11px;background:#fffdf8;color:#76664f;font-size:9px;font-weight:850}.old-tabs button.active{background:#171715;color:#fff;border-color:#171715}.fixture-stage{display:flex;justify-content:center;align-items:flex-start;padding:18px 0 8px;min-height:610px}.fixture-screen{position:relative;width:324px;height:576px;overflow:hidden;border:1px solid #d8cebf;border-radius:22px;background:#fff}.fixture-header{position:relative;height:92px;overflow:hidden;border-bottom:1px solid #e5ddcf;background:#efe2c4}.fixture-header img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:repeating-linear-gradient(12deg,#eee1c0 0 8px,#f7edda 8px 16px)}.fixture-header b{position:absolute;z-index:2;left:18px;top:30px;font-size:18px}.squares{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:14px}.squares span{aspect-ratio:1;border-radius:10px;background:#a9b294}.supporter{display:grid;grid-template-columns:118px 1fr;gap:14px;margin:0 14px;padding:12px;border:1px solid #c7bba8;border-radius:12px;background:#f7f1e7}.fixture-creative{display:flex;align-items:center;justify-content:center;min-height:96px;border-radius:10px;overflow:hidden;background:#344d38;color:#fff;font-weight:900;position:relative}.supporter-copy{display:flex;flex-direction:column;justify-content:center;min-width:0}.supporter-copy small{font:800 8px/1.5 ui-monospace,monospace;letter-spacing:.12em}.supporter-copy b{margin-top:8px}.supporter-copy p{margin:8px 0 0;color:#8a7c68;font-size:9px;line-height:1.5}#hwads-open-standalone-preview{margin-top:18px!important}.fixture-foot{padding:18px 14px;color:#aaa;font-size:9px}@media(max-width:980px){.grid{grid-template-columns:1fr}.old-tabs{margin-top:14px;width:100%}}@media(max-width:620px){.page{padding:8px}.panel{padding:16px;border-radius:18px}.old-tabs{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<main class="page">
+<div class="notice"><b>画像を入れた時のバグ専用Previewです。</b> 下のファイル選択で画像を入れ、上のヘッダーではなく「PR広告カードの緑の枠」に画像が入ること、PC / スマホ切替で外枠が暴れないことを確認してください。認証・DB・R2・計測には接続していません。</div>
+<div class="grid">
+<section class="panel">
+<p class="eyebrow">REGRESSION TEST</p><h1>広告素材を選ぶ</h1><p class="lead">本番で起きた「画像を選ぶとプレイリストの別画像を掴み、プレビュー全体が崩れる」ケースを再現するための確認画面です。</p>
+<div class="upload"><b>画像 / 短尺動画を選ぶ</b><input type="file" accept="image/png,image/jpeg,image/webp,video/mp4,video/webm"><small>画像を選ぶと右の緑色の広告素材枠へ入ります。</small></div>
+<div class="tip">確認ポイント：<br>① 上部の「今週のゲームプレイリスト」画像は変わらない<br>② 緑の「作品タイトル」枠だけ画像へ変わる<br>③ PC / スマホを何度切り替えても収縮しない</div>
+</section>
+<section class="panel preview-panel">
+<div class="preview-head"><div><p class="eyebrow">LIVE PREVIEW</p><h2>掲載されたときの見え方</h2></div><div class="old-tabs"><button type="button" data-fixture="playlist" class="active">プレイリスト</button><button type="button" data-fixture="scraps">切れ端</button><button type="button" data-fixture="playback">WAYS</button><button type="button" data-fixture="sale">SALE WATCH</button></div></div>
+<div class="fixture-stage"><div class="fixture-screen"><div class="fixture-header"><img alt="decorative playlist header" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="><b>今週のゲームプレイリスト</b></div><div class="squares"><span></span><span></span><span></span><span></span></div><article class="supporter"><div class="fixture-creative">作品タイトル</div><div class="supporter-copy"><small id="fixturePr">PLAYLIST SUPPORTER / PR</small><b>作品タイトル</b><p>キャッチコピーがここに入ります。</p></div></article><div class="fixture-foot">HARF-WAY PLAYLIST PREVIEW</div></div></div>
+</section>
+</div>
+</main>
+<script is:inline>
+(() => {
+  const labels={playlist:'PLAYLIST SUPPORTER / PR',scraps:'SCRAPS / PR',playback:'PR · SPONSORED',sale:'SALE WATCH / PR'};
+  const buttons=[...document.querySelectorAll('[data-fixture]')];
+  buttons.forEach((button)=>button.addEventListener('click',()=>{buttons.forEach((b)=>b.classList.toggle('active',b===button));document.getElementById('fixturePr').textContent=labels[button.dataset.fixture]||labels.playlist;}));
+})();
+</script>
+<script is:inline src="/ads-portal-preview-layout-v4.js"></script>
+<script is:inline src="/ads-portal-preview-media-guard-v4.js"></script>
+<script is:inline src="/ads-portal-preview-launcher.js"></script>
+</body>
+</html>
