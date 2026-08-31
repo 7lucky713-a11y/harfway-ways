@@ -27,7 +27,13 @@
   const stamp=()=>new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date());
 
   function week(){
-    return String(payload?.range?.start||'').slice(0,10);
+    const raw=payload?.range?.start;
+    if(!raw)return'';
+    const d=new Date(raw);
+    if(!Number.isFinite(d.getTime()))return'';
+    const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d);
+    const get=t=>parts.find(p=>p.type===t)?.value||'';
+    return `${get('year')}-${get('month')}-${get('day')}`;
   }
 
   function localDraft(){
