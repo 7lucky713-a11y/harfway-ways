@@ -120,16 +120,22 @@ function isScrapPage(page) {
 }
 
 async function loadWordPressPosts(start, end) {
+  const graceEnd = new Date(end.getTime() + DAY_MS);
   const params = new URLSearchParams({
     after: start.toISOString(),
-    before: end.toISOString(),
+    before: graceEnd.toISOString(),
     per_page: '100',
     orderby: 'date',
     order: 'desc',
     _embed: '1'
   });
   const data = await fetchJson(`https://harf-way.com/wp-json/wp/v2/posts?${params}`);
-  return Array.isArray(data) ? data.map(post => normalizeWp(post, 'post')) : [];
+  if (!Array.isArray(data)) return [];
+  return data
+    .map(post => normalizeWp(post, 'post'))
+    .filter(item => item.type === 'SCRAPS'
+      ? withinRange(item.date, start, graceEnd)
+      : withinRange(item.date, start, end));
 }
 
 async function loadScrapPages(start, end) {
@@ -297,7 +303,7 @@ export default async function handler(req, res) {
       serverGenerated: true,
       verifiedIds: verified.map(item => item.id),
       requiredScrapIds: scraps.map(item => item.id),
-      note: 'WEEKLY BOARDは対象期間内の切れ端をWordPress固定ページ /weekly/scraps/ 配下から取得し、必ず全件含めます。GAME LOGのX / WAYSは自動選択しません。'
+      note: 'WEEKLY BOARDは対象期間内の切れ端に加え、月曜00:00〜24:00 JSTに公開された前週分の切れ端も含めます。GAME LOGのX / WAYSは自動選択しません。'
     };
 
     let persisted = false;
@@ -327,7 +333,8 @@ export default async function handler(req, res) {
       boardMeta: {
         count: board.length,
         scrapsCount: scraps.length,
-        scrapsIds: scraps.map(item => item.id)
+        scrapsIds: scraps.map(item => item.id),
+        mondayGrace: true
       },
       sources: {
         wordpress: { ok: settled[0].status === 'fulfilled', count: wordpressPosts.length, scrapsCount: wordpressPosts.filter(item => item.type === 'SCRAPS').length },
