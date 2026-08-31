@@ -25,11 +25,12 @@
   if(thirdStat&&thirdStat.value==='ALL IN DATABASE')thirdStat.value='WEEKLY PICKS';
 
   const baseHtml=html;
+  const stripMemoOutput=markup=>String(markup).replace(/<section class="hw-memo">[\s\S]*?<\/section>(?=<\/div>$)/,'');
   html=function(){
-    return baseHtml().replace(
+    return stripMemoOutput(baseHtml().replace(
       '<div class="hw-dbnote">今週登場したゲームは、HARF-WAYデータベースにも追加しています。</div>',
       '<div class="hw-dbnote">X / WAYS / HARF-WAY内の記録を、今週の紹介ログとしてまとめています。</div>'
-    );
+    ));
   };
 
   const polishedBaseCss=String(wpCss)
