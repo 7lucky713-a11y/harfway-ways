@@ -1,8 +1,10 @@
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { authorizeArchiveRequest } from './archive-core.js';
 
 const JST_MS = 9 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
-const DRAFT_PREFIX = 'preview/weekly-harfway-drafts/';
+const PREVIEW_WORKING_PREFIX = 'preview/weekly-harfway-drafts/';
+const PRODUCTION_WORKING_PREFIX = 'production/weekly-harfway-working/';
 
 function send(res, status, body) {
   res.status(status);
@@ -93,30 +95,18 @@ function classifyPost(post) {
   return 'ARTICLE';
 }
 
-function normalizeWp(post, kind = 'post') {
+function normalizeWp(post) {
   return {
-    id: kind === 'page' ? `wp-page-${post.id}` : `wp-${post.id}`,
-    type: kind === 'page' ? 'SCRAPS' : classifyPost(post),
+    id: `wp-${post.id}`,
+    type: classifyPost(post),
     title: stripHtml(post?.title?.rendered || '無題'),
-    date: String(kind === 'page'
-      ? (post?.modified_gmt || post?.modified || post?.date_gmt || post?.date || '')
-      : (post?.date_gmt || post?.date || ''))
+    date: String(post?.date_gmt || post?.date || '')
   };
 }
 
 function withinRange(value, start, end) {
   const time = Date.parse(value || '');
   return Number.isFinite(time) && time >= start.getTime() && time < end.getTime();
-}
-
-function isScrapPage(page) {
-  const link = String(page?.link || '');
-  const title = stripHtml(page?.title?.rendered || '');
-  try {
-    const path = new URL(link).pathname.replace(/\/+$/, '');
-    if (/^\/weekly\/scraps\/.+/i.test(path)) return true;
-  } catch {}
-  return /ゲームの切れ端|切れ端/.test(title) && /\/weekly\/scraps\//i.test(link);
 }
 
 async function loadWordPressPosts(start, end) {
@@ -132,24 +122,63 @@ async function loadWordPressPosts(start, end) {
   const data = await fetchJson(`https://harf-way.com/wp-json/wp/v2/posts?${params}`);
   if (!Array.isArray(data)) return [];
   return data
-    .map(post => normalizeWp(post, 'post'))
+    .map(normalizeWp)
     .filter(item => item.type === 'SCRAPS'
       ? withinRange(item.date, start, graceEnd)
       : withinRange(item.date, start, end));
 }
 
-async function loadScrapPages(start, end) {
+function targetScrapWeek(start, end) {
+  const sunday = new Date(end.getTime() - 1);
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(sunday);
+  const get = type => parts.find(part => part.type === type)?.value || '';
+  const year = Number(get('year'));
+  const month = Number(get('month'));
+  const day = Number(get('day'));
+  const week = Math.ceil(day / 7);
+  const monthSlug = [
+    'january','february','march','april','may','june',
+    'july','august','september','october','november','december'
+  ][month - 1] || '';
+  return {
+    year,
+    month,
+    week,
+    monthSlug,
+    title: `ゲームの切れ端${year}年${month}月${week}週目`,
+    slugTail: `${year}_${monthSlug}${week}week`
+  };
+}
+
+function isRepresentedScrap(post, target) {
+  const title = stripHtml(post?.title?.rendered || '').replace(/\s+/g, '');
+  const slug = String(post?.slug || '').toLowerCase();
+  const link = String(post?.link || '');
+  if (!/\/weekly\/scraps\//i.test(link)) return false;
+  if (title === target.title.replace(/\s+/g, '')) return true;
+  return target.slugTail && slug.endsWith(target.slugTail.toLowerCase());
+}
+
+async function loadRepresentedScraps(start, end) {
+  const target = targetScrapWeek(start, end);
+  const after = new Date(start.getTime() - 14 * DAY_MS);
+  const before = new Date(end.getTime() + 3 * DAY_MS);
   const params = new URLSearchParams({
-    modified_after: start.toISOString(),
-    modified_before: end.toISOString(),
+    after: after.toISOString(),
+    before: before.toISOString(),
     per_page: '100',
-    orderby: 'modified',
+    orderby: 'date',
     order: 'desc',
     _embed: '1'
   });
-  const data = await fetchJson(`https://harf-way.com/wp-json/wp/v2/pages?${params}`);
+  const data = await fetchJson(`https://harf-way.com/wp-json/wp/v2/posts?${params}`);
   return Array.isArray(data)
-    ? data.filter(isScrapPage).map(page => normalizeWp(page, 'page'))
+    ? data.filter(post => isRepresentedScrap(post, target)).map(normalizeWp)
     : [];
 }
 
@@ -198,12 +227,16 @@ function buildBoard(verified) {
   };
 }
 
-function ensurePreviewMutation(req) {
-  if (process.env.VERCEL_ENV !== 'preview') {
-    const error = new Error('preview_only');
-    error.status = 403;
-    throw error;
-  }
+function storageConfig() {
+  const environment = String(process.env.VERCEL_ENV || 'development');
+  if (environment === 'preview') return { environment, prefix: PREVIEW_WORKING_PREFIX, authRequired: false };
+  if (environment === 'production') return { environment, prefix: PRODUCTION_WORKING_PREFIX, authRequired: true };
+  const error = new Error('weekly_storage_environment_not_supported');
+  error.status = 403;
+  throw error;
+}
+
+async function ensureMutation(req, config) {
   const origin = String(req.headers.origin || '');
   const host = String(req.headers.host || '');
   if (!origin || !host) {
@@ -217,6 +250,14 @@ function ensurePreviewMutation(req) {
     const error = new Error('origin_mismatch');
     error.status = 403;
     throw error;
+  }
+  if (config.authRequired) {
+    const auth = await authorizeArchiveRequest(req);
+    if (!auth.ok) {
+      const error = new Error(auth.error || 'unauthorized');
+      error.status = auth.status || 401;
+      throw error;
+    }
   }
 }
 
@@ -238,21 +279,22 @@ function r2Bucket() {
   return value;
 }
 
-async function persistDraft(week, draft) {
+async function persistDraft(config, week, draft) {
   const record = {
     schema: 'weekly-harfway-draft-v1',
-    environment: 'preview',
+    environment: config.environment,
+    scope: 'working-draft',
     week,
     savedAt: new Date().toISOString(),
     draft
   };
   await r2Client().send(new PutObjectCommand({
     Bucket: r2Bucket(),
-    Key: `${DRAFT_PREFIX}${week}.json`,
+    Key: `${config.prefix}${week}.json`,
     Body: JSON.stringify(record),
     ContentType: 'application/json; charset=utf-8',
     CacheControl: 'no-store',
-    Metadata: { scope: 'weekly-harfway-preview', week }
+    Metadata: { scope: 'weekly-harfway-working', environment: config.environment, week }
   }));
   return record;
 }
@@ -261,30 +303,31 @@ export default async function handler(req, res) {
   if (!['GET', 'POST'].includes(req.method)) return send(res, 405, { ok: false, error: 'method_not_allowed' });
 
   try {
-    if (req.method === 'POST') ensurePreviewMutation(req);
+    const config = storageConfig();
+    if (req.method === 'POST') await ensureMutation(req, config);
 
     const { start, end } = mondayRange();
     const warnings = [];
     let wordpressPosts = [];
-    let scrapPages = [];
+    let representedScraps = [];
     let yorimichi = [];
 
     const settled = await Promise.allSettled([
       loadWordPressPosts(start, end),
-      loadScrapPages(start, end),
+      loadRepresentedScraps(start, end),
       loadYorimichi(start, end)
     ]);
 
     if (settled[0].status === 'fulfilled') wordpressPosts = settled[0].value;
     else warnings.push(`WordPress投稿取得失敗: ${settled[0].reason?.message || 'unknown'}`);
 
-    if (settled[1].status === 'fulfilled') scrapPages = settled[1].value;
-    else warnings.push(`切れ端固定ページ取得失敗: ${settled[1].reason?.message || 'unknown'}`);
+    if (settled[1].status === 'fulfilled') representedScraps = settled[1].value;
+    else warnings.push(`切れ端represented week取得失敗: ${settled[1].reason?.message || 'unknown'}`);
 
     if (settled[2].status === 'fulfilled') yorimichi = settled[2].value;
     else warnings.push(`ヨリミチ週刊取得失敗: ${settled[2].reason?.message || 'unknown'}`);
 
-    const verified = dedupe([...wordpressPosts, ...scrapPages, ...yorimichi]);
+    const verified = dedupe([...wordpressPosts, ...representedScraps, ...yorimichi]);
     const boardSelection = buildBoard(verified);
     const board = boardSelection.items;
     const scraps = boardSelection.scraps;
@@ -303,23 +346,24 @@ export default async function handler(req, res) {
       serverGenerated: true,
       verifiedIds: verified.map(item => item.id),
       requiredScrapIds: scraps.map(item => item.id),
-      note: 'WEEKLY BOARDは対象期間内の切れ端に加え、月曜00:00〜24:00 JSTに公開された前週分の切れ端も含めます。GAME LOGのX / WAYSは自動選択しません。'
+      note: 'WEEKLY BOARDは対象期間内の切れ端に加え、represented weekが前週の切れ端も含めます。GAME LOGのX / WAYSは自動選択しません。'
     };
 
     let persisted = false;
     let storedAt = '';
     if (req.method === 'POST') {
-      const record = await persistDraft(week, draft);
+      const record = await persistDraft(config, week, draft);
       persisted = true;
       storedAt = record.savedAt;
     }
 
     return send(res, 200, {
       ok: true,
-      mode: req.method === 'POST' ? 'preview-server-persist' : 'preview-readonly',
+      mode: req.method === 'POST' ? `${config.environment}-server-persist` : `${config.environment}-readonly`,
+      environment: config.environment,
       persisted,
-      storage: persisted ? 'r2-preview-prefix' : null,
-      prefix: persisted ? DRAFT_PREFIX : null,
+      storage: persisted ? 'r2-working-draft' : null,
+      prefix: persisted ? config.prefix : null,
       week,
       storedAt,
       cronReady: true,
@@ -334,11 +378,12 @@ export default async function handler(req, res) {
         count: board.length,
         scrapsCount: scraps.length,
         scrapsIds: scraps.map(item => item.id),
-        mondayGrace: true
+        mondayGrace: true,
+        representedWeekMatch: true
       },
       sources: {
         wordpress: { ok: settled[0].status === 'fulfilled', count: wordpressPosts.length, scrapsCount: wordpressPosts.filter(item => item.type === 'SCRAPS').length },
-        scrapPages: { ok: settled[1].status === 'fulfilled', count: scrapPages.length },
+        representedScraps: { ok: settled[1].status === 'fulfilled', count: representedScraps.length },
         yorimichi: { ok: settled[2].status === 'fulfilled', count: yorimichi.length }
       },
       warnings
