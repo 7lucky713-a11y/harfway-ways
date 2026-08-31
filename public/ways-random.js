@@ -21,11 +21,16 @@
       const data = await response.clone().json();
       if (!Array.isArray(data?.entries) || data.entries.length < 2) return response;
 
+      const headers = new Headers(response.headers);
+      headers.delete('content-length');
+      headers.delete('content-encoding');
+      headers.set('content-type', 'application/json; charset=utf-8');
+
       const shuffled = { ...data, entries: shuffle(data.entries) };
       return new Response(JSON.stringify(shuffled), {
         status: response.status,
         statusText: response.statusText,
-        headers: response.headers,
+        headers,
       });
     } catch {
       return response;
