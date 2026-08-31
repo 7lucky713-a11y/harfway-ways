@@ -6,18 +6,18 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <meta name="robots" content="noindex,nofollow" />
-<title>WEEKLY HARF-WAY / X INDEPENDENT SOURCE</title>
+<title>WEEKLY HARF-WAY / X + WAYS SECTIONS</title>
 <style>
 html,body{margin:0;min-height:100%;background:#0a0b0d;color:#f4f5f2;font-family:Inter,system-ui,-apple-system,"Noto Sans JP",sans-serif}.boot{min-height:100vh;display:grid;place-items:center}.box{width:min(560px,calc(100vw - 32px));border:1px solid #303943;border-radius:16px;background:#12151a;padding:24px}.k{font:900 11px/1.2 ui-monospace,monospace;letter-spacing:.16em;color:#eaff38}.t{font-size:28px;font-weight:950;margin:8px 0}.s{color:#9ba5af;font-size:13px;line-height:1.7}.err{color:#ffb2b2;white-space:pre-wrap}</style>
 </head>
 <body>
-<div class="boot"><div class="box"><div class="k">HARF-WAY / PREVIEW UPDATE</div><div class="t">WEEKLY 編集室を読み込み中…</div><div class="s" id="status">X投稿をWAYS / DBから独立したニュース素材として読み込んでいます。</div></div></div>
+<div class="boot"><div class="box"><div class="k">HARF-WAY / PREVIEW UPDATE</div><div class="t">WEEKLY 編集室を読み込み中…</div><div class="s" id="status">X紹介 / WAYS紹介の区切りを組み込んでいます。</div></div></div>
 <script>
 (async()=>{
   const status=document.getElementById('status');
   try{
     const sourceUrl='https://raw.githubusercontent.com/7lucky713-a11y/harfway-ways/618137fc35ddd5fc4a6c3ce2d8573794419ea9ea/src/pages/weekly-harfway.astro';
-    const helperUrl='https://raw.githubusercontent.com/7lucky713-a11y/harfway-ways/3428c4461772842f82514d3d777149b5372ab1b7/public/weekly-x-library.js';
+    const helperUrl='https://raw.githubusercontent.com/7lucky713-a11y/harfway-ways/a2ded72c132f2a8e6d229eb1862f89931456919f/public/weekly-x-library.js';
     const [sourceRes,helperRes]=await Promise.all([fetch(sourceUrl,{cache:'no-store'}),fetch(helperUrl,{cache:'no-store'})]);
     if(!sourceRes.ok)throw new Error('source_'+sourceRes.status);
     if(!helperRes.ok)throw new Error('x_helper_'+helperRes.status);
