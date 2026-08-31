@@ -13,13 +13,15 @@
       if(source?.type!=='WAYS'||!video)return article;
       const poster=String(source?.image||source?.thumbnailUrl||'').trim();
       const videoHtml=`<video class="hw-game-video" controls playsinline preload="metadata"${poster?` poster="${esc(poster)}"`:''} style="${videoInline}"><source src="${esc(video)}" type="video/mp4">動画を再生できないブラウザです。</video>`;
+      const waysLink=`<a class="hw-link hw-ways-video-link" href="${esc(video)}" target="_blank" rel="noopener">WAYS動画を見る</a>`;
       const withoutImage=article.replace(/<img class="hw-game-image"[^>]*>/,'');
-      return withoutImage.replace(/(<div class="hw-game-title">[\s\S]*?<\/div>)/,`$1${videoHtml}`);
+      const withoutLegacyRecord=withoutImage.replace(/<a class="hw-link"[^>]*>記録を見る<\/a>/,'');
+      return withoutLegacyRecord.replace(/(<div class="hw-game-title">[\s\S]*?<\/div>)/,`$1${videoHtml}${waysLink}`);
     });
   };
 
   const style=document.createElement('style');
-  style.textContent='.hw-game-video{width:100%;height:auto;display:block;margin:15px 0 0;border:1px solid #111;background:#000;max-height:72vh;object-fit:contain}.ways-video-note{display:inline-flex;margin-top:6px;padding:4px 6px;border:1px solid #66711f;border-radius:999px;color:#eaff38;font:900 8px/1 ui-monospace,monospace;letter-spacing:.05em}';
+  style.textContent='.hw-game-video{width:100%;height:auto;display:block;margin:15px 0 0;border:1px solid #111;background:#000;max-height:72vh;object-fit:contain}.hw-ways-video-link{margin-top:11px}.ways-video-note{display:inline-flex;margin-top:6px;padding:4px 6px;border:1px solid #66711f;border-radius:999px;color:#eaff38;font:900 8px/1 ui-monospace,monospace;letter-spacing:.05em}';
   document.head.appendChild(style);
 
   const baseRenderGamesSelected=renderGamesSelected;
