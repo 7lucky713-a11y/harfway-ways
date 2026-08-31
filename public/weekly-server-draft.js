@@ -21,7 +21,7 @@
 
   const actions=document.createElement('div');
   actions.className='weekly-server-actions';
-  actions.innerHTML='<button type="button" class="weekly-server-btn" id="weeklyServerDraftBtn">月曜下書きをサーバー生成</button><span class="weekly-server-note" id="weeklyServerDraftNote">先週分のWordPress / ヨリミチ候補をサーバー側で生成してWEEKLY BOARDへ取り込みます。X / WAYSは自動選択しません。</span>';
+  actions.innerHTML='<button type="button" class="weekly-server-btn" id="weeklyServerDraftBtn">月曜下書きをサーバー生成・保存</button><span class="weekly-server-note" id="weeklyServerDraftNote">先週分のWordPress / ヨリミチ候補をサーバーで生成し、Preview専用R2下書きへ保存してWEEKLY BOARDへ取り込みます。X / WAYSは自動選択しません。</span>';
   const tabs=sourcePanel?.querySelector('.tabs');
   if(tabs)tabs.insertAdjacentElement('afterend',actions);
   else if(sourcePanel)sourcePanel.prepend(actions);
@@ -34,10 +34,10 @@
     if(!btn)return;
     btn.disabled=true;
     const before=btn.textContent;
-    btn.textContent='生成中…';
-    if(note)note.textContent='WordPress / ヨリミチの先週分をサーバー側で確認中…';
+    btn.textContent='生成・保存中…';
+    if(note)note.textContent='WordPress / ヨリミチの先週分を確認し、Preview専用R2へ下書きを保存中…';
     try{
-      const response=await fetch('/api/weekly-harfway-draft',{cache:'no-store'});
+      const response=await fetch('/api/weekly-harfway-draft',{method:'POST',cache:'no-store'});
       const data=await response.json().catch(()=>({}));
       if(!response.ok||!data.ok)throw new Error(data.error||`HTTP ${response.status}`);
 
@@ -51,14 +51,15 @@
 
       const missing=(data.draft?.updateIds||[]).length-recommended.length;
       const detail=[
-        `SERVER DRAFT ${data.range?.label||''}`,
+        `SERVER STORED ${data.week||''}`,
+        data.range?.label||'',
         `BOARD +${added.length}件`,
         missing>0?`未一致 ${missing}件`:''
       ].filter(Boolean).join(' / ');
-      if(note)note.textContent=`${detail}。X / WAYSは独立素材のため自動選択していません。`;
-      btn.textContent='再生成';
+      if(note)note.textContent=`${detail}。Preview専用R2へ保存済み。X / WAYSは独立素材のため自動選択していません。`;
+      btn.textContent='再生成・保存';
     }catch(err){
-      if(note)note.textContent=`サーバー下書き生成に失敗: ${String(err?.message||err)}`;
+      if(note)note.textContent=`サーバー下書き生成・保存に失敗: ${String(err?.message||err)}`;
       btn.textContent=before;
     }finally{
       btn.disabled=false;
