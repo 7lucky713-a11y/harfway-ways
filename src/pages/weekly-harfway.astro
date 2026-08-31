@@ -6,12 +6,12 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <meta name="robots" content="noindex,nofollow" />
-<title>WEEKLY HARF-WAY / AUTO SAVE + X + WAYS SECTIONS</title>
+<title>WEEKLY HARF-WAY / AUTO SAVE + SERVER MONDAY</title>
 <style>
 html,body{margin:0;min-height:100%;background:#0a0b0d;color:#f4f5f2;font-family:Inter,system-ui,-apple-system,"Noto Sans JP",sans-serif}.boot{min-height:100vh;display:grid;place-items:center}.box{width:min(560px,calc(100vw - 32px));border:1px solid #303943;border-radius:16px;background:#12151a;padding:24px}.k{font:900 11px/1.2 ui-monospace,monospace;letter-spacing:.16em;color:#eaff38}.t{font-size:28px;font-weight:950;margin:8px 0}.s{color:#9ba5af;font-size:13px;line-height:1.7}.err{color:#ffb2b2;white-space:pre-wrap}</style>
 </head>
 <body>
-<div class="boot"><div class="box"><div class="k">HARF-WAY / PREVIEW UPDATE</div><div class="t">WEEKLY 編集室を読み込み中…</div><div class="s" id="status">区切り・X独立素材・自動保存を組み込んでいます。</div></div></div>
+<div class="boot"><div class="box"><div class="k">HARF-WAY / PREVIEW UPDATE</div><div class="t">WEEKLY 編集室を読み込み中…</div><div class="s" id="status">区切り・X独立素材・自動保存・月曜サーバー生成を組み込んでいます。</div></div></div>
 <script>
 (async()=>{
   const status=document.getElementById('status');
@@ -19,13 +19,21 @@ html,body{margin:0;min-height:100%;background:#0a0b0d;color:#f4f5f2;font-family:
     const sourceUrl='https://raw.githubusercontent.com/7lucky713-a11y/harfway-ways/618137fc35ddd5fc4a6c3ce2d8573794419ea9ea/src/pages/weekly-harfway.astro';
     const helperUrl='https://raw.githubusercontent.com/7lucky713-a11y/harfway-ways/a2ded72c132f2a8e6d229eb1862f89931456919f/public/weekly-x-library.js';
     const autosaveUrl='https://raw.githubusercontent.com/7lucky713-a11y/harfway-ways/ec8b2bab3618c17131f2f439de5c5f6cec878d76/public/weekly-autosave.js';
-    const [sourceRes,helperRes,autosaveRes]=await Promise.all([fetch(sourceUrl,{cache:'no-store'}),fetch(helperUrl,{cache:'no-store'}),fetch(autosaveUrl,{cache:'no-store'})]);
+    const serverDraftUrl='https://raw.githubusercontent.com/7lucky713-a11y/harfway-ways/d686b7ddb103358647389f7a454aef1d15bd655e/public/weekly-server-draft.js';
+    const [sourceRes,helperRes,autosaveRes,serverDraftRes]=await Promise.all([
+      fetch(sourceUrl,{cache:'no-store'}),
+      fetch(helperUrl,{cache:'no-store'}),
+      fetch(autosaveUrl,{cache:'no-store'}),
+      fetch(serverDraftUrl,{cache:'no-store'})
+    ]);
     if(!sourceRes.ok)throw new Error('source_'+sourceRes.status);
     if(!helperRes.ok)throw new Error('x_helper_'+helperRes.status);
     if(!autosaveRes.ok)throw new Error('autosave_helper_'+autosaveRes.status);
+    if(!serverDraftRes.ok)throw new Error('server_draft_helper_'+serverDraftRes.status);
     let html=await sourceRes.text();
     const helper=await helperRes.text();
     const autosave=await autosaveRes.text();
+    const serverDraft=await serverDraftRes.text();
     html=html.replace(/^---\s*---\s*/,'')
       .replace('<style is:global>','<style>')
       .replace('<script is:inline>','<script>')
@@ -48,7 +56,7 @@ html,body{margin:0;min-height:100%;background:#0a0b0d;color:#f4f5f2;font-family:
     const scriptOpen='<scr'+'ipt>';
     const scriptClose='</scr'+'ipt>';
     const twitterOpen='<scr'+'ipt async src="https://platform.twitter.com/widgets.js" charset="utf-8">';
-    html=html.replace('</body>',scriptOpen+helper+scriptClose+scriptOpen+autosave+scriptClose+twitterOpen+scriptClose+'</body>');
+    html=html.replace('</body>',scriptOpen+helper+scriptClose+scriptOpen+autosave+scriptClose+scriptOpen+serverDraft+scriptClose+twitterOpen+scriptClose+'</body>');
     document.open();document.write(html);document.close();
   }catch(e){
     status.className='s err';
