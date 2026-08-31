@@ -7,11 +7,15 @@ const source = raw
   .replace(/const API\s*=\s*['"]\/api\/games['"]\s*;/g, "const API='/api/games-live';")
   .replace(
     'const SHELF_SIZE=10,MOBILE_INITIAL=2,MOBILE_BATCH=2;',
-    "let SHELF_SIZE=20;const MOBILE_INITIAL=2,MOBILE_BATCH=2;window.__WAYS_SET_SHELF_SIZE=(n)=>{const next=Math.max(1,Number(n)||20);if(SHELF_SIZE===next)return;SHELF_SIZE=next;shelfPage=Math.floor(selected/SHELF_SIZE);if(innerWidth>=900&&mainReady)renderShelfPage(true);else{updateShelfPager();renderShelfContext()}};"
+    "let SHELF_SIZE=10;const MOBILE_INITIAL=2,MOBILE_BATCH=2;window.__WAYS_SET_SHELF_SIZE=(n)=>{const next=Math.max(1,Number(n)||10);if(SHELF_SIZE===next)return;SHELF_SIZE=next;shelfPage=Math.floor(selected/SHELF_SIZE);if(innerWidth>=900&&mainReady)renderShelfPage(true);else{updateShelfPager();renderShelfContext()}};"
   )
   .replace('← 前の10作品', '← 前の作品')
   .replace('次の10作品を読み込む →', '次の作品を読み込む →')
-  .replace("more.textContent='最初の10作品に戻る ↺'", "more.textContent='最初の作品に戻る ↺'");
+  .replace("more.textContent='最初の10作品に戻る ↺'", "more.textContent='最初の作品に戻る ↺'")
+  .replace(
+    "v.src=nextSrc;userPaused=false;$('#pause').textContent='⏸';v.play().catch(()=>{});startShelfAfterMain()",
+    "if(x.thumbnailUrl)v.setAttribute('poster',x.thumbnailUrl);v.src=nextSrc;userPaused=false;$('#pause').textContent='⏸';const clearPoster=()=>v.removeAttribute('poster');v.addEventListener('playing',clearPoster,{once:true});v.play().catch(()=>{});startShelfAfterMain()"
+  );
 if (/const API\s*=\s*['"]\/api\/games['"]\s*;/.test(source)) {
   throw new Error('Legacy /api/games binding remains in WAYS frontend');
 }
@@ -47,6 +51,7 @@ const navStyle = `
   .ways-stage-skip.prev{left:0}
   .ways-stage-skip.next{right:0}
   .ways-stage-skip span{transform:translateY(-2px)}
+  .video-frame video{transition:opacity .12s ease}
 }
 @media (min-width:900px) and (max-width:1180px){
   .ways-stage-skip{width:52px;height:120px;font-size:30px}
@@ -77,7 +82,7 @@ const navScript = `
   const shelf = document.querySelector('#shelf');
   if (shelf && window.__WAYS_SET_SHELF_SIZE) {
     const reserveAdSlot = () => {
-      if (shelf.querySelector('.ways-ad-card')) window.__WAYS_SET_SHELF_SIZE(19);
+      window.__WAYS_SET_SHELF_SIZE(shelf.querySelector('.ways-ad-card') ? 9 : 10);
     };
     reserveAdSlot();
     const observer = new MutationObserver(reserveAdSlot);
