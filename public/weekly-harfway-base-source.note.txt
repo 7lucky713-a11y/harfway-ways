@@ -1,0 +1,1 @@
+Local snapshot conversion pending git-blob copy; runtime still uses the pinned source until the copy is completed.
