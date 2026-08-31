@@ -1,0 +1,57 @@
+---
+const slug = Astro.params.slug || '';
+const publications = {
+  'doujin-yawa': {
+    title: '同人ゲーム夜話',
+    tagline: '同人ゲームの面白さを、深く、ゆっくり、味わう夜話を。',
+    editor: '編集長：サンプル',
+    accent: '#8f3131',
+    bg: '#f5efe4',
+    ink: '#201d1a',
+    hero: '今月の発掘',
+    picks: ['500円以下で拾った3本','作者を追う：小さなサークルの過去作','体験版だけでも触ってほしい','夜に1時間で遊べる短編'],
+    shelves: ['500円以下','短編ADV','作者から辿る','体験版あり','昔の一本','今月の新着'],
+    memos: ['気になる：パッケージだけで惹かれた一本','積んでる：週末に遊びたい短編','発掘：知らなかった作者の過去作']
+  },
+  'writer-b': {
+    title: '二号媒体（量産テスト）',
+    tagline: '同じエンジンで、構成と世界観を変えられることを確認するためのテスト媒体。',
+    editor: '編集長：Writer B',
+    accent: '#315c8f',
+    bg: '#eef3f8',
+    ink: '#172534',
+    hero: '今週の観測',
+    picks: ['仕事帰りに遊ぶ一本','景色だけで選ぶゲーム','静かなゲームの記録','1時間で残る体験'],
+    shelves: ['夜向け','短時間','景色','音','日記','アーカイブ'],
+    memos: ['観測メモ：起動して10分で残った景色','プレイ中：まだ結論は出さない','あとで読む：作者インタビュー候補']
+  }
+};
+const publication = publications[slug];
+if (!publication) return Astro.redirect('/publications');
+---
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{publication.title} | HARF-WAY Publications</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:{publication.bg};color:{publication.ink};--accent:{publication.accent}}
+*{box-sizing:border-box} body{margin:0} a{color:inherit;text-decoration:none}.wrap{width:min(1120px,calc(100% - 32px));margin:auto}
+header{padding:22px 0;border-bottom:1px solid color-mix(in srgb,var(--accent) 24%, transparent)} .top{display:flex;justify-content:space-between;gap:18px;align-items:flex-end}.pub{font-size:12px;letter-spacing:.14em;color:#6b655d}.name{font-family:Georgia,"Times New Roman",serif;font-size:clamp(34px,5vw,62px);margin:6px 0}.editor{font-size:14px;color:#625d56}
+.hero{padding:56px 0 34px;display:grid;grid-template-columns:1.2fr .8fr;gap:26px}.hero h1{font-family:Georgia,"Times New Roman",serif;font-size:clamp(40px,6vw,74px);line-height:1.04;margin:0}.hero p{font-size:17px;line-height:1.9;color:#625d56}.feature{border:1px solid color-mix(in srgb,var(--accent) 30%, transparent);background:color-mix(in srgb,#fff 82%,var(--accent) 3%);padding:24px;border-radius:18px}.eyebrow{font-size:11px;letter-spacing:.14em;color:var(--accent);font-weight:800;text-transform:uppercase}.feature h2{font-size:30px;margin:14px 0 8px;font-family:Georgia,"Times New Roman",serif}.feature p{font-size:14px}
+section{padding:28px 0}.section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.section-head h2{margin:0;font-family:Georgia,"Times New Roman",serif;font-size:30px}.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.card{background:rgba(255,255,255,.58);border:1px solid rgba(0,0,0,.09);border-radius:14px;padding:18px;min-height:160px}.thumb{height:80px;border-radius:10px;background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 18%,white),color-mix(in srgb,var(--accent) 5%,white));margin-bottom:14px}.card strong{display:block;line-height:1.55}.card small{display:block;margin-top:10px;color:#746f68}
+.chips{display:flex;gap:10px;flex-wrap:wrap}.chip{border:1px solid color-mix(in srgb,var(--accent) 28%, transparent);background:rgba(255,255,255,.56);border-radius:999px;padding:10px 14px;font-size:14px}.memos{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.memo{padding:20px;background:color-mix(in srgb,#fff 82%,var(--accent) 2%);border-left:4px solid var(--accent);min-height:120px}.back{font-size:13px;color:#6e6861}.foot{margin-top:42px;padding:28px 0 44px;border-top:1px solid rgba(0,0,0,.1);font-size:13px;color:#706a63}
+@media(max-width:820px){.hero{grid-template-columns:1fr}.grid4{grid-template-columns:repeat(2,1fr)}.memos{grid-template-columns:1fr}} @media(max-width:520px){.grid4{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<header><div class="wrap"><div class="top"><div><div class="pub">HARF-WAY Publications / {slug}</div><div class="name">{publication.title}</div></div><div class="editor">{publication.editor}</div></div></div></header>
+<main class="wrap">
+<div class="hero"><div><div class="eyebrow">Independent editorial identity</div><h1>{publication.tagline}</h1><p>このページは共通エンジンから生成されています。媒体ごとにコンセプト、棚、色、更新単位を変えながら、裏側のシステムは共通化する想定です。</p></div><div class="feature"><div class="eyebrow">Featured</div><h2>{publication.hero}</h2><p>編集長の視点を最も強く見せる場所。記事一覧ではなく「何を選んだか」を先に見せます。</p></div></div>
+<section><div class="section-head"><h2>今月の4本</h2><span>選者の判断が主役</span></div><div class="grid4">{publication.picks.map((item,i)=><article class="card"><div class="thumb"></div><span class="eyebrow">PICK {String(i+1).padStart(2,'0')}</span><strong>{item}</strong><small>短い推薦文 / ゲーム情報 / 関連導線</small></article>)}</div></section>
+<section><div class="section-head"><h2>棚から探す</h2><span>媒体ごとに棚を変更</span></div><div class="chips">{publication.shelves.map(item=><span class="chip">{item}</span>)}</div></section>
+<section><div class="section-head"><h2>発掘メモ</h2><span>軽い更新単位</span></div><div class="memos">{publication.memos.map(item=><article class="memo"><div class="eyebrow">MEMO</div><strong>{item}</strong></article>)}</div></section>
+<div class="foot"><a class="back" href="/publications">← HARF-WAY Publications一覧へ</a><br/><br/>Powered by HARF-WAY / 共通CMS・Core DB・R2・Analytics・ADS接続予定。</div>
+</main>
+</body>
+</html>
