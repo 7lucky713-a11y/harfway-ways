@@ -13,9 +13,11 @@
   .weekly-server-save-pill.verified{border-color:#9fb000;background:#eaff38;color:#090a0b}
   .weekly-server-save-pill:before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
   .weekly-server-save-text{font-size:9px;line-height:1.5;color:#8e99a4}
-  .weekly-server-verify-btn{border:1px solid #eaff38;border-radius:9px;background:#11151a;color:#eaff38;padding:9px 12px;font-size:10px;font-weight:950;letter-spacing:.03em;cursor:pointer}
-  .weekly-server-verify-btn:hover{background:#eaff38;color:#090a0b}
-  .weekly-server-verify-btn:disabled{opacity:.45;cursor:wait}
+  .weekly-server-verify-btn,.weekly-cron-test-btn{border:1px solid #eaff38;border-radius:9px;background:#11151a;color:#eaff38;padding:9px 12px;font-size:10px;font-weight:950;letter-spacing:.03em;cursor:pointer}
+  .weekly-server-verify-btn:hover,.weekly-cron-test-btn:hover{background:#eaff38;color:#090a0b}
+  .weekly-server-verify-btn:disabled,.weekly-cron-test-btn:disabled{opacity:.45;cursor:wait}
+  .weekly-cron-test-btn{border-color:#69737d;color:#cbd3db}
+  .weekly-cron-test-btn.ready{border-color:#9fb000;background:#171d0d;color:#eaff38}
   `;
   document.head.appendChild(style);
 
@@ -43,6 +45,19 @@
     }
   }
 
+  const actionHost=document.querySelector('.weekly-server-actions');
+  let cronButton=document.getElementById('weeklyCronTestBtn');
+  if(!cronButton&&actionHost){
+    cronButton=document.createElement('button');
+    cronButton.type='button';
+    cronButton.className='weekly-cron-test-btn';
+    cronButton.id='weeklyCronTestBtn';
+    cronButton.textContent='CRON動作テスト';
+    const anchor=document.getElementById('weeklyServerVerifyBtn')||actionHost.querySelector('#weeklyServerDraftBtn');
+    if(anchor)anchor.insertAdjacentElement('afterend',cronButton);
+    else actionHost.prepend(cronButton);
+  }
+
   const ui=document.createElement('div');
   ui.className='weekly-server-save';
   ui.innerHTML='<span class="weekly-server-save-pill" id="weeklyServerSavePill">R2 DRAFT</span><span class="weekly-server-save-text" id="weeklyServerSaveText">サーバー保存を確認中…</span>';
@@ -57,6 +72,8 @@
   const pill=()=>document.getElementById('weeklyServerSavePill');
   const text=()=>document.getElementById('weeklyServerSaveText');
   const verifyBtn=()=>document.getElementById('weeklyServerVerifyBtn');
+  const cronBtn=()=>document.getElementById('weeklyCronTestBtn');
+  const mondayNote=()=>document.getElementById('weeklyServerDraftNote');
   const stamp=()=>new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date());
 
   function week(){
@@ -159,6 +176,38 @@
     }
   }
 
+  async function runCronTest(){
+    const button=cronBtn();
+    if(!button)return;
+    const before=button.textContent;
+    button.disabled=true;
+    button.classList.remove('ready');
+    button.textContent='CRON TEST…';
+    const note=mondayNote();
+    if(note)note.textContent='Cron Preview: ブラウザ状態を使わず、サーバーだけで生成 → 隔離R2へ保存 → 読み戻し確認中…';
+    try{
+      const response=await fetch('/api/weekly-harfway-cron',{
+        method:'POST',
+        headers:{'content-type':'application/json'},
+        body:'{}',
+        cache:'no-store'
+      });
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok||!data.ok)throw new Error(data.error||`HTTP ${response.status}`);
+      if(!data.cronReady||!data.readbackVerified||data.browserStateUsed!==false)throw new Error('cron_contract_not_verified');
+      button.classList.add('ready');
+      button.textContent='CRON READY ✓';
+      const board=Number(data.boardMeta?.count||0);
+      const scraps=Number(data.boardMeta?.scrapsCount||0);
+      if(note)note.textContent=`CRON SERVER-ONLY OK / 週 ${data.week||''} / BOARD ${board} / 切れ端 ${scraps} / TEST R2 READBACK OK。編集用R2は上書きしていません。`;
+    }catch(err){
+      button.textContent=before;
+      if(note)note.textContent=`CRON動作テスト失敗: ${String(err?.message||err)}`;
+    }finally{
+      button.disabled=false;
+    }
+  }
+
   async function boot(){
     if(ready||!payload)return;
     ready=true;
@@ -204,6 +253,7 @@
   }
 
   verifyBtn()?.addEventListener('click',()=>verifyReadback());
+  cronBtn()?.addEventListener('click',runCronTest);
 
   let checks=0;
   const bootTimer=setInterval(()=>{
