@@ -78,41 +78,26 @@ function classifyPost(post) {
   return 'ARTICLE';
 }
 
-function normalizeWp(post, kind = 'post') {
+function normalizeWp(post) {
   const image = post?._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
-  const title = stripHtml(post?.title?.rendered || '無題');
-  const summary = stripHtml(post?.excerpt?.rendered || '').slice(0, 220);
-  const type = kind === 'page' ? 'SCRAPS' : classifyPost(post);
   return {
-    id: kind === 'page' ? `wp-page-${post.id}` : `wp-${post.id}`,
-    source: kind === 'page' ? 'HARF-WAY / 固定ページ' : 'HARF-WAY',
-    type,
-    title,
-    summary,
+    id: `wp-${post.id}`,
+    source: 'HARF-WAY',
+    type: classifyPost(post),
+    title: stripHtml(post?.title?.rendered || '無題'),
+    summary: stripHtml(post?.excerpt?.rendered || '').slice(0, 220),
     url: String(post?.link || ''),
     image: String(image || ''),
-    date: String(kind === 'page'
-      ? (post?.modified_gmt || post?.modified || post?.date_gmt || post?.date || '')
-      : (post?.date_gmt || post?.date || '')),
+    date: String(post?.date_gmt || post?.date || ''),
     eligible: true,
     weeklyVerified: true,
-    meta: { wpId: post.id, wpKind: kind }
+    meta: { wpId: post.id, wpKind: 'post' }
   };
 }
 
 function withinRange(value, start, end) {
   const time = Date.parse(value || '');
   return Number.isFinite(time) && time >= start.getTime() && time < end.getTime();
-}
-
-function isScrapPage(page) {
-  const link = String(page?.link || '');
-  const title = stripHtml(page?.title?.rendered || '');
-  try {
-    const path = new URL(link).pathname.replace(/\/+$/, '');
-    if (/^\/weekly\/scraps\/.+/i.test(path)) return true;
-  } catch {}
-  return /ゲームの切れ端|切れ端/.test(title) && /\/weekly\/scraps\//i.test(link);
 }
 
 async function loadWordPressPosts(start, end) {
@@ -128,24 +113,63 @@ async function loadWordPressPosts(start, end) {
   const data = await fetchJson(`https://harf-way.com/wp-json/wp/v2/posts?${params}`);
   if (!Array.isArray(data)) return [];
   return data
-    .map(post => normalizeWp(post, 'post'))
+    .map(normalizeWp)
     .filter(item => item.type === 'SCRAPS'
       ? withinRange(item.date, start, graceEnd)
       : withinRange(item.date, start, end));
 }
 
-async function loadScrapPages(start, end) {
+function targetScrapWeek(start, end) {
+  const sunday = new Date(end.getTime() - 1);
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(sunday);
+  const get = type => parts.find(part => part.type === type)?.value || '';
+  const year = Number(get('year'));
+  const month = Number(get('month'));
+  const day = Number(get('day'));
+  const week = Math.ceil(day / 7);
+  const monthSlug = [
+    'january','february','march','april','may','june',
+    'july','august','september','october','november','december'
+  ][month - 1] || '';
+  return {
+    year,
+    month,
+    week,
+    monthSlug,
+    title: `ゲームの切れ端${year}年${month}月${week}週目`,
+    slugTail: `${year}_${monthSlug}${week}week`
+  };
+}
+
+function isRepresentedScrap(post, target) {
+  const title = stripHtml(post?.title?.rendered || '').replace(/\s+/g, '');
+  const slug = String(post?.slug || '').toLowerCase();
+  const link = String(post?.link || '');
+  if (!/\/weekly\/scraps\//i.test(link)) return false;
+  if (title === target.title.replace(/\s+/g, '')) return true;
+  return target.slugTail && slug.endsWith(target.slugTail.toLowerCase());
+}
+
+async function loadRepresentedScraps(start, end) {
+  const target = targetScrapWeek(start, end);
+  const after = new Date(start.getTime() - 14 * DAY_MS);
+  const before = new Date(end.getTime() + 3 * DAY_MS);
   const params = new URLSearchParams({
-    modified_after: start.toISOString(),
-    modified_before: end.toISOString(),
+    after: after.toISOString(),
+    before: before.toISOString(),
     per_page: '100',
-    orderby: 'modified',
+    orderby: 'date',
     order: 'desc',
     _embed: '1'
   });
-  const data = await fetchJson(`https://harf-way.com/wp-json/wp/v2/pages?${params}`);
+  const data = await fetchJson(`https://harf-way.com/wp-json/wp/v2/posts?${params}`);
   return Array.isArray(data)
-    ? data.filter(isScrapPage).map(page => normalizeWp(page, 'page'))
+    ? data.filter(post => isRepresentedScrap(post, target)).map(normalizeWp)
     : [];
 }
 
@@ -201,7 +225,7 @@ async function loadWays() {
 function dedupe(items) {
   const seen = new Set();
   return items.filter(item => {
-    const key = `${item.type}|${item.url || item.title}`.toLowerCase();
+    const key = item.id || `${item.type}|${item.url || item.title}`.toLowerCase();
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -214,13 +238,13 @@ export default async function handler(req, res) {
   const { start, end } = mondayRange();
   const warnings = [];
   let wordpressPosts = [];
-  let scrapPages = [];
+  let representedScraps = [];
   let yorimichi = [];
   let ways = { count: 0, items: [] };
 
   const settled = await Promise.allSettled([
     loadWordPressPosts(start, end),
-    loadScrapPages(start, end),
+    loadRepresentedScraps(start, end),
     loadYorimichi(start, end),
     loadWays()
   ]);
@@ -228,8 +252,8 @@ export default async function handler(req, res) {
   if (settled[0].status === 'fulfilled') wordpressPosts = settled[0].value;
   else warnings.push(`WordPress投稿取得失敗: ${settled[0].reason?.message || 'unknown'}`);
 
-  if (settled[1].status === 'fulfilled') scrapPages = settled[1].value;
-  else warnings.push(`切れ端固定ページ取得失敗: ${settled[1].reason?.message || 'unknown'}`);
+  if (settled[1].status === 'fulfilled') representedScraps = settled[1].value;
+  else warnings.push(`切れ端represented week取得失敗: ${settled[1].reason?.message || 'unknown'}`);
 
   if (settled[2].status === 'fulfilled') yorimichi = settled[2].value;
   else warnings.push(`ヨリミチ週刊取得失敗: ${settled[2].reason?.message || 'unknown'}`);
@@ -237,7 +261,7 @@ export default async function handler(req, res) {
   if (settled[3].status === 'fulfilled') ways = settled[3].value;
   else warnings.push(`WAYS取得失敗: ${settled[3].reason?.message || 'unknown'}`);
 
-  const weeklyItems = dedupe([...wordpressPosts, ...scrapPages, ...yorimichi]).sort((a, b) => Date.parse(b.date || 0) - Date.parse(a.date || 0));
+  const weeklyItems = dedupe([...wordpressPosts, ...representedScraps, ...yorimichi]).sort((a, b) => Date.parse(b.date || 0) - Date.parse(a.date || 0));
   const items = [...weeklyItems, ...ways.items];
   const typeCounts = weeklyItems.reduce((acc, item) => {
     acc[item.type] = (acc[item.type] || 0) + 1;
@@ -253,12 +277,16 @@ export default async function handler(req, res) {
       label: `${fmt(start)} → ${fmt(new Date(end.getTime() - 1))}`
     },
     sourcePolicy: {
+      scrapsRestType: 'wp/v2/posts',
+      permalinkDoesNotDefineRestType: true,
       mondayScrapsGrace: true,
-      mondayScrapsGraceEnd: new Date(end.getTime() + DAY_MS).toISOString()
+      mondayScrapsGraceEnd: new Date(end.getTime() + DAY_MS).toISOString(),
+      representedWeekMatch: true
     },
     sources: {
       wordpress: { ok: settled[0].status === 'fulfilled', count: wordpressPosts.length, scrapsCount: wordpressPosts.filter(item => item.type === 'SCRAPS').length },
-      scrapPages: { ok: settled[1].status === 'fulfilled', count: scrapPages.length },
+      representedScraps: { ok: settled[1].status === 'fulfilled', count: representedScraps.length },
+      scrapPages: { ok: settled[1].status === 'fulfilled', count: representedScraps.length, deprecatedAlias: true },
       yorimichi: { ok: settled[2].status === 'fulfilled', count: yorimichi.length },
       ways: {
         ok: settled[3].status === 'fulfilled',
