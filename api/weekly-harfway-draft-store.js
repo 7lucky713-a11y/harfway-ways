@@ -1,6 +1,10 @@
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { authorizeArchiveRequest } from './archive-core.js';
 
-const PREFIX = 'preview/weekly-harfway-drafts/';
+const PREVIEW_WORKING_PREFIX = 'preview/weekly-harfway-drafts/';
+const PREVIEW_BASELINE_PREFIX = 'preview/weekly-harfway-generated/';
+const PRODUCTION_WORKING_PREFIX = 'production/weekly-harfway-working/';
+const PRODUCTION_BASELINE_PREFIX = 'production/weekly-harfway-generated/';
 const MAX_BYTES = 300 * 1024;
 
 function json(res, status, body) {
@@ -15,12 +19,27 @@ function parseBody(req) {
   try { return JSON.parse(String(req.body)); } catch { return {}; }
 }
 
-function ensurePreview() {
-  if (process.env.VERCEL_ENV !== 'preview') {
-    const error = new Error('preview_only');
-    error.status = 403;
-    throw error;
+function environmentConfig() {
+  const environment = String(process.env.VERCEL_ENV || 'development');
+  if (environment === 'preview') {
+    return {
+      environment,
+      workingPrefix: PREVIEW_WORKING_PREFIX,
+      baselinePrefix: PREVIEW_BASELINE_PREFIX,
+      authRequired: false
+    };
   }
+  if (environment === 'production') {
+    return {
+      environment,
+      workingPrefix: PRODUCTION_WORKING_PREFIX,
+      baselinePrefix: PRODUCTION_BASELINE_PREFIX,
+      authRequired: true
+    };
+  }
+  const error = new Error('weekly_storage_environment_not_supported');
+  error.status = 403;
+  throw error;
 }
 
 function ensureSameOrigin(req) {
@@ -67,8 +86,8 @@ function normalizeWeek(value) {
   return Number.isFinite(date.getTime()) ? key : '';
 }
 
-function objectKey(week) {
-  return `${PREFIX}${week}.json`;
+function objectKey(prefix, week) {
+  return `${prefix}${week}.json`;
 }
 
 function isMissing(error) {
@@ -77,9 +96,9 @@ function isMissing(error) {
   return name === 'NoSuchKey' || name === 'NotFound' || status === 404;
 }
 
-async function readDraft(week) {
+async function readRecord(prefix, week) {
   try {
-    const out = await client().send(new GetObjectCommand({ Bucket: bucket(), Key: objectKey(week) }));
+    const out = await client().send(new GetObjectCommand({ Bucket: bucket(), Key: objectKey(prefix, week) }));
     if (!out.Body) return null;
     const raw = await out.Body.transformToString();
     return JSON.parse(raw);
@@ -89,11 +108,12 @@ async function readDraft(week) {
   }
 }
 
-async function writeDraft(week, draft) {
+async function writeDraft(config, week, draft) {
   const savedAt = new Date().toISOString();
   const record = {
     schema: 'weekly-harfway-draft-v1',
-    environment: 'preview',
+    environment: config.environment,
+    scope: 'working-draft',
     week,
     savedAt,
     draft
@@ -106,32 +126,49 @@ async function writeDraft(week, draft) {
   }
   await client().send(new PutObjectCommand({
     Bucket: bucket(),
-    Key: objectKey(week),
+    Key: objectKey(config.workingPrefix, week),
     Body: body,
     ContentType: 'application/json; charset=utf-8',
     CacheControl: 'no-store',
-    Metadata: { scope: 'weekly-harfway-preview', week }
+    Metadata: { scope: 'weekly-harfway-working', environment: config.environment, week }
   }));
   return record;
+}
+
+async function ensureProductionAdmin(req, config) {
+  if (!config.authRequired) return;
+  const auth = await authorizeArchiveRequest(req);
+  if (!auth.ok) {
+    const error = new Error(auth.error || 'unauthorized');
+    error.status = auth.status || 401;
+    throw error;
+  }
 }
 
 export default async function handler(req, res) {
   try {
     if (req.method === 'OPTIONS') return res.status(204).end();
-    ensurePreview();
+    const config = environmentConfig();
+    await ensureProductionAdmin(req, config);
 
     const week = normalizeWeek(req.query?.week || parseBody(req)?.week);
     if (!week) return json(res, 400, { ok: false, error: 'valid_week_required' });
 
     if (req.method === 'GET') {
-      const record = await readDraft(week);
+      const working = await readRecord(config.workingPrefix, week);
+      const baseline = working ? null : await readRecord(config.baselinePrefix, week);
+      const record = working || baseline;
+      const source = working ? 'working-draft' : (baseline ? 'generated-baseline' : 'none');
       return json(res, 200, {
         ok: true,
-        environment: 'preview',
-        storage: 'r2-preview-prefix',
-        prefix: PREFIX,
+        environment: config.environment,
+        storage: 'r2-weekly',
+        workingPrefix: config.workingPrefix,
+        baselinePrefix: config.baselinePrefix,
         week,
         found: Boolean(record),
+        source,
+        fallbackUsed: Boolean(!working && baseline),
         record
       });
     }
@@ -143,12 +180,12 @@ export default async function handler(req, res) {
       if (!draft || typeof draft !== 'object' || Array.isArray(draft)) {
         return json(res, 400, { ok: false, error: 'draft_required' });
       }
-      const record = await writeDraft(week, draft);
+      const record = await writeDraft(config, week, draft);
       return json(res, 200, {
         ok: true,
-        environment: 'preview',
-        storage: 'r2-preview-prefix',
-        prefix: PREFIX,
+        environment: config.environment,
+        storage: 'r2-working-draft',
+        prefix: config.workingPrefix,
         week,
         savedAt: record.savedAt
       });
