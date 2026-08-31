@@ -7,24 +7,52 @@
 
   const style=document.createElement('style');
   style.textContent=`
-  .weekly-server-save{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:8px 0 0}
+  .weekly-server-save{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:8px 0 0;padding:8px 10px;border:1px solid #303943;border-radius:9px;background:#0d1014}
   .weekly-server-save-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 7px;border:1px solid #4b5660;border-radius:999px;font:900 8px/1 ui-monospace,monospace;letter-spacing:.07em;color:#aeb7c0}
   .weekly-server-save-pill.on{border-color:#6d781f;background:#171d0d;color:#eaff38}
   .weekly-server-save-pill.verified{border-color:#9fb000;background:#eaff38;color:#090a0b}
   .weekly-server-save-pill:before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
   .weekly-server-save-text{font-size:9px;line-height:1.5;color:#8e99a4}
-  .weekly-server-verify-btn{border:1px solid #4b5660;border-radius:8px;background:#11151a;color:#d9e0e6;padding:6px 9px;font-size:9px;font-weight:900;cursor:pointer}
-  .weekly-server-verify-btn:hover{border-color:#eaff38;color:#eaff38}
+  .weekly-server-verify-btn{border:1px solid #eaff38;border-radius:9px;background:#11151a;color:#eaff38;padding:9px 12px;font-size:10px;font-weight:950;letter-spacing:.03em;cursor:pointer}
+  .weekly-server-verify-btn:hover{background:#eaff38;color:#090a0b}
   .weekly-server-verify-btn:disabled{opacity:.45;cursor:wait}
   `;
   document.head.appendChild(style);
 
-  const host=document.querySelector('.weekly-server-actions')||document.querySelector('.weekly-auto-bar');
+  const sourcePanel=[...document.querySelectorAll('.panel')].find(p=>p.querySelector('.paneltitle')?.textContent?.includes('SOURCE LIBRARY'));
+  const actions=document.querySelector('.weekly-server-actions');
+
+  let verifyButton=document.getElementById('weeklyServerVerifyBtn');
+  if(!verifyButton){
+    verifyButton=document.createElement('button');
+    verifyButton.type='button';
+    verifyButton.className='weekly-server-verify-btn';
+    verifyButton.id='weeklyServerVerifyBtn';
+    verifyButton.textContent='R2保存確認';
+    if(actions){
+      const mondayButton=actions.querySelector('#weeklyServerDraftBtn');
+      if(mondayButton)mondayButton.insertAdjacentElement('afterend',verifyButton);
+      else actions.prepend(verifyButton);
+    }else if(sourcePanel){
+      const fallback=document.createElement('div');
+      fallback.className='weekly-server-actions';
+      fallback.appendChild(verifyButton);
+      const tabs=sourcePanel.querySelector('.tabs');
+      if(tabs)tabs.insertAdjacentElement('afterend',fallback);
+      else sourcePanel.prepend(fallback);
+    }
+  }
+
   const ui=document.createElement('div');
   ui.className='weekly-server-save';
-  ui.innerHTML='<span class="weekly-server-save-pill" id="weeklyServerSavePill">R2 DRAFT</span><span class="weekly-server-save-text" id="weeklyServerSaveText">サーバー保存を確認中…</span><button type="button" class="weekly-server-verify-btn" id="weeklyServerVerifyBtn">R2保存確認</button>';
-  if(host)host.insertAdjacentElement('afterend',ui);
-  else document.querySelector('.library')?.prepend(ui);
+  ui.innerHTML='<span class="weekly-server-save-pill" id="weeklyServerSavePill">R2 DRAFT</span><span class="weekly-server-save-text" id="weeklyServerSaveText">サーバー保存を確認中…</span>';
+  const statusHost=document.querySelector('.weekly-server-actions');
+  if(statusHost)statusHost.insertAdjacentElement('afterend',ui);
+  else if(sourcePanel){
+    const tabs=sourcePanel.querySelector('.tabs');
+    if(tabs)tabs.insertAdjacentElement('afterend',ui);
+    else sourcePanel.prepend(ui);
+  }
 
   const pill=()=>document.getElementById('weeklyServerSavePill');
   const text=()=>document.getElementById('weeklyServerSaveText');
@@ -147,8 +175,6 @@
       if(server?.found&&serverDraft&&serverTime>localTime){
         applyDraft(serverDraft);
         lastLocalSavedAt=localDraft()?.savedAt||serverDraft?.savedAt||'';
-        const p=pill();if(p)p.classList.add('on');
-        const t=text();if(t)t.textContent=`SERVER RESTORE / ${w} の新しい下書きを復元しました`;
         await verifyReadback();
       }else if(local){
         lastLocalSavedAt=local.savedAt||'';
