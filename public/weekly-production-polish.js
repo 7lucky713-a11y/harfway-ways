@@ -14,6 +14,20 @@
   .hw-game-section-ways{background:#eaff38;color:#111}
   .hw-game-section-other{background:#e9e9e9;color:#111}
   .hw-game-video{width:100%;display:block;margin:15px 0 0;border:1px solid #111;background:#000}
+  @media(min-width:701px){
+    .hw-kicker{font-size:13px}
+    .hw-intro{font-size:18px;line-height:1.9}
+    .hw-date{font-size:16px}.hw-date small{font-size:12px}
+    .hw-pick{font-size:12px}.hw-game-kicker{font-size:11px}
+    .hw-game-title{font-size:35px}
+    .hw-game-text{font-size:18px;line-height:1.95}
+    .hw-link,.hw-xfallback{font-size:15px}
+    .hw-dbnote{font-size:16px;line-height:1.9}
+    .hw-board-stat span{font-size:10px}
+    .hw-update-label{font-size:11px}.hw-update-title{font-size:27px}
+    .hw-update-text{font-size:15px;line-height:1.9}.hw-update a{font-size:13px}
+    .hw-board-foot{font-size:13px;line-height:1.8}.hw-tags span{font-size:10px}
+  }
   @media(max-width:700px){.hw-log,.hw-board,.hw-memo{padding:26px 20px}.hw-updates{grid-template-columns:1fr}.hw-update.feature{grid-row:auto;min-height:260px}.hw-game-title{font-size:26px}.hw-game{padding:18px;box-shadow:4px 4px 0 #111}.hw-game-section-label{font-size:17px}}
   `;
 
