@@ -144,8 +144,26 @@ function dedupe(items) {
 }
 
 function boardPriority(type) {
-  const order = { YORIMICHI: 0, PLAYLIST: 1, SCRAPS: 2, ARTICLE: 3, NEWS: 4, DIARY: 9 };
+  const order = { YORIMICHI: 0, PLAYLIST: 1, ARTICLE: 2, NEWS: 3, SCRAPS: 4, DIARY: 9 };
   return order[type] ?? 6;
+}
+
+function buildBoard(verified) {
+  const eligible = verified.filter(item => item.type !== 'DIARY');
+  const scraps = eligible
+    .filter(item => item.type === 'SCRAPS')
+    .sort((a, b) => Date.parse(b.date || 0) - Date.parse(a.date || 0));
+  const scrapIds = new Set(scraps.map(item => item.id));
+  const others = eligible
+    .filter(item => !scrapIds.has(item.id))
+    .sort((a, b) => boardPriority(a.type) - boardPriority(b.type) || Date.parse(b.date || 0) - Date.parse(a.date || 0));
+
+  // 対象期間内の切れ端は必ず全件採用し、残りを通常の優先順で最低5件まで埋める。
+  const targetCount = Math.max(5, scraps.length);
+  return {
+    items: [...scraps, ...others].slice(0, targetCount),
+    scraps
+  };
 }
 
 function ensurePreviewMutation(req) {
@@ -230,10 +248,9 @@ export default async function handler(req, res) {
     else warnings.push(`ヨリミチ週刊取得失敗: ${settled[1].reason?.message || 'unknown'}`);
 
     const verified = dedupe([...wordpress, ...yorimichi]);
-    const board = verified
-      .filter(item => item.type !== 'DIARY')
-      .sort((a, b) => boardPriority(a.type) - boardPriority(b.type) || Date.parse(b.date || 0) - Date.parse(a.date || 0))
-      .slice(0, 5);
+    const boardSelection = buildBoard(verified);
+    const board = boardSelection.items;
+    const scraps = boardSelection.scraps;
 
     const generatedAt = new Date().toISOString();
     const week = weekKey(start);
@@ -248,7 +265,7 @@ export default async function handler(req, res) {
       autosave: true,
       serverGenerated: true,
       verifiedIds: verified.map(item => item.id),
-      note: 'GAME LOGのX / WAYSは別content instanceとして扱い、日時を安全に判定できないため自動選択しません。'
+      note: 'WEEKLY BOARDは対象期間内の切れ端を必ず全件含めます。GAME LOGのX / WAYSは別content instanceとして扱い、日時を安全に判定できないため自動選択しません。'
     };
 
     let persisted = false;
@@ -275,8 +292,13 @@ export default async function handler(req, res) {
         label: `${fmt(start)} → ${fmt(new Date(end.getTime() - 1))}`
       },
       draft,
+      boardMeta: {
+        count: board.length,
+        scrapsCount: scraps.length,
+        scrapsIds: scraps.map(item => item.id)
+      },
       sources: {
-        wordpress: { ok: settled[0].status === 'fulfilled', count: wordpress.length },
+        wordpress: { ok: settled[0].status === 'fulfilled', count: wordpress.length, scrapsCount: wordpress.filter(item => item.type === 'SCRAPS').length },
         yorimichi: { ok: settled[1].status === 'fulfilled', count: yorimichi.length }
       },
       warnings
