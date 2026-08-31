@@ -10,20 +10,25 @@
   .weekly-server-save{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:8px 0 0}
   .weekly-server-save-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 7px;border:1px solid #4b5660;border-radius:999px;font:900 8px/1 ui-monospace,monospace;letter-spacing:.07em;color:#aeb7c0}
   .weekly-server-save-pill.on{border-color:#6d781f;background:#171d0d;color:#eaff38}
+  .weekly-server-save-pill.verified{border-color:#9fb000;background:#eaff38;color:#090a0b}
   .weekly-server-save-pill:before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
   .weekly-server-save-text{font-size:9px;line-height:1.5;color:#8e99a4}
+  .weekly-server-verify-btn{border:1px solid #4b5660;border-radius:8px;background:#11151a;color:#d9e0e6;padding:6px 9px;font-size:9px;font-weight:900;cursor:pointer}
+  .weekly-server-verify-btn:hover{border-color:#eaff38;color:#eaff38}
+  .weekly-server-verify-btn:disabled{opacity:.45;cursor:wait}
   `;
   document.head.appendChild(style);
 
   const host=document.querySelector('.weekly-server-actions')||document.querySelector('.weekly-auto-bar');
   const ui=document.createElement('div');
   ui.className='weekly-server-save';
-  ui.innerHTML='<span class="weekly-server-save-pill" id="weeklyServerSavePill">R2 DRAFT</span><span class="weekly-server-save-text" id="weeklyServerSaveText">サーバー保存を確認中…</span>';
+  ui.innerHTML='<span class="weekly-server-save-pill" id="weeklyServerSavePill">R2 DRAFT</span><span class="weekly-server-save-text" id="weeklyServerSaveText">サーバー保存を確認中…</span><button type="button" class="weekly-server-verify-btn" id="weeklyServerVerifyBtn">R2保存確認</button>';
   if(host)host.insertAdjacentElement('afterend',ui);
   else document.querySelector('.library')?.prepend(ui);
 
   const pill=()=>document.getElementById('weeklyServerSavePill');
   const text=()=>document.getElementById('weeklyServerSaveText');
+  const verifyBtn=()=>document.getElementById('weeklyServerVerifyBtn');
   const stamp=()=>new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date());
 
   function week(){
@@ -69,6 +74,42 @@
     return data;
   }
 
+  async function verifyReadback(expectedSavedAt=''){
+    const w=week();
+    const button=verifyBtn();
+    if(button)button.disabled=true;
+    try{
+      const server=await getServer();
+      const record=server?.record||null;
+      const ok=Boolean(
+        server?.found&&
+        record&&
+        record.environment==='preview'&&
+        record.week===w&&
+        record.draft&&
+        typeof record.draft==='object'
+      );
+      if(!ok)throw new Error('r2_readback_mismatch');
+      if(expectedSavedAt&&record.savedAt&&timeOf(record.savedAt)<timeOf(expectedSavedAt)){
+        throw new Error('r2_readback_stale');
+      }
+      lastServerSavedAt=record.savedAt||lastServerSavedAt;
+      const p=pill();
+      if(p){p.classList.add('on','verified');p.textContent='R2 VERIFIED'}
+      const gameCount=Array.isArray(record.draft?.gameIds)?record.draft.gameIds.length:0;
+      const boardCount=Array.isArray(record.draft?.updateIds)?record.draft.updateIds.length:0;
+      const t=text();
+      if(t)t.textContent=`READBACK OK ${stamp()} / 週 ${w} / GAME ${gameCount} / BOARD ${boardCount}`;
+      return true;
+    }catch(err){
+      const p=pill();if(p){p.classList.remove('verified');p.textContent='R2 VERIFY'}
+      const t=text();if(t)t.textContent=`R2 READBACK失敗: ${String(err?.message||err)}`;
+      return false;
+    }finally{
+      if(button)button.disabled=false;
+    }
+  }
+
   async function putServer(draft){
     const w=week();
     if(!w||!draft)return false;
@@ -82,9 +123,9 @@
       const data=await response.json().catch(()=>({}));
       if(!response.ok||!data.ok)throw new Error(data.error||`HTTP ${response.status}`);
       lastServerSavedAt=data.savedAt||new Date().toISOString();
-      const p=pill();if(p)p.classList.add('on');
-      const t=text();if(t)t.textContent=`SERVER SAVED ${stamp()} / 週 ${w}`;
-      return true;
+      const p=pill();if(p){p.classList.add('on');p.classList.remove('verified');p.textContent='R2 SAVED'}
+      const t=text();if(t)t.textContent=`SERVER SAVED ${stamp()} / 週 ${w} / READBACK確認中…`;
+      return await verifyReadback(lastServerSavedAt);
     }finally{
       syncing=false;
     }
@@ -108,14 +149,16 @@
         lastLocalSavedAt=localDraft()?.savedAt||serverDraft?.savedAt||'';
         const p=pill();if(p)p.classList.add('on');
         const t=text();if(t)t.textContent=`SERVER RESTORE / ${w} の新しい下書きを復元しました`;
+        await verifyReadback();
       }else if(local){
         lastLocalSavedAt=local.savedAt||'';
         if(!server?.found||localTime>serverTime){
           await putServer(local);
         }else{
-          const p=pill();if(p)p.classList.add('on');
-          const t=text();if(t)t.textContent=`SERVER SYNC済み / 週 ${w}`;
+          await verifyReadback();
         }
+      }else if(server?.found&&serverDraft){
+        await verifyReadback();
       }else{
         const t=text();if(t)t.textContent=`週 ${w} / ローカル下書き作成待ち`;
       }
@@ -133,6 +176,8 @@
     clearTimeout(syncTimer);
     syncTimer=setTimeout(()=>putServer(local).catch(err=>{const t=text();if(t)t.textContent=`SERVER SAVE失敗: ${String(err?.message||err)}`}),700);
   }
+
+  verifyBtn()?.addEventListener('click',()=>verifyReadback());
 
   let checks=0;
   const bootTimer=setInterval(()=>{
