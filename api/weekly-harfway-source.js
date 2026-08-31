@@ -116,16 +116,22 @@ function isScrapPage(page) {
 }
 
 async function loadWordPressPosts(start, end) {
+  const graceEnd = new Date(end.getTime() + DAY_MS);
   const params = new URLSearchParams({
     after: start.toISOString(),
-    before: end.toISOString(),
+    before: graceEnd.toISOString(),
     per_page: '100',
     orderby: 'date',
     order: 'desc',
     _embed: '1'
   });
   const data = await fetchJson(`https://harf-way.com/wp-json/wp/v2/posts?${params}`);
-  return Array.isArray(data) ? data.map(post => normalizeWp(post, 'post')) : [];
+  if (!Array.isArray(data)) return [];
+  return data
+    .map(post => normalizeWp(post, 'post'))
+    .filter(item => item.type === 'SCRAPS'
+      ? withinRange(item.date, start, graceEnd)
+      : withinRange(item.date, start, end));
 }
 
 async function loadScrapPages(start, end) {
@@ -246,8 +252,12 @@ export default async function handler(req, res) {
       end: end.toISOString(),
       label: `${fmt(start)} → ${fmt(new Date(end.getTime() - 1))}`
     },
+    sourcePolicy: {
+      mondayScrapsGrace: true,
+      mondayScrapsGraceEnd: new Date(end.getTime() + DAY_MS).toISOString()
+    },
     sources: {
-      wordpress: { ok: settled[0].status === 'fulfilled', count: wordpressPosts.length },
+      wordpress: { ok: settled[0].status === 'fulfilled', count: wordpressPosts.length, scrapsCount: wordpressPosts.filter(item => item.type === 'SCRAPS').length },
       scrapPages: { ok: settled[1].status === 'fulfilled', count: scrapPages.length },
       yorimichi: { ok: settled[2].status === 'fulfilled', count: yorimichi.length },
       ways: {
