@@ -6,12 +6,12 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <meta name="robots" content="noindex,nofollow" />
-<title>WEEKLY HARF-WAY / SERVER MONDAY + WAYS VIDEO</title>
+<title>WEEKLY HARF-WAY / SERVER MONDAY + R2 DRAFT</title>
 <style>
 html,body{margin:0;min-height:100%;background:#0a0b0d;color:#f4f5f2;font-family:Inter,system-ui,-apple-system,"Noto Sans JP",sans-serif}.boot{min-height:100vh;display:grid;place-items:center}.box{width:min(560px,calc(100vw - 32px));border:1px solid #303943;border-radius:16px;background:#12151a;padding:24px}.k{font:900 11px/1.2 ui-monospace,monospace;letter-spacing:.16em;color:#eaff38}.t{font-size:28px;font-weight:950;margin:8px 0}.s{color:#9ba5af;font-size:13px;line-height:1.7}.err{color:#ffb2b2;white-space:pre-wrap}</style>
 </head>
 <body>
-<div class="boot"><div class="box"><div class="k">HARF-WAY / PREVIEW UPDATE</div><div class="t">WEEKLY 編集室を読み込み中…</div><div class="s" id="status">X独立素材・WAYS動画出力・自動保存・月曜サーバー生成を組み込んでいます。</div></div></div>
+<div class="boot"><div class="box"><div class="k">HARF-WAY / PREVIEW UPDATE</div><div class="t">WEEKLY 編集室を読み込み中…</div><div class="s" id="status">X独立素材・WAYS動画出力・自動保存・月曜生成・R2下書き保存を組み込んでいます。</div></div></div>
 <script>
 (async()=>{
   const status=document.getElementById('status');
@@ -21,23 +21,27 @@ html,body{margin:0;min-height:100%;background:#0a0b0d;color:#f4f5f2;font-family:
     const autosaveUrl='https://raw.githubusercontent.com/7lucky713-a11y/harfway-ways/ec8b2bab3618c17131f2f439de5c5f6cec878d76/public/weekly-autosave.js';
     const waysVideoUrl='https://raw.githubusercontent.com/7lucky713-a11y/harfway-ways/b0443ecabff94ba6a4cb72cc6a5c9ceb79eaecc6/public/weekly-ways-video-output.js';
     const serverDraftUrl='https://raw.githubusercontent.com/7lucky713-a11y/harfway-ways/557f27527b8eaedee7bc3d091b2fd7b7314abdae/public/weekly-server-draft.js';
-    const [sourceRes,helperRes,autosaveRes,waysVideoRes,serverDraftRes]=await Promise.all([
+    const serverPersistUrl='https://raw.githubusercontent.com/7lucky713-a11y/harfway-ways/c6d2271235060d6fe986f98ac36465b0295b76d0/public/weekly-server-persist.js';
+    const [sourceRes,helperRes,autosaveRes,waysVideoRes,serverDraftRes,serverPersistRes]=await Promise.all([
       fetch(sourceUrl,{cache:'no-store'}),
       fetch(helperUrl,{cache:'no-store'}),
       fetch(autosaveUrl,{cache:'no-store'}),
       fetch(waysVideoUrl,{cache:'no-store'}),
-      fetch(serverDraftUrl,{cache:'no-store'})
+      fetch(serverDraftUrl,{cache:'no-store'}),
+      fetch(serverPersistUrl,{cache:'no-store'})
     ]);
     if(!sourceRes.ok)throw new Error('source_'+sourceRes.status);
     if(!helperRes.ok)throw new Error('x_helper_'+helperRes.status);
     if(!autosaveRes.ok)throw new Error('autosave_helper_'+autosaveRes.status);
     if(!waysVideoRes.ok)throw new Error('ways_video_helper_'+waysVideoRes.status);
     if(!serverDraftRes.ok)throw new Error('server_draft_helper_'+serverDraftRes.status);
+    if(!serverPersistRes.ok)throw new Error('server_persist_helper_'+serverPersistRes.status);
     let html=await sourceRes.text();
     const helper=await helperRes.text();
     const autosave=await autosaveRes.text();
     const waysVideo=await waysVideoRes.text();
     const serverDraft=await serverDraftRes.text();
+    const serverPersist=await serverPersistRes.text();
     html=html.replace(/^---\s*---\s*/,'')
       .replace('<style is:global>','<style>')
       .replace('<script is:inline>','<script>')
@@ -60,7 +64,7 @@ html,body{margin:0;min-height:100%;background:#0a0b0d;color:#f4f5f2;font-family:
     const scriptOpen='<scr'+'ipt>';
     const scriptClose='</scr'+'ipt>';
     const twitterOpen='<scr'+'ipt async src="https://platform.twitter.com/widgets.js" charset="utf-8">';
-    html=html.replace('</body>',scriptOpen+helper+scriptClose+scriptOpen+autosave+scriptClose+scriptOpen+waysVideo+scriptClose+scriptOpen+serverDraft+scriptClose+twitterOpen+scriptClose+'</body>');
+    html=html.replace('</body>',scriptOpen+helper+scriptClose+scriptOpen+autosave+scriptClose+scriptOpen+waysVideo+scriptClose+scriptOpen+serverDraft+scriptClose+scriptOpen+serverPersist+scriptClose+twitterOpen+scriptClose+'</body>');
     document.open();document.write(html);document.close();
   }catch(e){
     status.className='s err';
