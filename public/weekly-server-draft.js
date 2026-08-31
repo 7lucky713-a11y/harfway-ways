@@ -21,7 +21,7 @@
 
   const actions=document.createElement('div');
   actions.className='weekly-server-actions';
-  actions.innerHTML='<button type="button" class="weekly-server-btn" id="weeklyServerDraftBtn">月曜下書きをサーバー生成・保存</button><span class="weekly-server-note" id="weeklyServerDraftNote">先週分のWordPress / ヨリミチ候補をサーバーで生成し、Preview専用R2下書きへ保存してWEEKLY BOARDへ取り込みます。X / WAYSは自動選択しません。</span>';
+  actions.innerHTML='<button type="button" class="weekly-server-btn" id="weeklyServerDraftBtn">月曜下書きをサーバー生成・保存</button><span class="weekly-server-note" id="weeklyServerDraftNote">対象期間内の切れ端はWEEKLY BOARDへ必ず全件追加。残りをWordPress / ヨリミチ候補から補完し、Preview専用R2へ保存します。X / WAYSは自動選択しません。</span>';
   const tabs=sourcePanel?.querySelector('.tabs');
   if(tabs)tabs.insertAdjacentElement('afterend',actions);
   else if(sourcePanel)sourcePanel.prepend(actions);
@@ -35,7 +35,7 @@
     btn.disabled=true;
     const before=btn.textContent;
     btn.textContent='生成・保存中…';
-    if(note)note.textContent='WordPress / ヨリミチの先週分を確認し、Preview専用R2へ下書きを保存中…';
+    if(note)note.textContent='対象期間内の切れ端を優先確保し、WordPress / ヨリミチからWEEKLY BOARDを生成してR2へ保存中…';
     try{
       const response=await fetch('/api/weekly-harfway-draft',{method:'POST',cache:'no-store'});
       const data=await response.json().catch(()=>({}));
@@ -44,19 +44,21 @@
       const known=new Set((items||[]).map(x=>x.id));
       const recommended=(data.draft?.updateIds||[]).filter(id=>known.has(id));
       const added=recommended.filter(id=>!updateIds.includes(id));
-      updateIds=[...updateIds,...added].slice(0,8);
+      updateIds=[...updateIds,...added];
 
       renderAll();
       try{saveLocal()}catch{}
 
       const missing=(data.draft?.updateIds||[]).length-recommended.length;
+      const scrapsCount=Number(data.boardMeta?.scrapsCount||0);
       const detail=[
         `SERVER STORED ${data.week||''}`,
         data.range?.label||'',
+        `切れ端 ${scrapsCount}件`,
         `BOARD +${added.length}件`,
         missing>0?`未一致 ${missing}件`:''
       ].filter(Boolean).join(' / ');
-      if(note)note.textContent=`${detail}。Preview専用R2へ保存済み。X / WAYSは独立素材のため自動選択していません。`;
+      if(note)note.textContent=`${detail}。対象期間内の切れ端は必須枠。Preview専用R2へ保存済み。X / WAYSは独立素材のため自動選択していません。`;
       btn.textContent='再生成・保存';
     }catch(err){
       if(note)note.textContent=`サーバー下書き生成・保存に失敗: ${String(err?.message||err)}`;
