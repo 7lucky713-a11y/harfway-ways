@@ -1,0 +1,52 @@
+---
+---
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Login / HARF-WAY Publications</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0e1116;color:#eef1f5;--accent:#8f3131}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px}.card{width:min(520px,100%);background:#151a22;border:1px solid #28313f;border-radius:22px;padding:28px}.brand{display:flex;gap:12px;align-items:center;margin-bottom:28px}.mark{width:10px;height:38px;border-radius:8px;background:var(--accent)}.eyebrow{font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:#8792a3}.brand strong{display:block;font-size:19px;margin-top:3px}h1{font-size:36px;margin:0 0 8px}.lead{color:#9ea9b8;line-height:1.7;margin:0 0 24px}form{display:grid;gap:13px}label{display:grid;gap:6px;font-size:12px;color:#aab3c0}input{width:100%;font:inherit;background:#0e131a;color:#f3f6fa;border:1px solid #303a49;border-radius:10px;padding:12px 13px}button{font:inherit;border:0;background:#6578ff;color:white;padding:12px 16px;border-radius:10px;font-weight:800;cursor:pointer;margin-top:4px}.fixture{display:none;margin-top:18px;padding:14px;border:1px solid #344054;background:#101722;border-radius:12px;color:#b9c5d6;font-size:12px;line-height:1.75}.fixture code{color:#fff}.status{min-height:22px;margin-top:14px;color:#f0a7a7;font-size:13px}.back{display:inline-block;margin-top:18px;color:#8e99a9;font-size:12px;text-decoration:none}
+</style>
+</head>
+<body>
+<main class="card">
+<div class="brand"><span class="mark"></span><div><div class="eyebrow">HARF-WAY Publications</div><strong>Editor Workspace</strong></div></div>
+<h1>編集長ログイン</h1>
+<p class="lead">割り当てられた媒体だけを編集できます。ログイン後、URLのslugではなくサーバー側の権限から媒体を決定します。</p>
+<form id="loginForm">
+<label>媒体slug<input id="slug" autocomplete="organization" placeholder="doujin-yawa" required /></label>
+<label>メールアドレス<input id="email" type="email" autocomplete="username" required /></label>
+<label>パスワード<input id="password" type="password" autocomplete="current-password" required /></label>
+<button type="submit">ログイン</button>
+</form>
+<div id="fixture" class="fixture"><strong>Preview確認用アカウント</strong><br/>slug: <code>doujin-yawa</code><br/>email: <code>editor-preview@harf-way.local</code><br/>password: <code>harfway-preview</code><br/>※ Preview専用。Productionでは無効です。</div>
+<div id="status" class="status"></div>
+<a class="back" href="/publications">← Publicationsへ戻る</a>
+</main>
+<script>
+const q=id=>document.getElementById(id);
+const params=new URLSearchParams(location.search);
+const returnTo=params.get('returnTo')||'/publications-editor-v2';
+async function inspect(){
+  try{
+    const r=await fetch('/api/publications-auth',{cache:'no-store'});
+    const d=await r.json();
+    if(r.ok&&d.ok){location.replace(returnTo);return;}
+    if(d.fixtureAvailable)q('fixture').style.display='block';
+  }catch{}
+}
+q('loginForm').addEventListener('submit',async e=>{
+  e.preventDefault();q('status').textContent='';
+  const payload={slug:q('slug').value.trim(),email:q('email').value.trim(),password:q('password').value};
+  try{
+    const r=await fetch('/api/publications-auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const d=await r.json();
+    if(!r.ok||!d.ok){q('status').textContent=d.error==='invalid_credentials'?'ログイン情報が一致しません。':`ログインできません: ${d.error||r.status}`;return;}
+    location.replace(returnTo);
+  }catch{q('status').textContent='通信に失敗しました。';}
+});
+inspect();
+</script>
+</body>
+</html>
