@@ -19,6 +19,10 @@ function environment() {
   return String(process.env.VERCEL_ENV || 'development');
 }
 
+function cronSecretConfigured() {
+  return Boolean(String(process.env.CRON_SECRET || ''));
+}
+
 function ensurePreviewPost(req) {
   if (environment() !== 'preview') {
     const error = new Error('preview_post_only');
@@ -48,8 +52,13 @@ function ensureProductionCron(req) {
     throw error;
   }
   const secret = String(process.env.CRON_SECRET || '');
+  if (!secret) {
+    const error = new Error('cron_secret_not_configured');
+    error.status = 503;
+    throw error;
+  }
   const authorization = String(req.headers.authorization || '');
-  if (!secret || authorization !== `Bearer ${secret}`) {
+  if (authorization !== `Bearer ${secret}`) {
     const error = new Error('unauthorized_cron');
     error.status = 401;
     throw error;
@@ -252,6 +261,7 @@ export default async function handler(req, res) {
     if (!baselineReadbackVerified) throw new Error('generated_baseline_readback_mismatch');
     if (!workingDraftUntouched) throw new Error('working_draft_changed_during_cron_test');
 
+    const scheduleHeader = String(req.headers['x-vercel-cron-schedule'] || '');
     return send(res, 200, {
       ok: true,
       mode: config.mode,
@@ -259,8 +269,10 @@ export default async function handler(req, res) {
       productionReady: true,
       browserStateUsed: false,
       authModel: 'Authorization: Bearer CRON_SECRET',
-      productionScheduleEnabled: false,
+      cronSecretConfigured: cronSecretConfigured(),
+      productionScheduleEnabled: Boolean(config.environment === 'production' && scheduleHeader),
       productionMutationEnabled: config.productionMutationEnabled,
+      schedule: scheduleHeader || null,
       week,
       revision: written.record.revision,
       savedAt: written.record.savedAt,
@@ -279,7 +291,7 @@ export default async function handler(req, res) {
       sources: written.record.sources,
       warnings: written.record.warnings,
       recommendedSchedule: {
-        note: 'Cron schedule remains disabled until explicit 本番OK. Because Monday-published SCRAPS can arrive later, generated baseline may be safely refreshed more than once without overwriting working drafts.'
+        note: 'Generated baseline may be safely refreshed more than once on Monday without overwriting working drafts.'
       }
     });
   } catch (error) {
@@ -288,6 +300,7 @@ export default async function handler(req, res) {
       ok: false,
       error: error?.message || 'weekly_harfway_cron_failed',
       environment: environment(),
+      cronSecretConfigured: cronSecretConfigured(),
       productionScheduleEnabled: false,
       productionMutationEnabled: false
     });
