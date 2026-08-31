@@ -17,6 +17,13 @@
   @media(max-width:700px){.hw-log,.hw-board,.hw-memo{padding:26px 20px}.hw-updates{grid-template-columns:1fr}.hw-update.feature{grid-row:auto;min-height:260px}.hw-game-title{font-size:26px}.hw-game{padding:18px;box-shadow:4px 4px 0 #111}.hw-game-section-label{font-size:17px}}
   `;
 
+  const legacyLead='平日に拾ったゲームを、週末にまとめて振り返ります。\n気になった作品は、Xの映像とHARF-WAYデータベースからどうぞ。';
+  const neutralLead='平日に拾ったゲームを、週末にまとめて振り返ります。\n気になった作品は、XやWAYS、それぞれの記録からどうぞ。';
+  const gameLead=document.getElementById('gameLead');
+  if(gameLead&&gameLead.value===legacyLead)gameLead.value=neutralLead;
+  const thirdStat=document.getElementById('thirdStat');
+  if(thirdStat&&thirdStat.value==='ALL IN DATABASE')thirdStat.value='WEEKLY PICKS';
+
   const baseHtml=html;
   html=function(){
     return baseHtml().replace(
