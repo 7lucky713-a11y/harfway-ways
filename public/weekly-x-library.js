@@ -82,13 +82,16 @@
     if(remove){xPosts=xPosts.filter(x=>x.id!==remove.dataset.xremove);persist();renderCards();return}
   };
 
+  document.getElementById('query').oninput=()=>renderCards();
+  document.getElementById('typeFilter').onchange=()=>renderCards();
+
   const updateModeUi=()=>{
-    const add=document.getElementById('toggleCustom'),clear=document.getElementById('clearMode'),title=document.getElementById('customTitle'),url=document.getElementById('customUrl'),text=document.getElementById('customText');
+    const add=document.getElementById('toggleCustom'),clear=document.getElementById('clearMode'),title=document.getElementById('customTitle'),url=document.getElementById('customUrl'),text=document.getElementById('customText'),auto=document.getElementById('autoFill');
     if(mode==='xposts'){
-      if(add)add.textContent='＋ X POST追加';if(clear)clear.textContent='X一覧を空にする';
+      if(add)add.textContent='＋ X POST追加';if(clear)clear.textContent='X一覧を空にする';if(auto)auto.style.display='none';
       if(title)title.placeholder='投稿メモ / ゲーム名（任意）';if(url)url.placeholder='https://x.com/.../status/...';if(text)text.placeholder='この投稿のメモ（任意）';
     }else{
-      if(add)add.textContent='＋ 手動追加';if(clear)clear.textContent='この欄を空にする';
+      if(add)add.textContent='＋ 手動追加';if(clear)clear.textContent='この欄を空にする';if(auto)auto.style.display='';
       if(title)title.placeholder='タイトル';if(url)url.placeholder='URL（任意）';if(text)text.placeholder='説明文（任意）';
     }
     persist();
