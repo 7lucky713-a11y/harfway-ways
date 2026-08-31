@@ -1,0 +1,99 @@
+---
+---
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="robots" content="noindex,nofollow" />
+<title>WEEKLY HARF-WAY / AUTO EDITOR</title>
+<style is:global>
+:root{--bg:#0b0d10;--panel:#12151a;--panel2:#171b21;--line:#303842;--text:#f4f6f8;--muted:#98a3af;--accent:#e6ff4a;--paper:#f7f8f5;--ink:#151719;--danger:#ffb5b5}*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Noto Sans JP",sans-serif}button,input,textarea,select{font:inherit}button{cursor:pointer}.app{min-height:100vh;display:grid;grid-template-columns:minmax(0,1fr) 520px}.library{padding:28px 30px 60px;border-right:1px solid var(--line)}.editor{padding:28px 24px 60px;background:#0d1014}.top{display:flex;justify-content:space-between;gap:24px;align-items:flex-start;margin-bottom:24px}.kicker{font:900 12px/1.2 ui-monospace,monospace;letter-spacing:.16em;color:var(--accent)}h1,h2{margin:6px 0 0;letter-spacing:-.045em}h1{font-size:42px;line-height:.98}h2{font-size:34px;line-height:1}.desc{margin:14px 0 0;max-width:760px;color:#c7cdd4;font-size:15px;line-height:1.8}.range{padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);font:850 12px/1.4 ui-monospace,monospace;color:#dce2e7;white-space:nowrap}.panel{border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,var(--panel2),var(--panel));padding:16px;margin-bottom:14px}.paneltitle{margin-bottom:12px;font:900 11px/1 ui-monospace,monospace;letter-spacing:.13em;color:var(--accent)}.sourcegrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.source{border:1px solid #2b333c;border-radius:12px;padding:12px;background:#0d1014}.source b{display:block;font-size:22px;line-height:1;margin-top:6px}.source span{font-size:10px;color:var(--muted)}.toolbar{display:flex;gap:8px;flex-wrap:wrap}.btn{border:1px solid #3a444f;border-radius:10px;background:#171b21;color:#eef2f5;padding:10px 13px;font-size:12px;font-weight:850}.btn.primary{background:var(--accent);border-color:var(--accent);color:#0b0d10}.btn.danger{color:var(--danger)}.filters{display:grid;grid-template-columns:1fr 160px 160px;gap:8px;margin-top:12px}.input,.select,.textarea{width:100%;border:1px solid #35404b;border-radius:10px;background:#0b0e12;color:#fff;outline:none}.input,.select{height:44px;padding:0 12px;font-size:13px}.textarea{min-height:92px;padding:12px;font-size:14px;line-height:1.7;resize:vertical}.status{margin-top:10px;font-size:11px;color:var(--muted);line-height:1.6}.warn{margin-top:10px;color:#ffd38f;font-size:11px;line-height:1.6}.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-top:16px}.card{position:relative;overflow:hidden;border:1px solid #2d3640;border-radius:15px;background:#12161b;min-height:255px;display:flex;flex-direction:column}.card.selected{border-color:#7e8a29;box-shadow:0 0 0 1px rgba(230,255,74,.16)}.thumb{width:100%;height:130px;object-fit:cover;background:#090a0c;display:block}.thumb.blank{display:grid;place-items:center;color:#5f6974;font:800 10px ui-monospace,monospace}.cardbody{display:flex;flex-direction:column;gap:8px;padding:12px;flex:1}.badges{display:flex;gap:6px;flex-wrap:wrap}.badge{display:inline-flex;border:1px solid #39434e;border-radius:999px;padding:5px 7px;font:850 9px/1 ui-monospace,monospace;color:#adb6c0}.badge.week{color:var(--accent);border-color:#66711f}.title{font-size:18px;font-weight:950;line-height:1.35;letter-spacing:-.02em}.summary{color:#aeb7c1;font-size:12px;line-height:1.65;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}.cardactions{margin-top:auto;display:flex;gap:7px}.mini{border:1px solid #3a444e;border-radius:8px;background:#0d1014;color:#eef2f5;padding:7px 9px;font-size:10px;font-weight:850}.mini.add{margin-left:auto}.selected .mini.add{background:var(--accent);border-color:var(--accent);color:#0b0d10}.field{display:grid;gap:6px;margin-bottom:12px}.field label{font-size:10px;color:#8994a0;letter-spacing:.08em}.suggestions{display:flex;gap:7px;flex-wrap:wrap}.suggest{border:1px solid #39434d;border-radius:999px;background:#101319;color:#dfe5e9;padding:8px 10px;font-size:10px}.selectedlist{display:grid;gap:8px}.sel{display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:10px;align-items:start;border:1px solid #303943;border-radius:12px;background:#0d1014;padding:9px}.sel img,.selblank{width:72px;height:54px;border-radius:8px;object-fit:cover;background:#07090b}.selblank{display:grid;place-items:center;color:#59636e;font-size:8px}.selname{font-size:13px;font-weight:900;line-height:1.4}.selmeta{font-size:9px;color:#78838f;margin:3px 0 7px}.comment{width:100%;min-height:56px;border:1px solid #303943;border-radius:8px;background:#090b0e;color:#fff;padding:8px;font-size:11px;line-height:1.5;resize:vertical}.rowactions{display:flex;flex-direction:column;gap:5px}.rowactions button{width:34px;height:30px;border:1px solid #37414c;border-radius:7px;background:#161a20;color:#fff;font-size:11px}.preview{border-radius:12px;background:#fff;color:#111;overflow:hidden;max-height:520px;overflow:auto}.previewin{padding:20px}.empty{border:1px dashed #39434e;border-radius:14px;padding:28px;text-align:center;color:#76818d;font-size:12px}.save{font-size:10px;color:#8f9aa5;min-height:16px;margin-top:8px}@media(max-width:1200px){.app{grid-template-columns:minmax(0,1fr) 460px}.sourcegrid{grid-template-columns:repeat(2,1fr)}}@media(max-width:920px){.app{display:block}.library{border-right:0;border-bottom:1px solid var(--line)}.filters{grid-template-columns:1fr 1fr}.filters .input{grid-column:1/-1}}@media(max-width:600px){.library,.editor{padding:20px 16px 40px}.top{display:block}.range{margin-top:16px;display:inline-block}.sourcegrid{grid-template-columns:repeat(2,1fr)}.cards{grid-template-columns:1fr}.sel{grid-template-columns:58px minmax(0,1fr) auto}.sel img,.selblank{width:58px;height:48px}h1{font-size:34px}}
+</style>
+</head>
+<body>
+<div class="app">
+<main class="library">
+  <div class="top">
+    <div><div class="kicker">HARF-WAY / MONDAY AUTOMATION</div><h1>WEEKLY 編集室</h1><p class="desc">先週公開されたHARF-WAYの素材を自動で集め、月曜の週刊まとめを下書き化するPreviewです。週次判定できないWAYSは「追加候補」として別扱いにしています。</p></div>
+    <div class="range" id="range">読み込み中…</div>
+  </div>
+
+  <section class="panel">
+    <div class="paneltitle">AUTO COLLECT</div>
+    <div class="sourcegrid">
+      <div class="source"><span>週次候補</span><b id="weeklyCount">--</b></div>
+      <div class="source"><span>WordPress</span><b id="wpCount">--</b></div>
+      <div class="source"><span>ヨリミチ</span><b id="yorimichiCount">--</b></div>
+      <div class="source"><span>WAYS棚</span><b id="waysCount">--</b></div>
+    </div>
+    <div class="toolbar" style="margin-top:12px"><button class="btn primary" id="autoSelect">週次候補を全部選ぶ</button><button class="btn" id="refresh">再取得</button><button class="btn" id="clear">選択解除</button></div>
+    <div class="filters"><input class="input" id="query" placeholder="タイトル・本文・URLで検索"><select class="select" id="typeFilter"><option value="">すべて</option></select><select class="select" id="scopeFilter"><option value="weekly">週次候補のみ</option><option value="all">WAYS候補も表示</option><option value="selected">選択中のみ</option></select></div>
+    <div class="status" id="status">データ取得中…</div><div class="warn" id="warnings"></div>
+  </section>
+
+  <div class="cards" id="cards"><div class="empty">先週分を集めています…</div></div>
+</main>
+
+<aside class="editor">
+  <section class="panel">
+    <div class="paneltitle">AUTO DRAFT</div>
+    <div class="field"><label>タイトル</label><input class="input" id="headline" value="今週のHARF-WAY"></div>
+    <div class="field"><label>リード</label><textarea class="textarea" id="lead" placeholder="今週の動きを短くまとめる"></textarea></div>
+    <div class="field"><label>テーマ候補</label><div class="suggestions" id="suggestions"></div></div>
+    <div class="toolbar"><button class="btn primary" id="generate">下書きを自動生成</button><button class="btn" id="save">ローカル保存</button></div>
+    <div class="save" id="saveStatus">Preview / Production DBには保存しません</div>
+  </section>
+
+  <section class="panel">
+    <div class="paneltitle">SELECTED / ORDER</div>
+    <div class="selectedlist" id="selected"><div class="empty">候補を選択するとここに並びます。</div></div>
+  </section>
+
+  <section class="panel">
+    <div class="paneltitle">WORDPRESS PREVIEW</div>
+    <div class="toolbar" style="margin-bottom:10px"><button class="btn primary" id="copyBundle">HTML + CSS COPY</button><button class="btn" id="copyHtml">HTML COPY</button></div>
+    <div class="preview"><div class="previewin" id="preview"></div></div>
+  </section>
+</aside>
+</div>
+
+<script is:inline>
+const $=s=>document.querySelector(s);let payload=null,items=[],selectedIds=[],comments={};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const strip=s=>String(s??'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
+const typeLabel=t=>({ARTICLE:'記事',PLAYLIST:'PLAYLIST',SCRAPS:'切れ端',YORIMICHI:'ヨリミチ',NEWS:'NEWS',DIARY:'日記',WAYS:'WAYS'}[t]||t);
+const fmt=d=>{if(!d)return'--';const x=new Date(d);return Number.isNaN(+x)?'--':new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',month:'2-digit',day:'2-digit'}).format(x)};
+function storageKey(){return `harfway-weekly:${payload?.range?.start||'draft'}`}
+function item(id){return items.find(x=>x.id===id)}
+function loadSaved(){try{const d=JSON.parse(localStorage.getItem(storageKey())||'null');if(!d)return;selectedIds=d.selectedIds||selectedIds;comments=d.comments||{};$('#headline').value=d.headline||$('#headline').value;$('#lead').value=d.lead||''}catch{}}
+function saveLocal(){localStorage.setItem(storageKey(),JSON.stringify({selectedIds,comments,headline:$('#headline').value,lead:$('#lead').value,savedAt:new Date().toISOString()}));flash('ローカル保存しました')}
+function flash(t){$('#saveStatus').textContent=t;setTimeout(()=>$('#saveStatus').textContent='Preview / Production DBには保存しません',1800)}
+function counts(){const s=payload?.sources||{};$('#weeklyCount').textContent=payload?.weeklyCount??0;$('#wpCount').textContent=s.wordpress?.count??0;$('#yorimichiCount').textContent=s.yorimichi?.count??0;$('#waysCount').textContent=s.ways?.count??0;$('#range').textContent=payload?.range?.label||'--'}
+function buildTypeFilter(){const types=[...new Set(items.map(x=>x.type))];$('#typeFilter').innerHTML='<option value="">すべて</option>'+types.map(t=>`<option value="${esc(t)}">${esc(typeLabel(t))}</option>`).join('')}
+function filtered(){const q=$('#query').value.toLowerCase().trim(),type=$('#typeFilter').value,scope=$('#scopeFilter').value;return items.filter(x=>{if(type&&x.type!==type)return false;if(scope==='weekly'&&!x.weeklyVerified)return false;if(scope==='selected'&&!selectedIds.includes(x.id))return false;if(q&&!`${x.title} ${x.summary} ${x.url} ${x.source}`.toLowerCase().includes(q))return false;return true})}
+function renderCards(){const list=filtered();$('#cards').innerHTML=list.length?list.map(x=>{const sel=selectedIds.includes(x.id);return `<article class="card ${sel?'selected':''}">${x.image?`<img class="thumb" src="${esc(x.image)}" alt="" loading="lazy">`:'<div class="thumb blank">NO IMAGE</div>'}<div class="cardbody"><div class="badges"><span class="badge">${esc(typeLabel(x.type))}</span><span class="badge">${esc(x.source)}</span>${x.weeklyVerified?'<span class="badge week">WEEK VERIFIED</span>':'<span class="badge">追加候補</span>'}</div><div class="title">${esc(x.title)}</div><div class="summary">${esc(x.summary||'説明なし')}</div><div class="cardactions"><a class="mini" href="${esc(x.url||'#')}" target="_blank" rel="noopener">OPEN ↗</a><button class="mini add" data-toggle="${esc(x.id)}">${sel?'✓ 選択中':'＋ 追加'}</button></div></div></article>`}).join(''):'<div class="empty">条件に一致する候補はありません。</div>'}
+function renderSelected(){if(!selectedIds.length){$('#selected').innerHTML='<div class="empty">候補を選択するとここに並びます。</div>';return}$('#selected').innerHTML=selectedIds.map((id,i)=>{const x=item(id);if(!x)return'';return `<div class="sel">${x.image?`<img src="${esc(x.image)}" alt="">`:'<div class="selblank">NO IMG</div>'}<div><div class="selname">${String(i+1).padStart(2,'0')} / ${esc(x.title)}</div><div class="selmeta">${esc(typeLabel(x.type))} · ${esc(fmt(x.date))}</div><textarea class="comment" data-comment="${esc(id)}" placeholder="この項目への一言（空欄なら自動要約）">${esc(comments[id]||'')}</textarea></div><div class="rowactions"><button data-up="${esc(id)}">↑</button><button data-down="${esc(id)}">↓</button><button data-remove="${esc(id)}">×</button></div></div>`}).join('')}
+function typeCountsSelected(){return selectedIds.reduce((a,id)=>{const x=item(id);if(x)a[x.type]=(a[x.type]||0)+1;return a},{})}
+function suggestThemes(){const c=typeCountsSelected(),a=[];if(c.PLAYLIST)a.push('プレイリストから始まった一週間。');if(c.SCRAPS)a.push('切れ端を拾いながら、今週を振り返る。');if(c.WAYS)a.push('動画から今週を振り返る。');if(c.YORIMICHI)a.push('寄り道の多かった一週間。');a.push('今週のHARF-WAYをまとめて歩く。');$('#suggestions').innerHTML=[...new Set(a)].slice(0,4).map(t=>`<button class="suggest" data-theme="${esc(t)}">${esc(t)}</button>`).join('')}
+function autoLead(){const c=typeCountsSelected(),parts=Object.entries(c).filter(([,n])=>n).map(([t,n])=>`${typeLabel(t)} ${n}件`);return parts.length?`先週のHARF-WAYから、${parts.join('、')}をまとめました。気になったものから、今週の寄り道をどうぞ。`:'先週のHARF-WAYから、気になったものをまとめます。'}
+const wpCSS=`.harf-weekly{max-width:940px;margin:48px auto;color:#17191b;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}.harf-weekly *{box-sizing:border-box}.harf-weekly__hero{background:#101215;color:#fff;border-radius:22px;padding:clamp(28px,6vw,58px);margin-bottom:36px}.harf-weekly__kicker{color:#e6ff4a;font-size:12px;font-weight:900;letter-spacing:.16em}.harf-weekly__title{font-size:clamp(38px,7vw,72px);line-height:1;font-weight:950;letter-spacing:-.055em;margin:14px 0 0}.harf-weekly__lead{font-size:17px;line-height:1.95;color:#e2e6e9;margin:22px 0 0;max-width:760px}.harf-weekly__item{padding:32px 0 38px;border-bottom:1px solid #d8dbd6}.harf-weekly__eyebrow{font-size:11px;font-weight:900;letter-spacing:.12em;color:#69717a}.harf-weekly__media{margin-top:12px;border-radius:16px;overflow:hidden;background:#ecefeb}.harf-weekly__media img{display:block;width:100%;height:auto}.harf-weekly__name{font-size:clamp(25px,4vw,40px);font-weight:950;line-height:1.2;letter-spacing:-.035em;margin-top:14px}.harf-weekly__copy{font-size:16px;line-height:1.9;color:#33383d;margin-top:14px}.harf-weekly__link{display:inline-flex;margin-top:18px;background:#101215;color:#fff!important;text-decoration:none!important;border-radius:999px;padding:11px 15px;font-size:13px;font-weight:900}.harf-weekly__footer{margin-top:34px;padding:22px 24px;border-left:5px solid #e6ff4a;background:#f1f3ef;font-size:15px;line-height:1.8}`;
+function contentHTML(){const title=$('#headline').value.trim()||'今週のHARF-WAY',lead=$('#lead').value.trim();let out=`<div class="harf-weekly"><div class="harf-weekly__hero"><div class="harf-weekly__kicker">WEEKLY HARF-WAY / ${esc(payload?.range?.label||'')}</div><div class="harf-weekly__title">${esc(title)}</div>${lead?`<div class="harf-weekly__lead">${esc(lead).replace(/\n/g,'<br>')}</div>`:''}</div>`;selectedIds.forEach(id=>{const x=item(id);if(!x)return;const copy=(comments[id]||x.summary||'').trim();out+=`<section class="harf-weekly__item"><div class="harf-weekly__eyebrow">${esc(typeLabel(x.type))} / ${esc(x.source)}</div>${x.image?`<div class="harf-weekly__media"><img src="${esc(x.image)}" alt=""></div>`:''}<div class="harf-weekly__name">${esc(x.title)}</div>${copy?`<div class="harf-weekly__copy">${esc(copy).replace(/\n/g,'<br>')}</div>`:''}${x.url?`<a class="harf-weekly__link" href="${esc(x.url)}" target="_blank" rel="noopener">読む / 見る ↗</a>`:''}</section>`});out+='<div class="harf-weekly__footer">HARF-WAYの一週間を、次の月曜日へつなぐためのまとめです。</div></div>';return out}
+function renderPreview(){$('#preview').innerHTML=`<style>${wpCSS}</style>${contentHTML()}`}
+function renderAll(){renderCards();renderSelected();suggestThemes();renderPreview()}
+function toggle(id){selectedIds=selectedIds.includes(id)?selectedIds.filter(x=>x!==id):[...selectedIds,id];renderAll()}
+function move(id,dir){const i=selectedIds.indexOf(id),j=i+dir;if(i<0||j<0||j>=selectedIds.length)return;[selectedIds[i],selectedIds[j]]=[selectedIds[j],selectedIds[i]];renderAll()}
+async function copy(text,msg){await navigator.clipboard.writeText(text);flash(msg)}
+async function load(){$('#status').textContent='先週分を自動収集中…';$('#warnings').textContent='';try{const r=await fetch('/api/weekly-harfway-source',{cache:'no-store'}),d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||`HTTP ${r.status}`);payload=d;items=d.items||[];selectedIds=(d.items||[]).filter(x=>x.weeklyVerified).map(x=>x.id);counts();buildTypeFilter();loadSaved();$('#status').textContent=`${d.weeklyCount}件を週次候補として取得。WAYSは追加日時未保持のため候補棚として${d.sources?.ways?.count||0}件を参照。`;$('#warnings').textContent=(d.warnings||[]).join(' / ');$('#headline').value=`今週のHARF-WAY / ${d.range?.label||''}`;if(!$('#lead').value)$('#lead').value=autoLead();renderAll()}catch(e){$('#status').textContent='取得に失敗しました。';$('#warnings').textContent=e.message;$('#cards').innerHTML='<div class="empty">データ取得に失敗しました。</div>'}}
+$('#cards').onclick=e=>{const b=e.target.closest('[data-toggle]');if(b)toggle(b.dataset.toggle)};
+$('#selected').onclick=e=>{const r=e.target.closest('[data-remove]'),u=e.target.closest('[data-up]'),d=e.target.closest('[data-down]');if(r){selectedIds=selectedIds.filter(x=>x!==r.dataset.remove);renderAll()}if(u)move(u.dataset.up,-1);if(d)move(d.dataset.down,1)};
+$('#selected').oninput=e=>{const t=e.target.closest('[data-comment]');if(t){comments[t.dataset.comment]=t.value;renderPreview()}};
+['query','typeFilter','scopeFilter'].forEach(id=>$('#'+id).addEventListener(id==='query'?'input':'change',renderCards));
+$('#autoSelect').onclick=()=>{selectedIds=items.filter(x=>x.weeklyVerified).map(x=>x.id);$('#lead').value=autoLead();renderAll()};
+$('#clear').onclick=()=>{selectedIds=[];comments={};renderAll()};$('#refresh').onclick=load;
+$('#suggestions').onclick=e=>{const b=e.target.closest('[data-theme]');if(b){$('#headline').value=b.dataset.theme;renderPreview()}};
+$('#generate').onclick=()=>{$('#lead').value=autoLead();if(!$('#headline').value.trim())$('#headline').value=`今週のHARF-WAY / ${payload?.range?.label||''}`;renderPreview();flash('下書きを更新しました')};
+['headline','lead'].forEach(id=>$('#'+id).addEventListener('input',renderPreview));$('#save').onclick=saveLocal;$('#copyBundle').onclick=()=>copy(`<style>${wpCSS}</style>${contentHTML()}`,'HTML + CSSをコピーしました');$('#copyHtml').onclick=()=>copy(contentHTML(),'HTMLをコピーしました');load();
+</script>
+</body>
+</html>
