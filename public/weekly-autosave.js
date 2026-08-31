@@ -2,6 +2,7 @@
   const FIELD_IDS=['weekLabel','jpWeekLabel','gameHeading','gameLead','weekdayCount','gameCount','thirdStat','boardHeading','boardLead','updateCount','arrivalCount','boardFoot','boardTags','memo','memoLinkLabel','memoLink'];
   let ready=false;
   let saveTimer=0;
+  let previewTimer=0;
   let lastSavedAt='';
 
   const style=document.createElement('style');
@@ -56,12 +57,49 @@
     saveTimer=setTimeout(snapshot,delay);
   }
 
+  function schedulePreview(delay=520){
+    clearTimeout(previewTimer);
+    previewTimer=setTimeout(()=>{
+      try{renderPreview()}catch{}
+    },delay);
+  }
+
   const baseRenderAll=renderAll;
   renderAll=function(){
     const out=baseRenderAll();
     scheduleSave(220);
     return out;
   };
+
+  // Keep editor fields stable while typing. Update state immediately,
+  // but delay the heavy WordPress/X preview refresh until typing pauses.
+  const gameSelected=document.getElementById('gameSelected');
+  if(gameSelected){
+    gameSelected.oninput=e=>{
+      const t=e.target.closest?.('[data-gfield]');
+      if(!t)return;
+      gameEdit[t.dataset.id]={...(gameEdit[t.dataset.id]||{}),[t.dataset.gfield]:t.value};
+      scheduleSave(550);
+      schedulePreview(520);
+    };
+    gameSelected.addEventListener('change',e=>{
+      if(e.target.closest?.('[data-gfield]')){scheduleSave(220);schedulePreview(80)}
+    });
+  }
+
+  const updateSelected=document.getElementById('updateSelected');
+  if(updateSelected){
+    updateSelected.oninput=e=>{
+      const t=e.target.closest?.('[data-ufield]');
+      if(!t)return;
+      updateEdit[t.dataset.id]={...(updateEdit[t.dataset.id]||{}),[t.dataset.ufield]:t.value};
+      scheduleSave(550);
+      schedulePreview(520);
+    };
+    updateSelected.addEventListener('change',e=>{
+      if(e.target.closest?.('[data-ufield]')){scheduleSave(220);schedulePreview(80)}
+    });
+  }
 
   document.addEventListener('input',()=>scheduleSave(550),true);
   document.addEventListener('change',()=>scheduleSave(280),true);
