@@ -1,0 +1,26 @@
+---
+---
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>HARF-WAY Publication</title>
+<style is:global>
+:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5efe4;color:#221e1a;--accent:#8f3131}*{box-sizing:border-box}body{margin:0;background:var(--bg,#f5efe4)}.wrap{width:min(1100px,calc(100% - 28px));margin:auto}header{padding:56px 0 30px;border-bottom:5px solid var(--accent)}.eyebrow{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#6f675e}h1{font-family:Georgia,"Times New Roman",serif;font-size:clamp(42px,7vw,82px);line-height:.96;margin:10px 0 12px}.tagline{font-size:18px;line-height:1.8;max-width:780px}.editor{margin-top:18px;font-size:13px;color:#675f56}.shelves{display:flex;flex-wrap:wrap;gap:8px;padding:22px 0}.shelf{border:1px solid #bcb2a7;background:#fff8ed;border-radius:999px;padding:8px 12px;font-size:13px}main{padding:22px 0 72px}.intro{font-family:Georgia,"Times New Roman",serif;font-size:21px;line-height:1.8;max-width:820px;margin-bottom:34px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.card{background:#fffaf1;border:1px solid #d5cbc0;border-radius:16px;padding:20px;min-height:190px}.type{font-size:10px;letter-spacing:.15em;color:var(--accent);font-weight:800}.card h2{font-family:Georgia,"Times New Roman",serif;font-size:27px;margin:10px 0}.card p{line-height:1.75;color:#5e564e}.loading{min-height:70vh;display:grid;place-items:center;color:#756c62}.note{margin:0 0 24px;padding:10px 12px;background:#fff8ed;border-left:3px solid var(--accent);font-size:12px;color:#6b6259}@media(max-width:720px){.grid{grid-template-columns:1fr}header{padding-top:38px}}
+</style>
+</head>
+<body>
+<div id="loading" class="loading">媒体を読み込んでいます…</div>
+<div id="app" hidden>
+<header><div class="wrap"><div class="eyebrow">Published by HARF-WAY Publications</div><h1 id="title"></h1><div id="tagline" class="tagline"></div><div id="editor" class="editor"></div></div></header>
+<div class="wrap"><div id="shelves" class="shelves"></div><div id="fixtureNote" class="note" hidden>Preview Fixtureでは、同じブラウザで編集長CMSから保存した内容を表示しています。</div></div>
+<main class="wrap"><div id="description" class="intro"></div><div id="articles" class="grid"></div></main>
+</div>
+<script>
+const q=id=>document.getElementById(id);const params=new URLSearchParams(location.search);const slug=params.get('slug')||'doujin-yawa';
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+function render(p){document.documentElement.style.setProperty('--accent',p.accent||'#8f3131');document.documentElement.style.setProperty('--bg',p.bg||'#f5efe4');document.title=p.title+' / HARF-WAY Publications';q('title').textContent=p.title;q('tagline').textContent=p.tagline||'';q('editor').textContent=p.editor||'';q('description').textContent=p.description||'';q('shelves').innerHTML=(p.shelves||[]).map(s=>`<span class="shelf">${esc(s)}</span>`).join('');q('articles').innerHTML=(p.articles||[]).map(a=>`<article class="card"><div class="type">${esc(String(a.type||'memo').toUpperCase())}</div><h2>${esc(a.title)}</h2><p>${esc(a.note||'')}</p></article>`).join('')||'<div class="card">まだ記事はありません。</div>';q('loading').hidden=true;q('app').hidden=false}
+async function boot(){try{const r=await fetch('/api/publications-content?public=1&slug='+encodeURIComponent(slug),{cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'not_found');let p=d.publication;if((d.storage||'').includes('fixture')){try{const local=JSON.parse(localStorage.getItem('harfway_publication_fixture_'+p.id)||'null');if(local&&local.id===p.id){p=local;q('fixtureNote').hidden=false}}catch{}}render(p)}catch(e){q('loading').textContent='媒体を読み込めませんでした: '+(e.message||e)}}boot();
+</script>
+</body>
+</html>
