@@ -1,0 +1,25 @@
+---
+const url = 'https://harf-way.com/wp-json/wp/v2/posts?after=2026-08-23T15:00:00.000Z&before=2026-08-30T15:00:00.000Z&per_page=100&orderby=date&order=desc&_embed=1';
+let rows = [];
+let error = '';
+try {
+  const r = await fetch(url, { headers: { accept: 'application/json' } });
+  const data = await r.json();
+  rows = Array.isArray(data) ? data.map((p) => ({
+    id: p.id,
+    date: p.date,
+    date_gmt: p.date_gmt,
+    modified: p.modified,
+    slug: p.slug,
+    link: p.link,
+    title: p?.title?.rendered || '',
+    categories: p.categories || [],
+    tags: p.tags || []
+  })) : [];
+  console.log('[weekly-wp-debug]', JSON.stringify(rows));
+} catch (e) {
+  error = String(e?.message || e);
+  console.log('[weekly-wp-debug-error]', error);
+}
+---
+<html><head><meta name="robots" content="noindex,nofollow" /></head><body><pre>{JSON.stringify({rows,error}, null, 2)}</pre></body></html>
