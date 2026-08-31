@@ -5,6 +5,33 @@
   let lastServerSavedAt='';
   let syncTimer=0;
 
+  const ADMIN_SESSION_KEY='harfway-memory-admin-key-v01';
+  const productionHost=['harfway-playback.vercel.app','harfway-playback-harf-way.vercel.app','harfway-playback-git-production-harf-way.vercel.app'].includes(location.hostname);
+
+  function storedAdminKey(){try{return sessionStorage.getItem(ADMIN_SESSION_KEY)||''}catch{return''}}
+  function askAdminKey(){
+    if(!productionHost)return'';
+    const current=storedAdminKey();
+    if(current)return current;
+    const value=String(window.prompt('HARF-WAY管理キーを入力してください')||'').trim();
+    if(value){try{sessionStorage.setItem(ADMIN_SESSION_KEY,value)}catch{}}
+    return value;
+  }
+  async function adminFetch(url,options={},interactive=false){
+    let key=storedAdminKey();
+    if(productionHost&&!key&&interactive)key=askAdminKey();
+    const run=()=>fetch(url,{...options,headers:{...(options.headers||{}),...(key?{'x-admin-key':key}:{})}});
+    let response=await run();
+    if(response.status===401&&productionHost&&interactive){
+      try{sessionStorage.removeItem(ADMIN_SESSION_KEY)}catch{}
+      key=askAdminKey();
+      if(key)response=await run();
+    }
+    return response;
+  }
+  window.weeklyAdminFetch=adminFetch;
+  window.weeklyAdminKey=()=>storedAdminKey();
+
   const style=document.createElement('style');
   style.textContent=`
   .weekly-server-save{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:8px 0 0;padding:8px 10px;border:1px solid #303943;border-radius:9px;background:#0d1014}
@@ -30,7 +57,7 @@
     verifyButton.type='button';
     verifyButton.className='weekly-server-verify-btn';
     verifyButton.id='weeklyServerVerifyBtn';
-    verifyButton.textContent='R2保存確認';
+    verifyButton.textContent=productionHost?'R2接続・保存確認':'R2保存確認';
     if(actions){
       const mondayButton=actions.querySelector('#weeklyServerDraftBtn');
       if(mondayButton)mondayButton.insertAdjacentElement('afterend',verifyButton);
@@ -47,7 +74,7 @@
 
   const actionHost=document.querySelector('.weekly-server-actions');
   let cronButton=document.getElementById('weeklyCronTestBtn');
-  if(!cronButton&&actionHost){
+  if(!productionHost&&!cronButton&&actionHost){
     cronButton=document.createElement('button');
     cronButton.type='button';
     cronButton.className='weekly-cron-test-btn';
@@ -86,14 +113,8 @@
     return `${get('year')}-${get('month')}-${get('day')}`;
   }
 
-  function localDraft(){
-    try{return JSON.parse(localStorage.getItem(storageKey())||'null')}catch{return null}
-  }
-
-  function timeOf(value){
-    const t=Date.parse(value||'');
-    return Number.isFinite(t)?t:0;
-  }
+  function localDraft(){try{return JSON.parse(localStorage.getItem(storageKey())||'null')}catch{return null}}
+  function timeOf(value){const t=Date.parse(value||'');return Number.isFinite(t)?t:0}
 
   function applyDraft(draft){
     if(!draft||typeof draft!=='object')return false;
@@ -110,149 +131,126 @@
     return true;
   }
 
-  async function getServer(){
+  async function getServer(interactive=false){
     const w=week();
     if(!w)return null;
-    const response=await fetch(`/api/weekly-harfway-draft-store?week=${encodeURIComponent(w)}`,{cache:'no-store'});
+    const response=await adminFetch(`/api/weekly-harfway-draft-store?week=${encodeURIComponent(w)}`,{cache:'no-store'},interactive);
     const data=await response.json().catch(()=>({}));
     if(!response.ok||!data.ok)throw new Error(data.error||`HTTP ${response.status}`);
     return data;
   }
 
-  async function verifyReadback(expectedSavedAt=''){
+  async function verifyReadback(expectedSavedAt='',interactive=false){
     const w=week();
     const button=verifyBtn();
     if(button)button.disabled=true;
     try{
-      const server=await getServer();
+      const server=await getServer(interactive);
       const record=server?.record||null;
-      const ok=Boolean(
-        server?.found&&
-        record&&
-        record.environment==='preview'&&
-        record.week===w&&
-        record.draft&&
-        typeof record.draft==='object'
-      );
+      const ok=Boolean(server?.found&&record&&['preview','production'].includes(record.environment)&&record.week===w&&record.draft&&typeof record.draft==='object');
       if(!ok)throw new Error('r2_readback_mismatch');
-      if(expectedSavedAt&&record.savedAt&&timeOf(record.savedAt)<timeOf(expectedSavedAt)){
-        throw new Error('r2_readback_stale');
-      }
+      if(expectedSavedAt&&record.savedAt&&timeOf(record.savedAt)<timeOf(expectedSavedAt))throw new Error('r2_readback_stale');
       lastServerSavedAt=record.savedAt||lastServerSavedAt;
-      const p=pill();
-      if(p){p.classList.add('on','verified');p.textContent='R2 VERIFIED'}
+      const p=pill();if(p){p.classList.add('on','verified');p.textContent='R2 VERIFIED'}
       const gameCount=Array.isArray(record.draft?.gameIds)?record.draft.gameIds.length:0;
       const boardCount=Array.isArray(record.draft?.updateIds)?record.draft.updateIds.length:0;
-      const t=text();
-      if(t)t.textContent=`READBACK OK ${stamp()} / 週 ${w} / GAME ${gameCount} / BOARD ${boardCount}`;
+      const source=server?.source==='generated-baseline'?' / CRON BASELINE':'';
+      const t=text();if(t)t.textContent=`READBACK OK ${stamp()} / 週 ${w} / GAME ${gameCount} / BOARD ${boardCount}${source}`;
       return true;
     }catch(err){
       const p=pill();if(p){p.classList.remove('verified');p.textContent='R2 VERIFY'}
-      const t=text();if(t)t.textContent=`R2 READBACK失敗: ${String(err?.message||err)}`;
+      const t=text();if(t)t.textContent=String(err?.message||err)==='admin_key_required'?'PRODUCTION / R2接続には管理キーが必要です':`R2 READBACK失敗: ${String(err?.message||err)}`;
       return false;
-    }finally{
-      if(button)button.disabled=false;
-    }
+    }finally{if(button)button.disabled=false}
   }
 
-  async function putServer(draft){
+  async function putServer(draft,interactive=false){
     const w=week();
     if(!w||!draft)return false;
+    if(productionHost&&!storedAdminKey()&&!interactive)return false;
     syncing=true;
     try{
-      const response=await fetch(`/api/weekly-harfway-draft-store?week=${encodeURIComponent(w)}`,{
-        method:'POST',
-        headers:{'content-type':'application/json'},
-        body:JSON.stringify({week:w,draft})
-      });
+      const response=await adminFetch(`/api/weekly-harfway-draft-store?week=${encodeURIComponent(w)}`,{
+        method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({week:w,draft})
+      },interactive);
       const data=await response.json().catch(()=>({}));
       if(!response.ok||!data.ok)throw new Error(data.error||`HTTP ${response.status}`);
       lastServerSavedAt=data.savedAt||new Date().toISOString();
       const p=pill();if(p){p.classList.add('on');p.classList.remove('verified');p.textContent='R2 SAVED'}
       const t=text();if(t)t.textContent=`SERVER SAVED ${stamp()} / 週 ${w} / READBACK確認中…`;
-      return await verifyReadback(lastServerSavedAt);
-    }finally{
-      syncing=false;
+      return await verifyReadback(lastServerSavedAt,interactive);
+    }finally{syncing=false}
+  }
+
+  async function reconcile(interactive=false){
+    const local=localDraft();
+    const server=await getServer(interactive);
+    const record=server?.record||null;
+    const serverDraft=record?.draft||null;
+    lastServerSavedAt=record?.savedAt||'';
+    const localTime=timeOf(local?.savedAt);
+    const serverTime=timeOf(record?.savedAt||serverDraft?.savedAt);
+    if(server?.found&&serverDraft&&serverTime>localTime){
+      applyDraft(serverDraft);
+      lastLocalSavedAt=localDraft()?.savedAt||serverDraft?.savedAt||'';
+      if(server?.source==='generated-baseline')await putServer(localDraft()||serverDraft,interactive);
+      else await verifyReadback('',interactive);
+    }else if(local){
+      lastLocalSavedAt=local.savedAt||'';
+      if(!server?.found||localTime>serverTime)await putServer(local,interactive);
+      else await verifyReadback('',interactive);
+    }else if(server?.found&&serverDraft){
+      applyDraft(serverDraft);
+      if(server?.source==='generated-baseline')await putServer(localDraft()||serverDraft,interactive);
+      else await verifyReadback('',interactive);
+    }else{
+      const t=text();if(t)t.textContent=`週 ${week()} / 下書き作成待ち`;
+    }
+  }
+
+  async function connectAndVerify(){
+    try{await reconcile(true)}catch(err){
+      const t=text();if(t)t.textContent=`R2接続失敗: ${String(err?.message||err)}`;
     }
   }
 
   async function runCronTest(){
-    const button=cronBtn();
-    if(!button)return;
-    const before=button.textContent;
-    button.disabled=true;
-    button.classList.remove('ready');
-    button.textContent='CRON TEST…';
-    const note=mondayNote();
-    if(note)note.textContent='Cron Preview: ブラウザ状態を使わず、サーバーだけで生成 → 隔離R2へ保存 → 読み戻し確認中…';
+    const button=cronBtn();if(!button)return;
+    const before=button.textContent;button.disabled=true;button.classList.remove('ready');button.textContent='CRON TEST…';
+    const note=mondayNote();if(note)note.textContent='Cron Preview: ブラウザ状態を使わず、サーバーだけで生成 → 隔離R2へ保存 → 読み戻し確認中…';
     try{
-      const response=await fetch('/api/weekly-harfway-cron',{
-        method:'POST',
-        headers:{'content-type':'application/json'},
-        body:'{}',
-        cache:'no-store'
-      });
+      const response=await fetch('/api/weekly-harfway-cron',{method:'POST',headers:{'content-type':'application/json'},body:'{}',cache:'no-store'});
       const data=await response.json().catch(()=>({}));
       if(!response.ok||!data.ok)throw new Error(data.error||`HTTP ${response.status}`);
-      if(!data.cronReady||!data.readbackVerified||data.browserStateUsed!==false)throw new Error('cron_contract_not_verified');
-      button.classList.add('ready');
-      button.textContent='CRON READY ✓';
-      const board=Number(data.boardMeta?.count||0);
-      const scraps=Number(data.boardMeta?.scrapsCount||0);
-      if(note)note.textContent=`CRON SERVER-ONLY OK / 週 ${data.week||''} / BOARD ${board} / 切れ端 ${scraps} / TEST R2 READBACK OK。編集用R2は上書きしていません。`;
-    }catch(err){
-      button.textContent=before;
-      if(note)note.textContent=`CRON動作テスト失敗: ${String(err?.message||err)}`;
-    }finally{
-      button.disabled=false;
-    }
+      if(!data.cronReady||!data.readbackVerified||data.browserStateUsed!==false||data.workingDraftUntouched!==true)throw new Error('cron_contract_not_verified');
+      button.classList.add('ready');button.textContent='CRON READY ✓';
+      const board=Number(data.boardMeta?.count||0),scraps=Number(data.boardMeta?.scrapsCount||0);
+      if(note)note.textContent=`CRON SERVER-ONLY OK / 週 ${data.week||''} / BOARD ${board} / 切れ端 ${scraps} / GENERATED R2 READBACK OK / WORKING DRAFT UNTOUCHED。`;
+    }catch(err){button.textContent=before;if(note)note.textContent=`CRON動作テスト失敗: ${String(err?.message||err)}`}
+    finally{button.disabled=false}
   }
 
   async function boot(){
-    if(ready||!payload)return;
-    ready=true;
-    const w=week();
-    try{
-      const local=localDraft();
-      const server=await getServer();
-      const record=server?.record||null;
-      const serverDraft=record?.draft||null;
-      lastServerSavedAt=record?.savedAt||'';
-      const localTime=timeOf(local?.savedAt);
-      const serverTime=timeOf(record?.savedAt||serverDraft?.savedAt);
-
-      if(server?.found&&serverDraft&&serverTime>localTime){
-        applyDraft(serverDraft);
-        lastLocalSavedAt=localDraft()?.savedAt||serverDraft?.savedAt||'';
-        await verifyReadback();
-      }else if(local){
-        lastLocalSavedAt=local.savedAt||'';
-        if(!server?.found||localTime>serverTime){
-          await putServer(local);
-        }else{
-          await verifyReadback();
-        }
-      }else if(server?.found&&serverDraft){
-        await verifyReadback();
-      }else{
-        const t=text();if(t)t.textContent=`週 ${w} / ローカル下書き作成待ち`;
-      }
-    }catch(err){
+    if(ready||!payload)return;ready=true;
+    if(productionHost&&!storedAdminKey()){
+      const t=text();if(t)t.textContent='PRODUCTION / R2同期は管理キー接続後に開始します';
+      return;
+    }
+    try{await reconcile(false)}catch(err){
       const t=text();if(t)t.textContent=`SERVER SAVE VERIFY: ${String(err?.message||err)}`;
     }
   }
 
   function watch(){
     if(!ready||syncing)return;
-    const local=localDraft();
-    const savedAt=String(local?.savedAt||'');
+    if(productionHost&&!storedAdminKey())return;
+    const local=localDraft();const savedAt=String(local?.savedAt||'');
     if(!local||!savedAt||savedAt===lastLocalSavedAt)return;
-    lastLocalSavedAt=savedAt;
-    clearTimeout(syncTimer);
-    syncTimer=setTimeout(()=>putServer(local).catch(err=>{const t=text();if(t)t.textContent=`SERVER SAVE失敗: ${String(err?.message||err)}`}),700);
+    lastLocalSavedAt=savedAt;clearTimeout(syncTimer);
+    syncTimer=setTimeout(()=>putServer(local,false).catch(err=>{const t=text();if(t)t.textContent=`SERVER SAVE失敗: ${String(err?.message||err)}`}),700);
   }
 
-  verifyBtn()?.addEventListener('click',()=>verifyReadback());
+  verifyBtn()?.addEventListener('click',connectAndVerify);
   cronBtn()?.addEventListener('click',runCronTest);
 
   let checks=0;
