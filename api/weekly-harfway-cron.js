@@ -1,8 +1,12 @@
+import { createHash } from 'node:crypto';
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import weeklyDraftHandler from './weekly-harfway-draft.js';
 
-const TEST_PREFIX = 'preview/weekly-harfway-cron-tests/';
 const MAX_BYTES = 300 * 1024;
+const PREVIEW_BASELINE_PREFIX = 'preview/weekly-harfway-generated/';
+const PREVIEW_WORKING_PREFIX = 'preview/weekly-harfway-drafts/';
+const PRODUCTION_BASELINE_PREFIX = 'production/weekly-harfway-generated/';
+const PRODUCTION_WORKING_PREFIX = 'production/weekly-harfway-working/';
 
 function send(res, status, body) {
   res.status(status);
@@ -11,9 +15,13 @@ function send(res, status, body) {
   res.json(body);
 }
 
-function ensurePreview(req) {
-  if (process.env.VERCEL_ENV !== 'preview') {
-    const error = new Error('preview_only_cron_test');
+function environment() {
+  return String(process.env.VERCEL_ENV || 'development');
+}
+
+function ensurePreviewPost(req) {
+  if (environment() !== 'preview') {
+    const error = new Error('preview_post_only');
     error.status = 403;
     throw error;
   }
@@ -31,6 +39,47 @@ function ensurePreview(req) {
     error.status = 403;
     throw error;
   }
+}
+
+function ensureProductionCron(req) {
+  if (environment() !== 'production') {
+    const error = new Error('production_get_only');
+    error.status = 403;
+    throw error;
+  }
+  const secret = String(process.env.CRON_SECRET || '');
+  const authorization = String(req.headers.authorization || '');
+  if (!secret || authorization !== `Bearer ${secret}`) {
+    const error = new Error('unauthorized_cron');
+    error.status = 401;
+    throw error;
+  }
+}
+
+function modeForRequest(req) {
+  if (req.method === 'POST') {
+    ensurePreviewPost(req);
+    return {
+      environment: 'preview',
+      mode: 'production-safety-preview',
+      baselinePrefix: PREVIEW_BASELINE_PREFIX,
+      workingPrefix: PREVIEW_WORKING_PREFIX,
+      productionMutationEnabled: false
+    };
+  }
+  if (req.method === 'GET') {
+    ensureProductionCron(req);
+    return {
+      environment: 'production',
+      mode: 'production-cron',
+      baselinePrefix: PRODUCTION_BASELINE_PREFIX,
+      workingPrefix: PRODUCTION_WORKING_PREFIX,
+      productionMutationEnabled: true
+    };
+  }
+  const error = new Error('method_not_allowed');
+  error.status = 405;
+  throw error;
 }
 
 function r2Client() {
@@ -51,8 +100,35 @@ function r2Bucket() {
   return value;
 }
 
-function keyFor(week) {
-  return `${TEST_PREFIX}${week}.json`;
+function objectKey(prefix, week) {
+  return `${prefix}${week}.json`;
+}
+
+function isMissing(error) {
+  const name = String(error?.name || '');
+  const status = Number(error?.$metadata?.httpStatusCode || 0);
+  return name === 'NoSuchKey' || name === 'NotFound' || status === 404;
+}
+
+function sha256(value) {
+  return createHash('sha256').update(String(value || ''), 'utf8').digest('hex');
+}
+
+async function readObject(prefix, week) {
+  try {
+    const out = await r2Client().send(new GetObjectCommand({
+      Bucket: r2Bucket(),
+      Key: objectKey(prefix, week)
+    }));
+    if (!out.Body) return { found: false, raw: '', record: null, hash: '' };
+    const raw = await out.Body.transformToString();
+    let record = null;
+    try { record = JSON.parse(raw); } catch {}
+    return { found: true, raw, record, hash: sha256(raw) };
+  } catch (error) {
+    if (isMissing(error)) return { found: false, raw: '', record: null, hash: '' };
+    throw error;
+  }
 }
 
 async function invoke(handler, req) {
@@ -82,45 +158,60 @@ async function generateDraft(req) {
   return generated.body;
 }
 
-async function writeTestRecord(generated) {
+function generatedHash(generated) {
+  return sha256(JSON.stringify({
+    week: generated.week || '',
+    range: generated.range || null,
+    draft: generated.draft || null,
+    boardMeta: generated.boardMeta || null,
+    sources: generated.sources || null
+  }));
+}
+
+async function writeBaseline(config, generated, previous) {
   const week = String(generated.week || '').trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(week)) throw new Error('generated_week_invalid');
+
+  const contentHash = generatedHash(generated);
+  if (previous?.found && previous.record?.contentHash === contentHash) {
+    return { record: previous.record, writePerformed: false, contentChanged: false };
+  }
+
   const savedAt = new Date().toISOString();
+  const revision = Math.max(0, Number(previous?.record?.revision || 0)) + 1;
   const record = {
-    schema: 'weekly-harfway-cron-preview-v1',
-    environment: 'preview',
-    mode: 'cron-preview-test',
+    schema: 'weekly-harfway-generated-v1',
+    environment: config.environment,
+    scope: 'generated-baseline',
     browserStateUsed: false,
     week,
+    revision,
     savedAt,
     generatedAt: generated.generatedAt || '',
+    contentHash,
     range: generated.range || null,
     boardMeta: generated.boardMeta || null,
     sources: generated.sources || null,
     warnings: generated.warnings || [],
     draft: generated.draft || null
   };
+
   const raw = JSON.stringify(record);
   if (Buffer.byteLength(raw, 'utf8') > MAX_BYTES) {
-    const error = new Error('cron_test_record_too_large');
+    const error = new Error('generated_baseline_too_large');
     error.status = 413;
     throw error;
   }
+
   await r2Client().send(new PutObjectCommand({
     Bucket: r2Bucket(),
-    Key: keyFor(week),
+    Key: objectKey(config.baselinePrefix, week),
     Body: raw,
     ContentType: 'application/json; charset=utf-8',
     CacheControl: 'no-store',
-    Metadata: { scope: 'weekly-harfway-cron-preview', week }
+    Metadata: { scope: 'weekly-harfway-generated', environment: config.environment, week }
   }));
-  return record;
-}
-
-async function readTestRecord(week) {
-  const out = await r2Client().send(new GetObjectCommand({ Bucket: r2Bucket(), Key: keyFor(week) }));
-  if (!out.Body) throw new Error('cron_test_readback_empty');
-  return JSON.parse(await out.Body.transformToString());
+  return { record, writePerformed: true, contentChanged: true };
 }
 
 function sameIds(a, b) {
@@ -129,51 +220,74 @@ function sameIds(a, b) {
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
-  if (req.method !== 'POST') return send(res, 405, { ok: false, error: 'method_not_allowed' });
 
   try {
-    ensurePreview(req);
-
+    const config = modeForRequest(req);
     const generated = await generateDraft(req);
-    const written = await writeTestRecord(generated);
-    const readback = await readTestRecord(written.week);
+    const week = String(generated.week || '').trim();
 
-    const readbackVerified = Boolean(
-      readback &&
-      readback.schema === written.schema &&
-      readback.environment === 'preview' &&
-      readback.browserStateUsed === false &&
-      readback.week === written.week &&
-      sameIds(readback.draft?.updateIds, written.draft?.updateIds) &&
-      sameIds(readback.draft?.requiredScrapIds, written.draft?.requiredScrapIds)
+    const workingBefore = await readObject(config.workingPrefix, week);
+    const baselineBefore = await readObject(config.baselinePrefix, week);
+    const written = await writeBaseline(config, generated, baselineBefore);
+    const baselineReadback = await readObject(config.baselinePrefix, week);
+    const workingAfter = await readObject(config.workingPrefix, week);
+
+    const baselineReadbackVerified = Boolean(
+      baselineReadback.found &&
+      baselineReadback.record &&
+      baselineReadback.record.schema === 'weekly-harfway-generated-v1' &&
+      baselineReadback.record.scope === 'generated-baseline' &&
+      baselineReadback.record.environment === config.environment &&
+      baselineReadback.record.week === week &&
+      baselineReadback.record.contentHash === written.record.contentHash &&
+      sameIds(baselineReadback.record.draft?.updateIds, written.record.draft?.updateIds) &&
+      sameIds(baselineReadback.record.draft?.requiredScrapIds, written.record.draft?.requiredScrapIds)
     );
 
-    if (!readbackVerified) throw new Error('cron_test_readback_mismatch');
+    const workingDraftUntouched = Boolean(
+      workingBefore.found === workingAfter.found &&
+      workingBefore.hash === workingAfter.hash
+    );
+
+    if (!baselineReadbackVerified) throw new Error('generated_baseline_readback_mismatch');
+    if (!workingDraftUntouched) throw new Error('working_draft_changed_during_cron_test');
 
     return send(res, 200, {
       ok: true,
-      mode: 'cron-preview-test',
+      mode: config.mode,
       cronReady: true,
+      productionReady: true,
       browserStateUsed: false,
+      authModel: 'Authorization: Bearer CRON_SECRET',
       productionScheduleEnabled: false,
-      productionMutationEnabled: false,
-      week: written.week,
-      savedAt: written.savedAt,
-      storage: 'r2-preview-cron-test-prefix',
-      prefix: TEST_PREFIX,
+      productionMutationEnabled: config.productionMutationEnabled,
+      week,
+      revision: written.record.revision,
+      savedAt: written.record.savedAt,
+      contentHash: written.record.contentHash,
+      contentChanged: written.contentChanged,
+      writePerformed: written.writePerformed,
+      storage: 'r2-generated-baseline',
+      baselinePrefix: config.baselinePrefix,
+      workingPrefix: config.workingPrefix,
+      baselineReadbackVerified: true,
       readbackVerified: true,
-      range: written.range,
-      boardMeta: written.boardMeta,
-      sources: written.sources,
-      warnings: written.warnings,
-      note: 'Preview test only. Canonical weekly draft is not overwritten. vercel.json Cron is not registered.'
+      workingDraftUntouched: true,
+      workingDraftFound: workingAfter.found,
+      range: written.record.range,
+      boardMeta: written.record.boardMeta,
+      sources: written.record.sources,
+      warnings: written.record.warnings,
+      recommendedSchedule: {
+        note: 'Cron schedule remains disabled until explicit 本番OK. Because Monday-published SCRAPS can arrive later, generated baseline may be safely refreshed more than once without overwriting working drafts.'
+      }
     });
   } catch (error) {
     console.error('[weekly-harfway-cron]', error?.message || error);
     return send(res, error?.status || 500, {
       ok: false,
-      error: error?.message || 'weekly_harfway_cron_test_failed',
-      environment: process.env.VERCEL_ENV || 'development',
+      error: error?.message || 'weekly_harfway_cron_failed',
+      environment: environment(),
       productionScheduleEnabled: false,
       productionMutationEnabled: false
     });
