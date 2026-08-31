@@ -1,5 +1,4 @@
 ---
-const slug = Astro.params.slug || '';
 const publications = {
   'doujin-yawa': {
     title: '同人ゲーム夜話',
@@ -26,8 +25,15 @@ const publications = {
     memos: ['観測メモ：起動して10分で残った景色','プレイ中：まだ結論は出さない','あとで読む：作者インタビュー候補']
   }
 };
-const publication = publications[slug];
-if (!publication) return Astro.redirect('/publications');
+
+export function getStaticPaths() {
+  return Object.entries(publications).map(([slug, publication]) => ({
+    params: { slug },
+    props: { slug, publication }
+  }));
+}
+
+const { slug, publication } = Astro.props;
 ---
 <html lang="ja">
 <head>
