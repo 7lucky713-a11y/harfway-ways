@@ -18,7 +18,7 @@ html,body{margin:0;min-height:100%;background:#0a0b0d;color:#f4f5f2;font-family:
   try{
     const sourceUrl='https://raw.githubusercontent.com/7lucky713-a11y/harfway-ways/618137fc35ddd5fc4a6c3ce2d8573794419ea9ea/src/pages/weekly-harfway.astro';
     const helperUrl='https://raw.githubusercontent.com/7lucky713-a11y/harfway-ways/a2ded72c132f2a8e6d229eb1862f89931456919f/public/weekly-x-library.js';
-    const autosaveUrl='https://raw.githubusercontent.com/7lucky713-a11y/harfway-ways/a221bad8754fdd2dc6b8c39ade6ac5e67897f65d/public/weekly-autosave.js';
+    const autosaveUrl='https://raw.githubusercontent.com/7lucky713-a11y/harfway-ways/e81d6b130c580f360c8b7a2f39ab9eb2da19d194/public/weekly-autosave.js';
     const [sourceRes,helperRes,autosaveRes]=await Promise.all([fetch(sourceUrl,{cache:'no-store'}),fetch(helperUrl,{cache:'no-store'}),fetch(autosaveUrl,{cache:'no-store'})]);
     if(!sourceRes.ok)throw new Error('source_'+sourceRes.status);
     if(!helperRes.ok)throw new Error('x_helper_'+helperRes.status);
