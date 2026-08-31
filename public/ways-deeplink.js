@@ -1,7 +1,8 @@
 (()=>{
   const params=new URLSearchParams(location.search);
+  const gameId=String(params.get('game')||'').trim().replace(/^ways-/,'');
   const appid=String(params.get('steam')||'').trim();
-  if(!/^\d+$/.test(appid))return;
+  if(!gameId&&!/^\d+$/.test(appid))return;
   const wait=ms=>new Promise(r=>setTimeout(r,ms));
   const appIdFromUrl=url=>String(url||'').match(/store\.steampowered\.com\/app\/(\d+)/i)?.[1]||'';
   const norm=s=>String(s||'').trim();
@@ -10,7 +11,10 @@
     try{
       const r=await fetch('/api/games-live',{cache:'no-store'});
       const j=await r.json();
-      const hit=(j?.entries||[]).find(x=>appIdFromUrl(x?.storeUrl)===appid);
+      const entries=j?.entries||[];
+      const hit=gameId
+        ? entries.find(x=>norm(x?.id)===gameId)
+        : entries.find(x=>appIdFromUrl(x?.storeUrl)===appid);
       return norm(hit?.title);
     }catch{return ''}
   }
@@ -19,7 +23,13 @@
     for(let page=0;page<12;page++){
       const cards=[...document.querySelectorAll('.game')];
       const hit=cards.find(card=>norm(card.querySelector('.gtitle')?.textContent)===title);
-      if(hit){hit.click();hit.scrollIntoView({behavior:'smooth',block:'nearest'});return true}
+      if(hit){
+        hit.click();
+        hit.scrollIntoView({behavior:'smooth',block:'nearest'});
+        const v=document.querySelector('.video-frame video');
+        if(v)setTimeout(()=>v.play().catch(()=>{}),60);
+        return true
+      }
       const more=document.querySelector('#shelfMore');
       if(!more)return false;
       more.click();
@@ -34,7 +44,13 @@
     for(let turn=0;turn<40;turn++){
       const cards=[...feed.querySelectorAll('.m-card')];
       const hit=cards.find(card=>norm(card.querySelector('.m-meta h2')?.textContent)===title);
-      if(hit){hit.scrollIntoView({behavior:'auto',block:'start'});await wait(180);const v=hit.querySelector('video');if(v){const src=v.dataset?.src;if(src&&!v.getAttribute('src'))v.src=src;v.play().catch(()=>{})}return true}
+      if(hit){
+        hit.scrollIntoView({behavior:'auto',block:'start'});
+        await wait(180);
+        const v=hit.querySelector('video');
+        if(v){const src=v.dataset?.src;if(src&&!v.getAttribute('src'))v.src=src;v.play().catch(()=>{})}
+        return true
+      }
       const last=cards.at(-1);
       if(last)last.scrollIntoView({behavior:'auto',block:'start'});
       await wait(180);
