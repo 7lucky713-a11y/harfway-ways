@@ -4,16 +4,93 @@ import { resolve } from 'node:path';
 const raw = await readFile(resolve(process.cwd(), 'snapshot/index.html'), 'utf8');
 const source = raw
   .replaceAll('https://harfway-playback.vercel.app/api/games', '/api/games-live')
-  .replace(/const API\s*=\s*['"]\/api\/games['"]\s*;/g, "const API='/api/games-live';");
+  .replace(/const API\s*=\s*['"]\/api\/games['"]\s*;/g, "const API='/api/games-live';")
+  .replace(
+    'const SHELF_SIZE=10,MOBILE_INITIAL=2,MOBILE_BATCH=2;',
+    "let SHELF_SIZE=20;const MOBILE_INITIAL=2,MOBILE_BATCH=2;window.__WAYS_SET_SHELF_SIZE=(n)=>{const next=Math.max(1,Number(n)||20);if(SHELF_SIZE===next)return;SHELF_SIZE=next;shelfPage=Math.floor(selected/SHELF_SIZE);if(innerWidth>=900&&mainReady)renderShelfPage(true);else{updateShelfPager();renderShelfContext()}};"
+  )
+  .replace('← 前の10作品', '← 前の作品')
+  .replace('次の10作品を読み込む →', '次の作品を読み込む →')
+  .replace("more.textContent='最初の10作品に戻る ↺'", "more.textContent='最初の作品に戻る ↺'");
 if (/const API\s*=\s*['"]\/api\/games['"]\s*;/.test(source)) {
   throw new Error('Legacy /api/games binding remains in WAYS frontend');
 }
-const head = source.match(/<head>([\s\S]*?)<\/head>/i)?.[1] ?? '';
-const body = source.match(/<body>([\s\S]*?)<\/body>/i)?.[1] ?? source;
+const baseHead = source.match(/<head>([\s\S]*?)<\/head>/i)?.[1] ?? '';
+const baseBody = source.match(/<body>([\s\S]*?)<\/body>/i)?.[1] ?? source;
+const navStyle = `
+<style>
+@media (min-width:900px){
+  .ways-stage-skip{
+    position:absolute;
+    z-index:8;
+    top:50%;
+    transform:translateY(-50%);
+    width:clamp(58px,7vw,108px);
+    height:clamp(116px,28vh,250px);
+    border:1px solid #2f3238;
+    background:#0b0c0ee8;
+    color:#f5f5ef;
+    display:grid;
+    place-items:center;
+    font-size:clamp(30px,3.2vw,50px);
+    font-weight:900;
+    cursor:pointer;
+    transition:background .16s,border-color .16s,color .16s,transform .16s;
+    backdrop-filter:blur(8px);
+  }
+  .ways-stage-skip:hover{
+    border-color:var(--accent);
+    color:var(--accent);
+    background:#111309f2;
+  }
+  .ways-stage-skip:active{transform:translateY(-50%) scale(.97)}
+  .ways-stage-skip.prev{left:0}
+  .ways-stage-skip.next{right:0}
+  .ways-stage-skip span{transform:translateY(-2px)}
+}
+@media (min-width:900px) and (max-width:1180px){
+  .ways-stage-skip{width:52px;height:120px;font-size:30px}
+}
+</style>`;
+const navScript = `
+<script>
+(() => {
+  const stage = document.querySelector('.desktop .stage');
+  if (stage && !stage.querySelector('.ways-stage-skip')) {
+    const prev = document.createElement('button');
+    prev.type = 'button';
+    prev.className = 'ways-stage-skip prev';
+    prev.setAttribute('aria-label', '前の作品へ');
+    prev.innerHTML = '<span>◀</span>';
+    prev.addEventListener('click', () => document.querySelector('#prev')?.click());
+
+    const next = document.createElement('button');
+    next.type = 'button';
+    next.className = 'ways-stage-skip next';
+    next.setAttribute('aria-label', '次の作品へ');
+    next.innerHTML = '<span>▶</span>';
+    next.addEventListener('click', () => document.querySelector('#next')?.click());
+
+    stage.append(prev, next);
+  }
+
+  const shelf = document.querySelector('#shelf');
+  if (shelf && window.__WAYS_SET_SHELF_SIZE) {
+    const reserveAdSlot = () => {
+      if (shelf.querySelector('.ways-ad-card')) window.__WAYS_SET_SHELF_SIZE(19);
+    };
+    reserveAdSlot();
+    const observer = new MutationObserver(reserveAdSlot);
+    observer.observe(shelf, { childList: true });
+  }
+})();
+</script>`;
+const head = `${baseHead}${navStyle}`;
+const body = baseBody;
 ---
 <!doctype html>
 <html lang="ja">
   <head><Fragment set:html={head} /></head>
-  <body><Fragment set:html={body} /><script is:inline src="/ga4-service.js"></script><script is:inline src="/ways-analytics.js"></script><script is:inline src="/ways-deeplink.js"></script><script is:inline src="/ways-ads.js"></script></body>
+  <body><Fragment set:html={body} /><script is:inline src="/ga4-service.js"></script><script is:inline src="/ways-analytics.js"></script><script is:inline src="/ways-deeplink.js"></script><script is:inline src="/ways-ads.js"></script><Fragment set:html={navScript} /></body>
 </html>
-<!-- WAYS live games API + custom analytics + GA4 bridge + Steam deep links + ads -->
+<!-- WAYS live games API + custom analytics + GA4 bridge + Steam deep links + ads + stage nav -->
