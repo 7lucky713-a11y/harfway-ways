@@ -1,0 +1,77 @@
+---
+const publications = [
+  {
+    slug: 'doujin-yawa',
+    title: '同人ゲーム夜話',
+    deck: '同人ゲームを、深く、ゆっくり掘る専門棚。',
+    editor: '編集長：サンプル',
+    theme: 'Shelf × Journal',
+    status: 'pilot',
+    accent: '#8f3131'
+  },
+  {
+    slug: 'writer-b',
+    title: '二号媒体（量産テスト）',
+    deck: '同じエンジンから、違う編集思想を出せるか確認するためのダミー媒体。',
+    editor: '編集長：Writer B',
+    theme: 'Editorial × Archive',
+    status: 'prototype',
+    accent: '#315c8f'
+  }
+];
+---
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HARF-WAY Publications</title>
+    <style>
+      :root { font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color:#161616; background:#f4f1e8; }
+      * { box-sizing:border-box; }
+      body { margin:0; }
+      a { color:inherit; text-decoration:none; }
+      .wrap { width:min(1180px, calc(100% - 32px)); margin:auto; }
+      header { padding:28px 0 16px; border-bottom:1px solid #d8d2c4; }
+      .eyebrow { font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:#686158; }
+      h1 { margin:8px 0 6px; font-family:Georgia, "Times New Roman", serif; font-size:clamp(36px,6vw,72px); line-height:.95; }
+      .lead { max-width:720px; color:#59534b; font-size:18px; line-height:1.8; }
+      main { padding:42px 0 72px; }
+      .note { border:1px solid #d8d2c4; background:#fffdf8; padding:18px 20px; border-radius:14px; margin-bottom:26px; color:#4d473f; line-height:1.7; }
+      .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
+      .card { position:relative; min-height:290px; padding:26px; background:#fffdf8; border:1px solid #d8d2c4; border-radius:18px; overflow:hidden; display:flex; flex-direction:column; }
+      .bar { position:absolute; inset:0 auto 0 0; width:7px; background:var(--accent); }
+      .status { display:inline-flex; width:max-content; font-size:11px; letter-spacing:.12em; text-transform:uppercase; border:1px solid #ccc5b7; border-radius:999px; padding:6px 9px; color:#645e54; }
+      h2 { font-family:Georgia, "Times New Roman", serif; font-size:32px; margin:28px 0 8px; }
+      .deck { color:#5a554d; line-height:1.8; max-width:510px; }
+      .meta { margin-top:auto; display:flex; gap:10px; flex-wrap:wrap; color:#6c655c; font-size:13px; }
+      .cta { margin-top:20px; font-weight:700; }
+      footer { padding:24px 0 40px; color:#756e64; font-size:13px; border-top:1px solid #d8d2c4; }
+      @media (max-width:760px){ .grid{grid-template-columns:1fr;} .card{min-height:250px;} }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="wrap">
+        <div class="eyebrow">HARF-WAY / Publisher Engine Preview</div>
+        <h1>HARF-WAY Publications</h1>
+        <p class="lead">人の偏りを、ひとつのメディアに。ひとつのVercelプロジェクトから、媒体ごとに異なる世界観と棚を持たせるための共通エンジンです。</p>
+      </div>
+    </header>
+    <main class="wrap">
+      <div class="note"><strong>Preview v0.1</strong> — 現段階ではUIと量産構造の確認用です。Production DBにはまだ変更していません。記事更新でDeployを発生させない構成へ接続する前提です。</div>
+      <div class="grid">
+        {publications.map((publication) => (
+          <a class="card" style={`--accent:${publication.accent}`} href={`/publications/${publication.slug}`}>
+            <span class="bar"></span>
+            <span class="status">{publication.status}</span>
+            <h2>{publication.title}</h2>
+            <div class="deck">{publication.deck}</div>
+            <div class="meta"><span>{publication.editor}</span><span>•</span><span>{publication.theme}</span></div>
+            <div class="cta">媒体を見る →</div>
+          </a>
+        ))}
+      </div>
+    </main>
+    <footer><div class="wrap">Powered by HARF-WAY — shared engine / shared infrastructure / independent editorial identity.</div></footer>
+  </body>
+</html>
