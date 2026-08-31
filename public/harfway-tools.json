@@ -86,6 +86,26 @@
           "scope": "page"
         }
       }
+    },
+    {
+      "id": "weekly-harfway",
+      "project_slug": "harfway-playback",
+      "admin_url": "https://harfway-playback.vercel.app/weekly-harfway/",
+      "sync_source": "page-manifest",
+      "manifest": {
+        "harfway": true,
+        "id": "weekly-harfway",
+        "name": "WEEKLY HARF-WAY",
+        "project_slug": "harfway-playback",
+        "group": "CREATE",
+        "role": "週刊まとめ編集・WordPress出力",
+        "description": "先週分のHARF-WAY素材を集め、WEEKLY BOARD・X/WAYS GAME LOG・MEMOを編集し、WordPress用HTML/CSSへ出力する週刊編集室。",
+        "admin_url": "https://harfway-playback.vercel.app/weekly-harfway/",
+        "control_center": {
+          "sync": true,
+          "scope": "page"
+        }
+      }
     }
   ]
 }
