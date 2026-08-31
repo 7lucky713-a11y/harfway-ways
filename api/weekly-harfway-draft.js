@@ -1,10 +1,14 @@
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+
 const JST_MS = 9 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const DRAFT_PREFIX = 'preview/weekly-harfway-drafts/';
 
 function send(res, status, body) {
   res.status(status);
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   res.json(body);
 }
 
@@ -42,6 +46,17 @@ function fmt(date) {
     month: '2-digit',
     day: '2-digit'
   }).format(date);
+}
+
+function weekKey(date) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(date);
+  const get = type => parts.find(part => part.type === type)?.value || '';
+  return `${get('year')}-${get('month')}-${get('day')}`;
 }
 
 async function fetchJson(url, timeoutMs = 10000) {
@@ -133,52 +148,145 @@ function boardPriority(type) {
   return order[type] ?? 6;
 }
 
+function ensurePreviewMutation(req) {
+  if (process.env.VERCEL_ENV !== 'preview') {
+    const error = new Error('preview_only');
+    error.status = 403;
+    throw error;
+  }
+  const origin = String(req.headers.origin || '');
+  const host = String(req.headers.host || '');
+  if (!origin || !host) {
+    const error = new Error('origin_required');
+    error.status = 403;
+    throw error;
+  }
+  let originHost = '';
+  try { originHost = new URL(origin).host; } catch {}
+  if (!originHost || originHost !== host) {
+    const error = new Error('origin_mismatch');
+    error.status = 403;
+    throw error;
+  }
+}
+
+function r2Client() {
+  const accountId = process.env.R2_ACCOUNT_ID;
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+  if (!accountId || !accessKeyId || !secretAccessKey) throw new Error('r2_credentials_not_configured');
+  return new S3Client({
+    region: 'auto',
+    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+    credentials: { accessKeyId, secretAccessKey }
+  });
+}
+
+function r2Bucket() {
+  const value = String(process.env.R2_BUCKET || '').trim();
+  if (!value) throw new Error('r2_bucket_not_configured');
+  return value;
+}
+
+async function persistDraft(week, draft) {
+  const record = {
+    schema: 'weekly-harfway-draft-v1',
+    environment: 'preview',
+    week,
+    savedAt: new Date().toISOString(),
+    draft
+  };
+  await r2Client().send(new PutObjectCommand({
+    Bucket: r2Bucket(),
+    Key: `${DRAFT_PREFIX}${week}.json`,
+    Body: JSON.stringify(record),
+    ContentType: 'application/json; charset=utf-8',
+    CacheControl: 'no-store',
+    Metadata: { scope: 'weekly-harfway-preview', week }
+  }));
+  return record;
+}
+
 export default async function handler(req, res) {
-  if (req.method !== 'GET') return send(res, 405, { ok: false, error: 'method_not_allowed' });
+  if (!['GET', 'POST'].includes(req.method)) return send(res, 405, { ok: false, error: 'method_not_allowed' });
 
-  const { start, end } = mondayRange();
-  const warnings = [];
-  let wordpress = [];
-  let yorimichi = [];
+  try {
+    if (req.method === 'POST') ensurePreviewMutation(req);
 
-  const settled = await Promise.allSettled([
-    loadWordPress(start, end),
-    loadYorimichi(start, end)
-  ]);
+    const { start, end } = mondayRange();
+    const warnings = [];
+    let wordpress = [];
+    let yorimichi = [];
 
-  if (settled[0].status === 'fulfilled') wordpress = settled[0].value;
-  else warnings.push(`WordPress取得失敗: ${settled[0].reason?.message || 'unknown'}`);
+    const settled = await Promise.allSettled([
+      loadWordPress(start, end),
+      loadYorimichi(start, end)
+    ]);
 
-  if (settled[1].status === 'fulfilled') yorimichi = settled[1].value;
-  else warnings.push(`ヨリミチ週刊取得失敗: ${settled[1].reason?.message || 'unknown'}`);
+    if (settled[0].status === 'fulfilled') wordpress = settled[0].value;
+    else warnings.push(`WordPress取得失敗: ${settled[0].reason?.message || 'unknown'}`);
 
-  const verified = dedupe([...wordpress, ...yorimichi]);
-  const board = verified
-    .filter(item => item.type !== 'DIARY')
-    .sort((a, b) => boardPriority(a.type) - boardPriority(b.type) || Date.parse(b.date || 0) - Date.parse(a.date || 0))
-    .slice(0, 5);
+    if (settled[1].status === 'fulfilled') yorimichi = settled[1].value;
+    else warnings.push(`ヨリミチ週刊取得失敗: ${settled[1].reason?.message || 'unknown'}`);
 
-  return send(res, 200, {
-    ok: true,
-    mode: 'preview-readonly',
-    persisted: false,
-    cronReady: true,
-    generatedAt: new Date().toISOString(),
-    range: {
-      start: start.toISOString(),
-      end: end.toISOString(),
-      label: `${fmt(start)} → ${fmt(new Date(end.getTime() - 1))}`
-    },
-    draft: {
+    const verified = dedupe([...wordpress, ...yorimichi]);
+    const board = verified
+      .filter(item => item.type !== 'DIARY')
+      .sort((a, b) => boardPriority(a.type) - boardPriority(b.type) || Date.parse(b.date || 0) - Date.parse(a.date || 0))
+      .slice(0, 5);
+
+    const generatedAt = new Date().toISOString();
+    const week = weekKey(start);
+    const draft = {
       gameIds: [],
       updateIds: board.map(item => item.id),
+      gameEdit: {},
+      updateEdit: {},
+      fields: {},
+      custom: [],
+      savedAt: generatedAt,
+      autosave: true,
+      serverGenerated: true,
       verifiedIds: verified.map(item => item.id),
       note: 'GAME LOGのX / WAYSは別content instanceとして扱い、日時を安全に判定できないため自動選択しません。'
-    },
-    sources: {
-      wordpress: { ok: settled[0].status === 'fulfilled', count: wordpress.length },
-      yorimichi: { ok: settled[1].status === 'fulfilled', count: yorimichi.length }
-    },
-    warnings
-  });
+    };
+
+    let persisted = false;
+    let storedAt = '';
+    if (req.method === 'POST') {
+      const record = await persistDraft(week, draft);
+      persisted = true;
+      storedAt = record.savedAt;
+    }
+
+    return send(res, 200, {
+      ok: true,
+      mode: req.method === 'POST' ? 'preview-server-persist' : 'preview-readonly',
+      persisted,
+      storage: persisted ? 'r2-preview-prefix' : null,
+      prefix: persisted ? DRAFT_PREFIX : null,
+      week,
+      storedAt,
+      cronReady: true,
+      generatedAt,
+      range: {
+        start: start.toISOString(),
+        end: end.toISOString(),
+        label: `${fmt(start)} → ${fmt(new Date(end.getTime() - 1))}`
+      },
+      draft,
+      sources: {
+        wordpress: { ok: settled[0].status === 'fulfilled', count: wordpress.length },
+        yorimichi: { ok: settled[1].status === 'fulfilled', count: yorimichi.length }
+      },
+      warnings
+    });
+  } catch (error) {
+    console.error('[weekly-harfway-draft]', error?.message || error);
+    return send(res, error?.status || 500, {
+      ok: false,
+      error: error?.message || 'weekly_harfway_draft_failed',
+      environment: process.env.VERCEL_ENV || 'development'
+    });
+  }
 }
