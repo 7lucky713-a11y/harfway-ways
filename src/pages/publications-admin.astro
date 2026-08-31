@@ -1,0 +1,61 @@
+---
+---
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>HARF-WAY Publications / Preview CMS</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#101318;color:#eef1f5}*{box-sizing:border-box}body{margin:0}.wrap{width:min(1180px,calc(100% - 28px));margin:auto;padding:34px 0 70px}h1{font-size:clamp(30px,5vw,54px);margin:4px 0 8px}.lead{color:#aeb7c4;max-width:760px;line-height:1.7}.badge{display:inline-block;padding:6px 10px;border:1px solid #364154;border-radius:999px;font-size:12px;color:#aeb7c4}.layout{display:grid;grid-template-columns:300px 1fr;gap:18px;margin-top:28px}.panel{background:#171c24;border:1px solid #283140;border-radius:16px;padding:18px}.pub-list{display:grid;gap:8px}.pub-btn{width:100%;text-align:left;border:1px solid #303a4b;background:#121720;color:#eef1f5;padding:12px;border-radius:11px;cursor:pointer}.pub-btn.active{border-color:#8e9fff;background:#20283a}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}button,a.btn{border:0;background:#6578ff;color:white;padding:10px 14px;border-radius:10px;font-weight:700;cursor:pointer;text-decoration:none}.ghost{background:#252d3a!important;color:#d8deea!important}.danger{background:#653844!important}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}label{display:grid;gap:6px;font-size:12px;color:#aeb7c4}input,textarea,select{width:100%;background:#0f141b;color:#f4f6f9;border:1px solid #303a4b;border-radius:9px;padding:10px;font:inherit}textarea{min-height:88px;resize:vertical}.full{grid-column:1/-1}.section-title{font-size:18px;margin:24px 0 10px}.rows{display:grid;gap:8px}.article{display:grid;grid-template-columns:1fr 150px 90px;gap:8px;align-items:center;padding:10px;background:#11161e;border:1px solid #283140;border-radius:10px}.muted{font-size:12px;color:#8f99a8}.status{margin-top:12px;color:#90d7a4;font-size:13px}.notice{margin-top:18px;padding:13px;border-left:3px solid #d0a95c;background:#221f17;color:#e7d9b2;font-size:13px;line-height:1.6}@media(max-width:820px){.layout{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.full{grid-column:auto}.article{grid-template-columns:1fr}.side{order:2}}
+</style>
+</head>
+<body><main class="wrap">
+<span class="badge">PREVIEW ONLY / browser storage</span>
+<h1>HARF-WAY Publications CMS</h1>
+<p class="lead">媒体を増やすたびにコードやVercel Projectを増やさないための共通CMS試作です。保存後、同じブラウザで公開Previewを開くと即反映されます。Vercel Deployは発生しません。</p>
+<div class="layout">
+<aside class="panel side"><strong>媒体</strong><div id="pubList" class="pub-list" style="margin-top:12px"></div><div class="actions"><button id="newPub">＋ 新しい媒体</button></div><div class="notice">現在の保存先はPreview用 localStorage。Neon接続確認後、この保存層だけ差し替える想定です。</div></aside>
+<section class="panel">
+<form id="form">
+<div class="form-grid">
+<label>slug<input id="slug" required placeholder="doujin-yawa" /></label>
+<label>媒体名<input id="title" required /></label>
+<label class="full">タグライン<input id="tagline" /></label>
+<label>編集長<input id="editor" /></label>
+<label>テーマ<select id="theme"><option value="editorial">ミニコミ誌</option><option value="shelf">ショップ棚</option><option value="archive">個人アーカイブ</option></select></label>
+<label>アクセント色<input id="accent" value="#8f3131" /></label>
+<label>背景色<input id="bg" value="#f5efe4" /></label>
+<label class="full">媒体説明<textarea id="description"></textarea></label>
+<label class="full">棚（1行1つ）<textarea id="shelves"></textarea></label>
+</div>
+<div class="section-title">記事 / メモ</div>
+<div id="articles" class="rows"></div>
+<div class="actions"><button type="button" id="addArticle" class="ghost">＋ コンテンツ追加</button></div>
+<div class="actions"><button type="submit">保存</button><a id="previewLink" class="btn ghost" target="_blank">公開Preview</a><button type="button" id="deletePub" class="danger">媒体を削除</button></div>
+<div id="status" class="status"></div>
+</form>
+</section>
+</div>
+</main>
+<script>
+const KEY='harfway_publications_preview_v1';
+const seed=[
+{slug:'doujin-yawa',title:'同人ゲーム夜話',tagline:'同人ゲームの面白さを、深く、ゆっくり、味わう夜話を。',editor:'編集長：サンプル',theme:'editorial',accent:'#8f3131',bg:'#f5efe4',description:'その人の頭の中にある「同人ゲーム売り場」を、そのままWebにする専門媒体。',shelves:['500円以下','短編ADV','作者から辿る','体験版あり','昔の一本','今月の新着'],articles:[{title:'500円以下で拾った3本',type:'pick',note:'今月の発掘から3本。'},{title:'作者を追う：小さなサークルの過去作',type:'feature',note:'作品ではなく作者から辿る。'},{title:'パッケージだけで惹かれた一本',type:'memo',note:'短い発掘メモ。'}]},
+{slug:'writer-b',title:'二号媒体（量産テスト）',tagline:'仕事帰りの短い時間に残ったゲームを記録する。',editor:'編集長：Writer B',theme:'archive',accent:'#315c8f',bg:'#eef3f8',description:'同じエンジンから別人格の媒体を生成するためのテスト。',shelves:['夜向け','短時間','景色','音','日記','アーカイブ'],articles:[{title:'仕事帰りに遊ぶ一本',type:'pick',note:'1時間以内の体験。'}]}
+];
+let pubs=load();let current=pubs[0]?.slug||'';
+function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||'null');return Array.isArray(x)&&x.length?x:structuredClone(seed)}catch{return structuredClone(seed)}}
+function save(){localStorage.setItem(KEY,JSON.stringify(pubs));}
+function q(id){return document.getElementById(id)}
+function esc(s=''){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function splitLines(v){return String(v||'').split(/\n/).map(s=>s.trim()).filter(Boolean)}
+function renderList(){q('pubList').innerHTML=pubs.map(p=>`<button class="pub-btn ${p.slug===current?'active':''}" data-slug="${esc(p.slug)}"><strong>${esc(p.title)}</strong><div class="muted">/${esc(p.slug)}</div></button>`).join('');document.querySelectorAll('.pub-btn').forEach(b=>b.onclick=()=>{current=b.dataset.slug;render()})}
+function row(a={title:'',type:'memo',note:''}){const el=document.createElement('div');el.className='article';el.innerHTML=`<input class="a-title" placeholder="タイトル" value="${esc(a.title)}"><select class="a-type"><option value="pick">PICK</option><option value="feature">FEATURE</option><option value="memo">MEMO</option><option value="article">ARTICLE</option></select><button type="button" class="ghost remove">削除</button><textarea class="a-note" style="grid-column:1/-1" placeholder="短い説明">${esc(a.note)}</textarea>`;el.querySelector('.a-type').value=a.type||'memo';el.querySelector('.remove').onclick=()=>el.remove();return el}
+function render(){renderList();const p=pubs.find(x=>x.slug===current)||pubs[0];if(!p)return;q('slug').value=p.slug;q('title').value=p.title;q('tagline').value=p.tagline||'';q('editor').value=p.editor||'';q('theme').value=p.theme||'editorial';q('accent').value=p.accent||'#8f3131';q('bg').value=p.bg||'#f5efe4';q('description').value=p.description||'';q('shelves').value=(p.shelves||[]).join('\n');q('articles').innerHTML='';(p.articles||[]).forEach(a=>q('articles').appendChild(row(a)));q('previewLink').href='/publications/live?slug='+encodeURIComponent(p.slug)}
+q('addArticle').onclick=()=>q('articles').appendChild(row());
+q('newPub').onclick=()=>{let n=1,slug='new-publication';while(pubs.some(p=>p.slug===slug))slug='new-publication-'+(++n);pubs.push({slug,title:'新しい媒体',tagline:'',editor:'',theme:'editorial',accent:'#6957d5',bg:'#f4f2f8',description:'',shelves:[],articles:[]});current=slug;save();render()};
+q('form').onsubmit=e=>{e.preventDefault();const old=current;const slug=q('slug').value.trim().replace(/[^a-z0-9-]/g,'-').replace(/-+/g,'-')||old;if(slug!==old&&pubs.some(p=>p.slug===slug)){q('status').textContent='同じslugが存在します';return}const articles=[...document.querySelectorAll('.article')].map(el=>({title:el.querySelector('.a-title').value.trim(),type:el.querySelector('.a-type').value,note:el.querySelector('.a-note').value.trim()})).filter(a=>a.title);const p=pubs.find(x=>x.slug===old);Object.assign(p,{slug,title:q('title').value.trim(),tagline:q('tagline').value.trim(),editor:q('editor').value.trim(),theme:q('theme').value,accent:q('accent').value.trim(),bg:q('bg').value.trim(),description:q('description').value.trim(),shelves:splitLines(q('shelves').value),articles});current=slug;save();q('status').textContent='保存しました。Deployなしで公開Previewに反映されます。';render()};
+q('deletePub').onclick=()=>{if(pubs.length<=1)return alert('最後の1媒体は削除できません');if(!confirm('このPreview媒体を削除しますか？'))return;pubs=pubs.filter(p=>p.slug!==current);current=pubs[0].slug;save();render()};
+render();
+</script>
+</body></html>
