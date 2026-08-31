@@ -2,8 +2,9 @@
   const FIELD_IDS=['weekLabel','jpWeekLabel','gameHeading','gameLead','weekdayCount','gameCount','thirdStat','boardHeading','boardLead','updateCount','arrivalCount','boardFoot','boardTags','memo','memoLinkLabel','memoLink'];
   let ready=false;
   let saveTimer=0;
-  let previewTimer=0;
   let lastSavedAt='';
+  let focusState=null;
+  let lastPointerDownAt=0;
 
   const style=document.createElement('style');
   style.textContent=`
@@ -18,13 +19,45 @@
   const saveStatus=document.getElementById('saveStatus');
   const bar=document.createElement('div');
   bar.className='weekly-auto-bar';
-  bar.innerHTML='<span class="weekly-auto-pill on">AUTO SAVE ON</span><span class="weekly-auto-pill" id="weeklyDraftMode">WEEK DRAFT</span><span class="weekly-auto-text" id="weeklyAutoText">週データを確認中…</span>';
+  bar.innerHTML='<span class="weekly-auto-pill on">AUTO SAVE ON</span><span class="weekly-auto-pill on">FOCUS LOCK</span><span class="weekly-auto-pill" id="weeklyDraftMode">WEEK DRAFT</span><span class="weekly-auto-text" id="weeklyAutoText">週データを確認中…</span>';
   if(saveStatus?.parentElement)saveStatus.parentElement.insertBefore(bar,saveStatus);
   else document.querySelector('.editor')?.prepend(bar);
 
   const autoText=()=>document.getElementById('weeklyAutoText');
   const modePill=()=>document.getElementById('weeklyDraftMode');
   const stamp=()=>new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date());
+
+  function fieldState(el=document.activeElement){
+    if(!el?.matches?.('[data-gfield],[data-ufield]'))return null;
+    const attr=el.hasAttribute('data-gfield')?'data-gfield':'data-ufield';
+    return {
+      attr,
+      field:el.getAttribute(attr),
+      id:el.dataset.id||'',
+      start:typeof el.selectionStart==='number'?el.selectionStart:null,
+      end:typeof el.selectionEnd==='number'?el.selectionEnd:null
+    };
+  }
+
+  function selectorFor(s){
+    if(!s)return'';
+    const a=s.attr==='data-gfield'?'data-gfield':'data-ufield';
+    return `[${a}="${CSS.escape(s.field)}"][data-id="${CSS.escape(s.id)}"]`;
+  }
+
+  function restoreFocus(s=focusState){
+    if(!s)return false;
+    const el=document.querySelector(selectorFor(s));
+    if(!el)return false;
+    try{
+      el.focus({preventScroll:true});
+      if(s.start!=null&&typeof el.setSelectionRange==='function'){
+        const max=String(el.value??'').length;
+        el.setSelectionRange(Math.min(s.start,max),Math.min(s.end??s.start,max));
+      }
+      return true;
+    }catch{return false}
+  }
 
   function snapshot(){
     if(!ready||!payload)return false;
@@ -57,34 +90,24 @@
     saveTimer=setTimeout(snapshot,delay);
   }
 
-  function schedulePreview(delay=520){
-    clearTimeout(previewTimer);
-    previewTimer=setTimeout(()=>{
-      try{renderPreview()}catch{}
-    },delay);
-  }
-
   const baseRenderAll=renderAll;
   renderAll=function(){
+    const before=fieldState()||focusState;
     const out=baseRenderAll();
+    if(before){focusState=before;queueMicrotask(()=>restoreFocus(before))}
     scheduleSave(220);
     return out;
   };
 
-  // Keep editor fields stable while typing. Update state immediately,
-  // but delay the heavy WordPress/X preview refresh until typing pauses.
   const gameSelected=document.getElementById('gameSelected');
   if(gameSelected){
     gameSelected.oninput=e=>{
       const t=e.target.closest?.('[data-gfield]');
       if(!t)return;
       gameEdit[t.dataset.id]={...(gameEdit[t.dataset.id]||{}),[t.dataset.gfield]:t.value};
-      scheduleSave(550);
-      schedulePreview(520);
+      focusState=fieldState(t)||focusState;
+      scheduleSave(420);
     };
-    gameSelected.addEventListener('change',e=>{
-      if(e.target.closest?.('[data-gfield]')){scheduleSave(220);schedulePreview(80)}
-    });
   }
 
   const updateSelected=document.getElementById('updateSelected');
@@ -93,19 +116,37 @@
       const t=e.target.closest?.('[data-ufield]');
       if(!t)return;
       updateEdit[t.dataset.id]={...(updateEdit[t.dataset.id]||{}),[t.dataset.ufield]:t.value};
-      scheduleSave(550);
-      schedulePreview(520);
+      focusState=fieldState(t)||focusState;
+      scheduleSave(420);
     };
-    updateSelected.addEventListener('change',e=>{
-      if(e.target.closest?.('[data-ufield]')){scheduleSave(220);schedulePreview(80)}
-    });
   }
 
-  document.addEventListener('input',()=>scheduleSave(550),true);
-  document.addEventListener('change',()=>scheduleSave(280),true);
+  document.addEventListener('pointerdown',()=>{lastPointerDownAt=Date.now()},true);
+  document.addEventListener('focusin',e=>{
+    const s=fieldState(e.target);
+    if(s)focusState=s;
+  },true);
+  document.addEventListener('keyup',e=>{
+    const s=fieldState(e.target);
+    if(s)focusState=s;
+  },true);
   document.addEventListener('click',e=>{
+    const s=fieldState(e.target);
+    if(s)focusState=s;
     if(e.target.closest('button,[data-toggle],[data-xnews],[data-gup],[data-gdown],[data-gremove],[data-uup],[data-udown],[data-uremove]'))scheduleSave(320);
   },true);
+  document.addEventListener('focusout',e=>{
+    const s=fieldState(e.target);
+    if(!s)return;
+    focusState=s;
+    setTimeout(()=>{
+      if(document.activeElement?.matches?.('[data-gfield],[data-ufield]'))return;
+      if(Date.now()-lastPointerDownAt<350)return;
+      restoreFocus(s);
+    },40);
+  },true);
+  document.addEventListener('input',()=>scheduleSave(420),true);
+  document.addEventListener('change',()=>scheduleSave(220),true);
   window.addEventListener('beforeunload',()=>{if(ready)snapshot()});
 
   const manualSave=document.getElementById('save');
