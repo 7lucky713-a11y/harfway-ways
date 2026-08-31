@@ -6,12 +6,12 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <meta name="robots" content="noindex,nofollow" />
-<title>WEEKLY HARF-WAY / FIX LOADER</title>
+<title>WEEKLY HARF-WAY / STYLE + X EMBED</title>
 <style>
 html,body{margin:0;min-height:100%;background:#0a0b0d;color:#f4f5f2;font-family:Inter,system-ui,-apple-system,"Noto Sans JP",sans-serif}.boot{min-height:100vh;display:grid;place-items:center}.box{width:min(560px,calc(100vw - 32px));border:1px solid #303943;border-radius:16px;background:#12151a;padding:24px}.k{font:900 11px/1.2 ui-monospace,monospace;letter-spacing:.16em;color:#eaff38}.t{font-size:28px;font-weight:950;margin:8px 0}.s{color:#9ba5af;font-size:13px;line-height:1.7}.err{color:#ffb2b2;white-space:pre-wrap}</style>
 </head>
 <body>
-<div class="boot"><div class="box"><div class="k">HARF-WAY / PREVIEW FIX</div><div class="t">WEEKLY 編集室を読み込み中…</div><div class="s" id="status">修正版スクリプトを準備しています。</div></div></div>
+<div class="boot"><div class="box"><div class="k">HARF-WAY / PREVIEW UPDATE</div><div class="t">WEEKLY 編集室を読み込み中…</div><div class="s" id="status">Hタグなし / X埋め込み / WAYSデザイン版を準備しています。</div></div></div>
 <script>
 (async()=>{
   const status=document.getElementById('status');
@@ -22,7 +22,18 @@ html,body{margin:0;min-height:100%;background:#0a0b0d;color:#f4f5f2;font-family:
       .replace('<style is:global>','<style>')
       .replace('<script is:inline>','<script>')
       .replaceAll("image:d.image??x.image||''","image:(d.image??x.image??'')")
-      .replaceAll("url:d.url??x.url||''","url:(d.url??x.url??'')");
+      .replaceAll("url:d.url??x.url||''","url:(d.url??x.url??'')")
+      .replaceAll('<h2>','<div class="hw-section-title">')
+      .replaceAll('</h2>','</div>')
+      .replaceAll('.hw-log h2,.hw-board h2','.hw-section-title')
+      .replace('.hw-game{padding:28px 0;border-top:1px solid #171717}', '.hw-game{padding:24px;margin:18px 0 0;border:1px solid #111;background:#fff;box-shadow:6px 6px 0 #111}.hw-game:first-of-type{margin-top:0}.hw-xembed{margin:18px 0 0;padding:14px;background:#f5f5f5;border:1px solid #cfd3d6}.hw-xembed .twitter-tweet{margin:0 auto!important}.hw-xfallback{display:inline-flex;margin-top:10px;color:#111;text-decoration:none;border-bottom:2px solid #111;font-size:12px;font-weight:900}')
+      .replace('.card.selected{border-color:#7c8728;box-shadow:0 0 0 1px rgba(234,255,56,.15)}', '.card.selected{border-color:#7c8728;box-shadow:0 0 0 1px rgba(234,255,56,.15)}.card.ways-card{border-color:#59621f;background:linear-gradient(180deg,#15190f,#101318)}.card.ways-card:before{content:"WAYS";position:absolute;z-index:3;left:9px;top:9px;padding:5px 7px;border-radius:999px;background:#eaff38;color:#090a0b;font:950 8px/1 ui-monospace,monospace;letter-spacing:.1em}.card.ways-card .thumb{border-bottom:1px solid #59621f}.card.ways-card .title{color:#f7ffd1}.card.ways-card .badge:first-child{background:#eaff38;border-color:#eaff38;color:#090a0b}')
+      .replace('class="card ${sel?\'selected\':\'\'}"', 'class="card ${x.type===\'WAYS\'?\'ways-card\':\'\'} ${sel?\'selected\':\'\'}"')
+      .replace('${g.xUrl?`<a class="hw-link" href="${esc(g.xUrl)}" target="_blank" rel="noopener">Xで投稿を見る</a>`:\'\'}', '${g.xUrl?`<div class="hw-xembed"><blockquote class="twitter-tweet" data-dnt="true"><a href="${esc(g.xUrl)}"></a></blockquote><a class="hw-xfallback" href="${esc(g.xUrl)}" target="_blank" rel="noopener">Xで投稿を開く ↗</a></div>`:\'\'}')
+      .replace("function renderPreview(){syncStats();$('#preview').innerHTML=html()}", "function renderPreview(){syncStats();$('#preview').innerHTML=html();setTimeout(()=>window.twttr?.widgets?.load?.($('#preview')),30)}")
+      .replace("$('#copyBundle').onclick=()=>copy(`<style>${wpCss}</style>${html()}`,'HTML + CSSをコピーしました')", "$('#copyBundle').onclick=()=>copy(`<style>${wpCss}</style>${html()}<script async src=\"https://platform.twitter.com/widgets.js\" charset=\"utf-8\"><\\/script>`,'HTML + CSSをコピーしました')")
+      .replace("$('#copyHtml').onclick=()=>copy(html(),'HTMLをコピーしました')", "$('#copyHtml').onclick=()=>copy(`${html()}<script async src=\"https://platform.twitter.com/widgets.js\" charset=\"utf-8\"><\\/script>`,'HTMLをコピーしました')")
+      .replace('</body>','<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"><\\/script></body>');
     document.open();document.write(html);document.close();
   }catch(e){
     status.className='s err';
