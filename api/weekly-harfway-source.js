@@ -78,23 +78,25 @@ function classifyPost(post) {
   return 'ARTICLE';
 }
 
-function normalizeWp(post) {
+function normalizeWp(post, kind = 'post') {
   const image = post?._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
   const title = stripHtml(post?.title?.rendered || '無題');
   const summary = stripHtml(post?.excerpt?.rendered || '').slice(0, 220);
-  const type = classifyPost(post);
+  const type = kind === 'page' ? 'SCRAPS' : classifyPost(post);
   return {
-    id: `wp-${post.id}`,
-    source: 'HARF-WAY',
+    id: kind === 'page' ? `wp-page-${post.id}` : `wp-${post.id}`,
+    source: kind === 'page' ? 'HARF-WAY / 固定ページ' : 'HARF-WAY',
     type,
     title,
     summary,
     url: String(post?.link || ''),
     image: String(image || ''),
-    date: String(post?.date_gmt || post?.date || ''),
+    date: String(kind === 'page'
+      ? (post?.modified_gmt || post?.modified || post?.date_gmt || post?.date || '')
+      : (post?.date_gmt || post?.date || '')),
     eligible: true,
     weeklyVerified: true,
-    meta: { wpId: post.id }
+    meta: { wpId: post.id, wpKind: kind }
   };
 }
 
@@ -103,7 +105,17 @@ function withinRange(value, start, end) {
   return Number.isFinite(time) && time >= start.getTime() && time < end.getTime();
 }
 
-async function loadWordPress(start, end) {
+function isScrapPage(page) {
+  const link = String(page?.link || '');
+  const title = stripHtml(page?.title?.rendered || '');
+  try {
+    const path = new URL(link).pathname.replace(/\/+$/, '');
+    if (/^\/weekly\/scraps\/.+/i.test(path)) return true;
+  } catch {}
+  return /ゲームの切れ端|切れ端/.test(title) && /\/weekly\/scraps\//i.test(link);
+}
+
+async function loadWordPressPosts(start, end) {
   const params = new URLSearchParams({
     after: start.toISOString(),
     before: end.toISOString(),
@@ -113,7 +125,22 @@ async function loadWordPress(start, end) {
     _embed: '1'
   });
   const data = await fetchJson(`https://harf-way.com/wp-json/wp/v2/posts?${params}`);
-  return Array.isArray(data) ? data.map(normalizeWp) : [];
+  return Array.isArray(data) ? data.map(post => normalizeWp(post, 'post')) : [];
+}
+
+async function loadScrapPages(start, end) {
+  const params = new URLSearchParams({
+    modified_after: start.toISOString(),
+    modified_before: end.toISOString(),
+    per_page: '100',
+    orderby: 'modified',
+    order: 'desc',
+    _embed: '1'
+  });
+  const data = await fetchJson(`https://harf-way.com/wp-json/wp/v2/pages?${params}`);
+  return Array.isArray(data)
+    ? data.filter(isScrapPage).map(page => normalizeWp(page, 'page'))
+    : [];
 }
 
 async function loadYorimichi(start, end) {
@@ -180,26 +207,31 @@ export default async function handler(req, res) {
 
   const { start, end } = mondayRange();
   const warnings = [];
-  let wordpress = [];
+  let wordpressPosts = [];
+  let scrapPages = [];
   let yorimichi = [];
   let ways = { count: 0, items: [] };
 
   const settled = await Promise.allSettled([
-    loadWordPress(start, end),
+    loadWordPressPosts(start, end),
+    loadScrapPages(start, end),
     loadYorimichi(start, end),
     loadWays()
   ]);
 
-  if (settled[0].status === 'fulfilled') wordpress = settled[0].value;
-  else warnings.push(`WordPress取得失敗: ${settled[0].reason?.message || 'unknown'}`);
+  if (settled[0].status === 'fulfilled') wordpressPosts = settled[0].value;
+  else warnings.push(`WordPress投稿取得失敗: ${settled[0].reason?.message || 'unknown'}`);
 
-  if (settled[1].status === 'fulfilled') yorimichi = settled[1].value;
-  else warnings.push(`ヨリミチ週刊取得失敗: ${settled[1].reason?.message || 'unknown'}`);
+  if (settled[1].status === 'fulfilled') scrapPages = settled[1].value;
+  else warnings.push(`切れ端固定ページ取得失敗: ${settled[1].reason?.message || 'unknown'}`);
 
-  if (settled[2].status === 'fulfilled') ways = settled[2].value;
-  else warnings.push(`WAYS取得失敗: ${settled[2].reason?.message || 'unknown'}`);
+  if (settled[2].status === 'fulfilled') yorimichi = settled[2].value;
+  else warnings.push(`ヨリミチ週刊取得失敗: ${settled[2].reason?.message || 'unknown'}`);
 
-  const weeklyItems = dedupe([...wordpress, ...yorimichi]).sort((a, b) => Date.parse(b.date || 0) - Date.parse(a.date || 0));
+  if (settled[3].status === 'fulfilled') ways = settled[3].value;
+  else warnings.push(`WAYS取得失敗: ${settled[3].reason?.message || 'unknown'}`);
+
+  const weeklyItems = dedupe([...wordpressPosts, ...scrapPages, ...yorimichi]).sort((a, b) => Date.parse(b.date || 0) - Date.parse(a.date || 0));
   const items = [...weeklyItems, ...ways.items];
   const typeCounts = weeklyItems.reduce((acc, item) => {
     acc[item.type] = (acc[item.type] || 0) + 1;
@@ -215,10 +247,11 @@ export default async function handler(req, res) {
       label: `${fmt(start)} → ${fmt(new Date(end.getTime() - 1))}`
     },
     sources: {
-      wordpress: { ok: settled[0].status === 'fulfilled', count: wordpress.length },
-      yorimichi: { ok: settled[1].status === 'fulfilled', count: yorimichi.length },
+      wordpress: { ok: settled[0].status === 'fulfilled', count: wordpressPosts.length },
+      scrapPages: { ok: settled[1].status === 'fulfilled', count: scrapPages.length },
+      yorimichi: { ok: settled[2].status === 'fulfilled', count: yorimichi.length },
       ways: {
-        ok: settled[2].status === 'fulfilled',
+        ok: settled[3].status === 'fulfilled',
         count: ways.count,
         weeklyDelta: false
       }
