@@ -1,0 +1,69 @@
+---
+---
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Publication Editor / HARF-WAY Publications</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0e1116;color:#eef1f5;--accent:#8f3131}*{box-sizing:border-box}body{margin:0}button,input,textarea,select{font:inherit}.wrap{width:min(1180px,calc(100% - 28px));margin:auto}.topbar{position:sticky;top:0;z-index:10;background:rgba(14,17,22,.94);backdrop-filter:blur(12px);border-bottom:1px solid #262d38}.topbar .wrap{min-height:70px;display:flex;align-items:center;justify-content:space-between;gap:18px}.brand{display:flex;align-items:center;gap:12px}.mark{width:11px;height:36px;border-radius:8px;background:var(--accent)}.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8792a3}.pubname{font-weight:800;font-size:18px}.role{padding:7px 10px;border:1px solid #374153;border-radius:999px;color:#b9c3d2;font-size:11px;letter-spacing:.08em}.shell{display:grid;grid-template-columns:220px minmax(0,1fr);gap:22px;padding:26px 0 70px}.nav{position:sticky;top:96px;height:max-content;display:grid;gap:6px}.nav button{border:0;background:transparent;color:#9ea9b8;text-align:left;padding:11px 12px;border-radius:10px;cursor:pointer}.nav button.active{background:#1b2230;color:#fff}.nav .boundary{margin-top:16px;padding:12px;border:1px solid #293240;border-radius:12px;color:#8792a3;font-size:12px;line-height:1.6}.main{min-width:0}.pagehead{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;margin-bottom:18px}.pagehead h1{font-size:clamp(28px,4vw,46px);margin:3px 0}.lead{color:#9ea9b8;line-height:1.7;max-width:760px}.actions{display:flex;gap:8px;flex-wrap:wrap}.btn,button.primary{border:0;background:#6578ff;color:#fff;padding:10px 14px;border-radius:10px;font-weight:800;cursor:pointer;text-decoration:none}.ghost{background:#202733!important;color:#e6ebf3!important}.panel{background:#151a22;border:1px solid #28313f;border-radius:16px;padding:18px;margin-bottom:16px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stat{background:#10151c;border:1px solid #27303d;border-radius:13px;padding:16px}.stat strong{display:block;font-size:28px;margin-top:4px}.muted{color:#8994a3;font-size:12px}.section{display:none}.section.active{display:block}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}label{display:grid;gap:6px;color:#aab3c0;font-size:12px}input,textarea,select{width:100%;background:#0e131a;color:#f3f6fa;border:1px solid #303a49;border-radius:9px;padding:10px}textarea{min-height:92px;resize:vertical}.full{grid-column:1/-1}.rows{display:grid;gap:10px}.content-row{background:#10151c;border:1px solid #293240;border-radius:12px;padding:12px}.content-top{display:grid;grid-template-columns:1fr 140px auto;gap:8px}.content-row textarea{margin-top:8px}.row-actions{display:flex;gap:6px}.small{padding:8px 10px!important}.danger{background:#633a45!important}.shelf-row{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:8px}.preview-card{padding:20px;border-radius:16px;background:var(--preview-bg,#f5efe4);color:#201d1a;border:5px solid var(--accent)}.preview-card h2{font-family:Georgia,"Times New Roman",serif;font-size:34px;margin:8px 0}.notice{padding:13px 15px;border-left:3px solid #6e86ff;background:#151c2b;color:#bcc8df;font-size:13px;line-height:1.7}.status{min-height:22px;margin-top:10px;color:#91d7a5;font-size:13px}.locked{opacity:.62}.locked input{cursor:not-allowed}.empty{padding:20px;border:1px dashed #364153;border-radius:12px;color:#8894a4}@media(max-width:850px){.shell{grid-template-columns:1fr}.nav{position:static;display:flex;overflow:auto}.nav .boundary{display:none}.stats{grid-template-columns:repeat(2,1fr)}.form-grid{grid-template-columns:1fr}.full{grid-column:auto}.content-top{grid-template-columns:1fr}.pagehead{display:block}.actions{margin-top:12px}}
+</style>
+</head>
+<body>
+<div class="topbar"><div class="wrap"><div class="brand"><span class="mark"></span><div><div class="eyebrow">HARF-WAY Publications</div><div id="pubName" class="pubname">読み込み中...</div></div></div><div class="role">EDITOR IN CHIEF / PREVIEW</div></div></div>
+<div class="wrap shell">
+<nav class="nav">
+<button class="active" data-tab="dashboard">ダッシュボード</button>
+<button data-tab="contents">記事・メモ</button>
+<button data-tab="shelves">棚</button>
+<button data-tab="design">トップ・デザイン</button>
+<button data-tab="settings">媒体設定</button>
+<div class="boundary"><strong>権限境界</strong><br/>このCMSでは割り当てられた1媒体だけ編集します。媒体追加・削除、他媒体、広告全体設定、共通DB、Vercel/Neonにはアクセスできません。</div>
+</nav>
+<main class="main">
+<div class="pagehead"><div><div class="eyebrow">Publication workspace</div><h1 id="pageTitle">編集長CMS</h1><p class="lead">媒体の中身は編集長が直接運用。HARF-WAYはインフラ・営業・障害対応と全体管理を担当する想定です。</p></div><div class="actions"><button class="primary" id="saveAll">保存</button><a id="openPreview" class="btn ghost" target="_blank">公開Preview</a></div></div>
+
+<section id="dashboard" class="section active">
+<div class="stats"><div class="stat"><span class="muted">コンテンツ</span><strong id="statContents">0</strong></div><div class="stat"><span class="muted">棚</span><strong id="statShelves">0</strong></div><div class="stat"><span class="muted">公開状態</span><strong style="font-size:20px">ACTIVE</strong></div><div class="stat"><span class="muted">権限</span><strong style="font-size:20px">編集長</strong></div></div>
+<div class="panel" style="margin-top:16px"><div class="eyebrow">This month</div><h2 style="margin:8px 0">媒体を自分で動かせる状態</h2><p class="lead">記事、短いメモ、棚、トップコピー、色までここで変更できます。保存後は公開Previewへ即反映し、記事更新のためのVercel Deployは発生しません。</p></div>
+<div class="notice">本番ではログインユーザーに <strong>publication_id</strong> を割り当て、API側でも同じpublication_idだけ読み書き可能にします。URLを書き換えても他媒体へ入れない設計にする前提です。</div>
+</section>
+
+<section id="contents" class="section">
+<div class="panel"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><div><div class="eyebrow">Contents</div><h2>記事・メモ</h2></div><button class="primary" id="addContent">＋ 追加</button></div><div id="contentRows" class="rows"></div></div>
+</section>
+
+<section id="shelves" class="section">
+<div class="panel"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><div><div class="eyebrow">Curation</div><h2>棚</h2></div><button class="primary" id="addShelf">＋ 棚を追加</button></div><p class="lead">編集長のゲームの探し方・分類の仕方を、そのまま媒体の入口にします。</p><div id="shelfRows"></div></div>
+</section>
+
+<section id="design" class="section">
+<div class="panel"><div class="eyebrow">Editorial surface</div><h2>トップ・デザイン</h2><div class="form-grid"><label class="full">タグライン<input id="tagline" /></label><label>テーマ<select id="theme"><option value="editorial">ミニコミ誌</option><option value="shelf">ショップ棚</option><option value="archive">個人アーカイブ</option></select></label><label>アクセント色<input id="accent" /></label><label>背景色<input id="bg" /></label><label class="full">媒体説明<textarea id="description"></textarea></label></div></div>
+<div id="visualPreview" class="preview-card"><div class="eyebrow">LIVE DESIGN SAMPLE</div><h2 id="previewTitle">媒体名</h2><div id="previewTagline"></div></div>
+</section>
+
+<section id="settings" class="section">
+<div class="panel"><div class="eyebrow">Publication settings</div><h2>媒体設定</h2><div class="form-grid"><label class="full">媒体名<input id="title" /></label><label>編集長表示名<input id="editor" /></label><label class="locked">slug（HARF-WAY管理）<input id="slug" readonly /></label></div><div class="notice" style="margin-top:16px">媒体削除、slug変更、権限付与、広告全体設定、共通DB操作はHARF-WAY管理者だけが行います。</div></div>
+</section>
+<div id="status" class="status"></div>
+</main>
+</div>
+<script>
+const KEY='harfway_publications_preview_v1';
+const seed=[{slug:'doujin-yawa',title:'同人ゲーム夜話',tagline:'同人ゲームの面白さを、深く、ゆっくり、味わう夜話を。',editor:'編集長：サンプル',theme:'editorial',accent:'#8f3131',bg:'#f5efe4',description:'その人の頭の中にある「同人ゲーム売り場」を、そのままWebにする専門媒体。',shelves:['500円以下','短編ADV','作者から辿る','体験版あり','昔の一本','今月の新着'],articles:[{title:'500円以下で拾った3本',type:'pick',note:'今月の発掘から3本。'},{title:'作者を追う：小さなサークルの過去作',type:'feature',note:'作品ではなく作者から辿る。'},{title:'パッケージだけで惹かれた一本',type:'memo',note:'短い発掘メモ。'}]}];
+const q=id=>document.getElementById(id);const params=new URLSearchParams(location.search);const assignedSlug=params.get('slug')||'doujin-yawa';
+let pubs;try{pubs=JSON.parse(localStorage.getItem(KEY)||'null')||structuredClone(seed)}catch{pubs=structuredClone(seed)}
+let p=pubs.find(x=>x.slug===assignedSlug);if(!p){p=structuredClone(seed[0]);p.slug=assignedSlug;p.title='割り当て媒体';pubs.push(p)}
+function esc(s=''){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function contentRow(a={title:'',type:'memo',note:''}){const el=document.createElement('div');el.className='content-row';el.innerHTML=`<div class="content-top"><input class="c-title" placeholder="タイトル" value="${esc(a.title)}"><select class="c-type"><option value="pick">PICK</option><option value="feature">FEATURE</option><option value="memo">MEMO</option><option value="article">ARTICLE</option></select><button type="button" class="ghost small danger remove">削除</button></div><textarea class="c-note" placeholder="本文・短い説明">${esc(a.note)}</textarea>`;el.querySelector('.c-type').value=a.type||'memo';el.querySelector('.remove').onclick=()=>{el.remove();refreshStats()};return el}
+function shelfRow(value=''){const el=document.createElement('div');el.className='shelf-row';el.innerHTML=`<input class="shelf-input" value="${esc(value)}" placeholder="例：500円以下"><button type="button" class="ghost small remove">削除</button>`;el.querySelector('.remove').onclick=()=>{el.remove();refreshStats()};return el}
+function render(){document.documentElement.style.setProperty('--accent',p.accent||'#8f3131');q('pubName').textContent=p.title;q('pageTitle').textContent=p.title+' / 編集長CMS';q('openPreview').href='/publications/live?slug='+encodeURIComponent(p.slug);q('title').value=p.title||'';q('editor').value=p.editor||'';q('slug').value=p.slug;q('tagline').value=p.tagline||'';q('theme').value=p.theme||'editorial';q('accent').value=p.accent||'#8f3131';q('bg').value=p.bg||'#f5efe4';q('description').value=p.description||'';q('contentRows').innerHTML='';(p.articles||[]).forEach(a=>q('contentRows').appendChild(contentRow(a)));q('shelfRows').innerHTML='';(p.shelves||[]).forEach(s=>q('shelfRows').appendChild(shelfRow(s)));refreshStats();refreshDesign()}
+function refreshStats(){q('statContents').textContent=document.querySelectorAll('.content-row').length;q('statShelves').textContent=document.querySelectorAll('.shelf-row').length}
+function refreshDesign(){const accent=q('accent').value||'#8f3131',bg=q('bg').value||'#f5efe4';document.documentElement.style.setProperty('--accent',accent);q('visualPreview').style.setProperty('--preview-bg',bg);q('previewTitle').textContent=q('title').value||p.title;q('previewTagline').textContent=q('tagline').value||''}
+function collect(){p.title=q('title').value.trim()||p.title;p.editor=q('editor').value.trim();p.tagline=q('tagline').value.trim();p.theme=q('theme').value;p.accent=q('accent').value.trim()||'#8f3131';p.bg=q('bg').value.trim()||'#f5efe4';p.description=q('description').value.trim();p.shelves=[...document.querySelectorAll('.shelf-input')].map(x=>x.value.trim()).filter(Boolean);p.articles=[...document.querySelectorAll('.content-row')].map(el=>({title:el.querySelector('.c-title').value.trim(),type:el.querySelector('.c-type').value,note:el.querySelector('.c-note').value.trim()})).filter(x=>x.title)}
+function save(){collect();const idx=pubs.findIndex(x=>x.slug===p.slug);if(idx>=0)pubs[idx]=p;else pubs.push(p);localStorage.setItem(KEY,JSON.stringify(pubs));q('status').textContent='保存しました。この媒体だけ更新されています。';render()}
+document.querySelectorAll('.nav button[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));b.classList.add('active');q(b.dataset.tab).classList.add('active')});
+q('addContent').onclick=()=>{q('contentRows').appendChild(contentRow());refreshStats()};q('addShelf').onclick=()=>{q('shelfRows').appendChild(shelfRow());refreshStats()};q('saveAll').onclick=save;['title','tagline','accent','bg'].forEach(id=>q(id).addEventListener('input',refreshDesign));render();
+</script>
+</body>
+</html>
