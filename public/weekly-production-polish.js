@@ -34,7 +34,13 @@
   if(!document.getElementById('weeklyOutputPolishPreviewStyle')){
     const previewStyle=document.createElement('style');
     previewStyle.id='weeklyOutputPolishPreviewStyle';
-    previewStyle.textContent=copyCssExtra;
+    previewStyle.textContent=copyCssExtra+`
+      .weekly-ways-pager{display:flex;align-items:center;justify-content:center;gap:10px;margin:16px 0 0;padding:13px;border:1px solid #303943;border-radius:12px;background:#0d1014}
+      .weekly-ways-pager[hidden]{display:none}
+      .weekly-ways-pager-status{color:#9ca6b0;font:850 10px/1.4 ui-monospace,monospace}
+      .weekly-ways-pager button{border:1px solid #eaff38;border-radius:9px;background:#eaff38;color:#090a0b;padding:9px 12px;font-size:10px;font-weight:950;cursor:pointer}
+      .weekly-ways-pager button[hidden]{display:none}
+    `;
     document.head.appendChild(previewStyle);
   }
 
@@ -74,5 +80,66 @@
     tools.appendChild(badge);
   }
 
-  try{renderPreview()}catch{}
+  const WAYS_PAGE_SIZE=30;
+  let waysVisibleLimit=WAYS_PAGE_SIZE;
+  let waysFilterKey='';
+  const baseFiltered=filtered;
+  filtered=function(){
+    const full=baseFiltered();
+    if(mode!=='games')return full;
+    const q=String(document.getElementById('query')?.value||'').trim().toLowerCase();
+    const type=String(document.getElementById('typeFilter')?.value||'');
+    const key=`${mode}|${q}|${type}|${payload?.generatedAt||''}`;
+    if(key!==waysFilterKey){
+      waysFilterKey=key;
+      waysVisibleLimit=WAYS_PAGE_SIZE;
+    }
+    return full.slice(0,waysVisibleLimit);
+  };
+
+  function ensureWaysPager(){
+    const cards=document.getElementById('cards');
+    if(!cards)return null;
+    let pager=document.getElementById('weeklyWaysPager');
+    if(pager)return pager;
+    pager=document.createElement('div');
+    pager.id='weeklyWaysPager';
+    pager.className='weekly-ways-pager';
+    pager.innerHTML='<span class="weekly-ways-pager-status" id="weeklyWaysPagerStatus"></span><button type="button" id="weeklyWaysMore">さらに表示</button>';
+    cards.insertAdjacentElement('afterend',pager);
+    pager.querySelector('#weeklyWaysMore')?.addEventListener('click',()=>{
+      waysVisibleLimit+=WAYS_PAGE_SIZE;
+      renderCards();
+    });
+    return pager;
+  }
+
+  function updateWaysPager(){
+    const pager=ensureWaysPager();
+    if(!pager)return;
+    if(mode!=='games'){
+      pager.hidden=true;
+      return;
+    }
+    const full=baseFiltered();
+    const total=full.length;
+    const shown=Math.min(waysVisibleLimit,total);
+    const status=pager.querySelector('#weeklyWaysPagerStatus');
+    const more=pager.querySelector('#weeklyWaysMore');
+    if(status)status.textContent=`${shown} / ${total}件表示`;
+    if(more){
+      const remain=Math.max(0,total-shown);
+      more.hidden=remain===0;
+      more.textContent=remain?`さらに${Math.min(WAYS_PAGE_SIZE,remain)}件表示`:'すべて表示中';
+    }
+    pager.hidden=total===0;
+  }
+
+  const baseRenderCards=renderCards;
+  renderCards=function(){
+    baseRenderCards();
+    updateWaysPager();
+  };
+
+  try{renderCards();renderPreview()}catch{}
 })();
