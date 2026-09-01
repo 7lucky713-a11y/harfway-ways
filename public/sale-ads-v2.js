@@ -7,10 +7,13 @@
   const TRACK_ENABLED = PROD_HOSTS.has(location.hostname);
   const DEMO = new URLSearchParams(location.search).get('ads_demo') === '1';
   const contextTags = ['SALE WATCH','Steam Sale','セール','インディーゲーム'];
+  const LAST_AD_KEY = `hwads_last_${PLACEMENT}`;
   let ad=null,everyN=DEFAULT_EVERY,observer=null,timer=null,counted=false,injecting=false;
 
   const esc=(s)=>String(s??'').replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const sid=()=>{let v=localStorage.getItem('hwads_sid');if(!v){v=(crypto.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`).replace(/[^a-zA-Z0-9_-]/g,'');localStorage.setItem('hwads_sid',v)}return v};
+  const lastAdId=()=>{try{const v=String(localStorage.getItem(LAST_AD_KEY)||'').trim().toLowerCase();return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(v)?v:''}catch{return ''}};
+  const rememberAd=(value)=>{if(!value||value.__demo||!value.id)return;try{localStorage.setItem(LAST_AD_KEY,String(value.id).toLowerCase())}catch{}};
   async function req(url,opt={}){const r=await fetch(url,{cache:'no-store',...opt}),d=await r.json().catch(()=>({}));if(!r.ok||d.ok===false)throw Error(d.error||d.message||`HTTP ${r.status}`);return d}
   async function record(type){if(!ad||ad.__demo||!TRACK_ENABLED)return null;try{return await req(EVENT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type,campaignId:ad.id,placement:PLACEMENT,contextTags,sessionKey:sid()})})}catch{return null}}
   function demoAd(){return{id:'sale-watch-preview-demo',title:'セールを見ている人へ届けるPR枠',catchText:'SALE WATCHの流れに自然に差し込む、購入直前のプロモーション枠です。',description:'Preview sample / impression is not counted.',storeUrl:'#',targetTags:['PROMOTED','SALE WATCH'],mediaUrl:'',mediaMime:'',__demo:true}}
@@ -34,6 +37,6 @@
   function observeImpression(card){observer?.disconnect();if(timer)clearTimeout(timer);timer=null;if(!card||counted)return;observer=new IntersectionObserver((entries)=>{for(const entry of entries){if(counted)return;if(entry.intersectionRatio>=.5){if(!timer)timer=setTimeout(async()=>{timer=null;if(counted||!card.isConnected)return;if(!TRACK_ENABLED||ad?.__demo){counted=true;return}const result=await record('impression');if(result?.result?.accepted===false){card.remove();return}counted=true},1000)}else if(timer){clearTimeout(timer);timer=null}}},{threshold:[0,.5,1]});observer.observe(card)}
   function inject(){if(injecting||!ad)return;const grid=document.querySelector('#grid');if(!grid||grid.querySelector('[data-sale-ad]'))return;const cards=[...grid.querySelectorAll(':scope > .card:not(.sale-ad-card)')];if(cards.length<everyN)return;injecting=true;try{cards[everyN-1].insertAdjacentHTML('afterend',cardHtml());const card=grid.querySelector('[data-sale-ad]');card?.querySelector('[data-sale-ad-store]')?.addEventListener('click',()=>{record('click');record('store_visit')},true);observeImpression(card)}finally{injecting=false}}
   function watchGrid(){const grid=document.querySelector('#grid');if(!grid)return;new MutationObserver(()=>queueMicrotask(inject)).observe(grid,{childList:true});inject()}
-  async function boot(){addStyles();try{const d=await req(`${SERVE}?placement=${encodeURIComponent(PLACEMENT)}&tags=${encodeURIComponent(contextTags.join(','))}&sid=${encodeURIComponent(sid())}`);everyN=Math.max(1,Number(d.rule?.everyNItems||DEFAULT_EVERY));ad=d.ad||(DEMO?demoAd():null)}catch{ad=DEMO?demoAd():null}watchGrid()}
+  async function boot(){addStyles();try{const params=new URLSearchParams({placement:PLACEMENT,tags:contextTags.join(','),sid:sid()});const previous=lastAdId();if(previous)params.set('avoid',previous);const d=await req(`${SERVE}?${params.toString()}`);everyN=Math.max(1,Number(d.rule?.everyNItems||DEFAULT_EVERY));ad=d.ad||(DEMO?demoAd():null);rememberAd(ad)}catch{ad=DEMO?demoAd():null}watchGrid()}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
