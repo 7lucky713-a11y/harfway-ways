@@ -53,32 +53,44 @@ const navStyle = `
   .ways-stage-skip span{transform:translateY(-2px)}
   .video-frame video{transition:opacity .12s ease}
   .ways-volume{
-    height:44px;
+    height:28px;
+    width:88px;
     display:flex;
     align-items:center;
-    gap:8px;
-    padding:0 12px;
-    border:1px solid #ffffff2c;
+    padding:0 5px;
+    border:0;
     border-radius:999px;
-    background:#050505cc;
-    backdrop-filter:blur(8px);
+    background:#05050566;
+    opacity:.5;
+    overflow:hidden;
+    transition:opacity .22s ease,width .22s ease,padding .22s ease,transform .22s ease,background .22s ease;
   }
-  .ways-volume::before{
-    content:'VOL';
-    font-size:8px;
-    letter-spacing:.12em;
-    color:#aeb2ba;
-    font-weight:900;
+  .ways-volume:hover,
+  .ways-volume:focus-within{
+    opacity:.9;
+    background:#05050599;
   }
   .ways-volume input{
-    width:108px;
-    accent-color:var(--accent);
+    width:78px;
+    height:12px;
+    margin:0;
+    accent-color:#d9e62f;
     cursor:pointer;
+  }
+  .ways-volume.is-hidden{
+    width:0;
+    padding-left:0;
+    padding-right:0;
+    opacity:0;
+    transform:translateX(8px);
+    pointer-events:none;
+    background:transparent;
   }
 }
 @media (min-width:900px) and (max-width:1180px){
   .ways-stage-skip{width:52px;height:120px;font-size:30px}
-  .ways-volume input{width:82px}
+  .ways-volume{width:72px}
+  .ways-volume input{width:62px}
 }
 </style>`;
 const navScript = `
@@ -105,6 +117,7 @@ const navScript = `
 
   const controls = document.querySelector('.desktop .stage-controls');
   const mainVideo = document.querySelector('#mainVideo');
+  const sound = document.querySelector('#sound');
   if (controls && mainVideo && !document.querySelector('#waysVolume')) {
     const wrap = document.createElement('label');
     wrap.className = 'ways-volume';
@@ -117,10 +130,20 @@ const navScript = `
     slider.step = '0.05';
     slider.value = String(mainVideo.volume ?? 1);
     slider.setAttribute('aria-label', '音量');
+
+    let hideTimer = 0;
+    const revealVolume = () => {
+      clearTimeout(hideTimer);
+      wrap.classList.remove('is-hidden');
+      hideTimer = window.setTimeout(() => {
+        if (!wrap.matches(':hover') && !wrap.matches(':focus-within')) wrap.classList.add('is-hidden');
+      }, 2200);
+    };
+
     slider.addEventListener('input', () => {
+      revealVolume();
       const value = Math.max(0, Math.min(1, Number(slider.value)));
       mainVideo.volume = value;
-      const sound = document.querySelector('#sound');
       if (value <= 0) {
         mainVideo.muted = true;
         muted = true;
@@ -132,6 +155,13 @@ const navScript = `
         mainVideo.play().catch(() => {});
       }
     });
+    slider.addEventListener('pointerdown', revealVolume);
+    slider.addEventListener('focus', revealVolume);
+    wrap.addEventListener('mouseenter', revealVolume);
+    wrap.addEventListener('mouseleave', revealVolume);
+    controls.addEventListener('mouseenter', revealVolume);
+    sound?.addEventListener('click', revealVolume);
+
     mainVideo.addEventListener('volumechange', () => {
       slider.value = String(mainVideo.volume);
     });
@@ -139,6 +169,8 @@ const navScript = `
     const pause = document.querySelector('#pause');
     if (pause) controls.insertBefore(wrap, pause);
     else controls.append(wrap);
+
+    revealVolume();
   }
 
   const shelf = document.querySelector('#shelf');
@@ -164,4 +196,4 @@ const body = baseBody;
   <head><Fragment set:html={head} /></head>
   <body><Fragment set:html={body} /><script is:inline src="/ga4-service.js"></script><script is:inline src="/ways-analytics.js"></script><script is:inline src="/ways-deeplink.js"></script><script is:inline src="/ways-ads.js"></script><Fragment set:html={navScript} /></body>
 </html>
-<!-- WAYS live games API + custom analytics + GA4 bridge + Steam deep links + ads + stage nav + volume -->
+<!-- WAYS live games API + custom analytics + GA4 bridge + Steam deep links + ads + stage nav + auto-hide volume -->
