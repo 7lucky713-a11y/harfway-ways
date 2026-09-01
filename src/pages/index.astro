@@ -81,12 +81,16 @@ const navScript = `
 
   const shelf = document.querySelector('#shelf');
   if (shelf && window.__WAYS_SET_SHELF_SIZE) {
-    const reserveAdSlot = () => {
-      window.__WAYS_SET_SHELF_SIZE(shelf.querySelector('.ways-ad-card') ? 9 : 10);
-    };
-    reserveAdSlot();
-    const observer = new MutationObserver(reserveAdSlot);
+    const observer = new MutationObserver(() => {
+      if (!shelf.querySelector('.ways-ad-card')) return;
+      window.__WAYS_SET_SHELF_SIZE(9);
+      observer.disconnect();
+    });
     observer.observe(shelf, { childList: true });
+    if (shelf.querySelector('.ways-ad-card')) {
+      window.__WAYS_SET_SHELF_SIZE(9);
+      observer.disconnect();
+    }
   }
 })();
 </script>`;
