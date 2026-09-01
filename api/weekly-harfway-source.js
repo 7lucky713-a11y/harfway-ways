@@ -196,29 +196,28 @@ async function loadYorimichi(start, end) {
 async function loadWays() {
   const data = await fetchJson('https://harfway-playback.vercel.app/api/games-live');
   const entries = Array.isArray(data?.entries) ? data.entries : [];
+  const sorted = [...entries].sort((a, b) => Number(a?.sortOrder || 0) - Number(b?.sortOrder || 0));
   return {
     count: entries.length,
-    items: entries
-      .sort((a, b) => Number(a?.sortOrder || 0) - Number(b?.sortOrder || 0))
-      .slice(0, 30)
-      .map((game, index) => ({
-        id: `ways-${game.id || index}`,
-        source: 'WAYS',
-        type: 'WAYS',
-        title: String(game?.title || '無題'),
-        summary: String(game?.description || '').slice(0, 220),
-        url: String(game?.articleUrl || game?.storeUrl || 'https://harfway-playback.vercel.app/'),
-        image: String(game?.thumbnailUrl || ''),
-        video: String(game?.video || ''),
-        date: '',
-        eligible: false,
-        weeklyVerified: false,
-        meta: {
-          note: 'WAYSは現行APIに追加日時がないため、週次差分ではなく現行棚の候補として表示',
-          storeUrl: String(game?.storeUrl || ''),
-          articleUrl: String(game?.articleUrl || '')
-        }
-      }))
+    returnedCount: sorted.length,
+    items: sorted.map((game, index) => ({
+      id: `ways-${game.id || index}`,
+      source: 'WAYS',
+      type: 'WAYS',
+      title: String(game?.title || '無題'),
+      summary: String(game?.description || '').slice(0, 220),
+      url: String(game?.articleUrl || game?.storeUrl || 'https://harfway-playback.vercel.app/'),
+      image: String(game?.thumbnailUrl || ''),
+      video: String(game?.video || ''),
+      date: '',
+      eligible: false,
+      weeklyVerified: false,
+      meta: {
+        note: 'WAYSは現行APIに追加日時がないため、週次差分ではなく現行棚の候補として表示',
+        storeUrl: String(game?.storeUrl || ''),
+        articleUrl: String(game?.articleUrl || '')
+      }
+    }))
   };
 }
 
@@ -240,7 +239,7 @@ export default async function handler(req, res) {
   let wordpressPosts = [];
   let representedScraps = [];
   let yorimichi = [];
-  let ways = { count: 0, items: [] };
+  let ways = { count: 0, returnedCount: 0, items: [] };
 
   const settled = await Promise.allSettled([
     loadWordPressPosts(start, end),
@@ -281,7 +280,8 @@ export default async function handler(req, res) {
       permalinkDoesNotDefineRestType: true,
       mondayScrapsGrace: true,
       mondayScrapsGraceEnd: new Date(end.getTime() + DAY_MS).toISOString(),
-      representedWeekMatch: true
+      representedWeekMatch: true,
+      waysCandidateLimit: null
     },
     sources: {
       wordpress: { ok: settled[0].status === 'fulfilled', count: wordpressPosts.length, scrapsCount: wordpressPosts.filter(item => item.type === 'SCRAPS').length },
@@ -291,6 +291,7 @@ export default async function handler(req, res) {
       ways: {
         ok: settled[3].status === 'fulfilled',
         count: ways.count,
+        returnedCount: ways.returnedCount,
         weeklyDelta: false
       }
     },
