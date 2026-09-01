@@ -8,7 +8,7 @@ export const prerender = true;
 <title>HARF-WAY DB MASTER v2</title><link rel="stylesheet" href="/db-master-v2.css">
 </head>
 <body>
-<section id="login" class="login"><form id="loginForm" class="loginbox"><div class="eyebrow">HARF-WAY / PRIVATE DATABASE CONSOLE</div><h1>DB<br>MASTER <small style="font-size:15px;color:#98989a">v2</small></h1><p class="muted tiny">WAYS・プレイリスト・切れ端・記事サルベージを横断して確認します。編集保存は従来どおりWAYSだけに限定しています。</p><div class="field"><label>管理キー</label><input id="key" type="password" autocomplete="current-password"></div><p id="loginMsg" class="muted tiny"></p><button class="btn primary" style="width:100%" type="submit">DB MASTERを開く</button></form></section>
+<section id="login" class="login"><form id="loginForm" class="loginbox"><div class="eyebrow">HARF-WAY / PRIVATE DATABASE CONSOLE</div><h1>DB<br>MASTER <small style="font-size:15px;color:#98989a">v2</small></h1><p class="muted tiny">WAYS・プレイリスト・切れ端・記事サルベージを横断して確認します。WAYS編集に加え、Core Game IDへの紐づけを管理できます。</p><div class="field"><label>管理キー</label><input id="key" type="password" autocomplete="current-password"></div><p id="loginMsg" class="muted tiny"></p><button class="btn primary" style="width:100%" type="submit">DB MASTERを開く</button></form></section>
 <div id="app" class="hide">
 <header class="top"><div class="topmain"><div class="brandwrap"><div class="brand">HARF-WAY <b>DB MASTER v2</b></div><span id="connection">接続中…</span></div><div class="topactions"><button id="reload" class="btn">再読込</button><button id="exportCsv" class="btn">WAYS CSV出力</button><button id="importCsv" class="btn">WAYS CSV取込</button><button id="saveAll" class="btn primary" disabled>WAYS変更を保存</button><button id="logout" class="btn">ログアウト</button></div></div></header>
 <main class="page">
@@ -22,4 +22,5 @@ export const prerender = true;
 </main></div>
 <dialog id="csvDialog"><div class="modalhead"><b id="csvTitle">CSV</b><button id="csvClose" class="btn">閉じる</button></div><div class="modalbody"><p id="csvHelp" class="muted tiny"></p><textarea id="csvText" class="csvarea"></textarea><div class="rowactions" style="margin-top:10px"><button id="csvDownload" class="btn primary">CSVをダウンロード</button><button id="csvApply" class="btn primary hide">プレビューへ反映</button></div><p id="csvResult" class="tiny muted"></p></div></dialog><div id="toast" class="toast"></div>
 <script is:inline src="/db-master-v2.js"></script>
+<script is:inline src="/db-master-core-link.js"></script>
 </body></html>
