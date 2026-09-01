@@ -137,27 +137,26 @@
     document.querySelector('.ways-ad-stage-media')?.remove();
     document.querySelector('.ways-ad-preview-note')?.remove();
     desktopAdOpen = false;
-    desktopObserver?.disconnect();
-    desktopObserver = null;
-    if (desktopTimer) clearTimeout(desktopTimer);
-    desktopTimer = null;
   }
 
-  function observeDesktopImpression() {
+  function observeDesktopImpression(card) {
     desktopObserver?.disconnect();
-    const frame = document.querySelector('.video-frame');
-    if (!frame) return;
+    if (desktopTimer) clearTimeout(desktopTimer);
+    desktopTimer = null;
+    if (!card || desktopCounted) return;
     desktopObserver = new IntersectionObserver((entries) => {
       for (const en of entries) {
-        if (!desktopAdOpen || desktopCounted) continue;
-        if (en.intersectionRatio >= 0.5) {
+        if (desktopCounted) continue;
+        if (en.isIntersecting && en.intersectionRatio > 0) {
           if (!desktopTimer) {
             desktopTimer = setTimeout(async () => {
               desktopTimer = null;
-              if (!desktopAdOpen || desktopCounted) return;
+              if (desktopCounted || !card.isConnected) return;
               const x = await record('impression');
-              if (x?.result?.accepted === false) return;
+              if (!x || x?.result?.accepted === false) return;
               desktopCounted = true;
+              desktopObserver?.disconnect();
+              desktopObserver = null;
             }, 1000);
           }
         } else if (desktopTimer) {
@@ -165,8 +164,8 @@
           desktopTimer = null;
         }
       }
-    }, { threshold: [0, 0.5, 1] });
-    desktopObserver.observe(frame);
+    }, { threshold: [0, 0.01, 1] });
+    desktopObserver.observe(card);
   }
 
   function openDesktopAd() {
@@ -214,7 +213,6 @@
       note.textContent = 'PREVIEW / IMP NOT COUNTED';
       frame.appendChild(note);
     }
-    observeDesktopImpression();
   }
 
   function injectDesktop() {
@@ -234,6 +232,7 @@
       card.addEventListener('mouseenter', () => preview.play().catch(() => {}));
       card.addEventListener('mouseleave', () => preview.pause());
     }
+    observeDesktopImpression(card);
   }
 
   function mobileCard() {
