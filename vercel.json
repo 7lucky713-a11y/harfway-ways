@@ -18,6 +18,10 @@
     {
       "path": "/api/weekly-harfway-cron",
       "schedule": "0 0,12 * * 1"
+    },
+    {
+      "path": "/api/ways-core-sync",
+      "schedule": "*/15 * * * *"
     }
   ]
 }
