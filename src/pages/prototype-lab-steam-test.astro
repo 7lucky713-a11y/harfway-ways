@@ -1,0 +1,53 @@
+---
+export const prerender = true;
+---
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>HARF-WAY Prototype Lab / Steam Link Test</title>
+  <style>
+    :root{background:#0b0d10;color:#f4f6f7;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
+    *{box-sizing:border-box}body{margin:0}.wrap{width:min(1180px,calc(100% - 28px));margin:auto;padding:24px 0 40px}.head{display:flex;gap:16px;justify-content:space-between;align-items:end;border-bottom:1px solid #31363d;padding-bottom:16px;margin-bottom:16px}.eyebrow{font:900 10px ui-monospace,monospace;letter-spacing:.14em;color:#dfff45}.head h1{font-size:36px;line-height:1;margin:7px 0 0;letter-spacing:-.04em}.head p{max-width:620px;margin:0;color:#9ba3aa;font-size:12px;line-height:1.7}.frame{height:calc(100vh - 150px);min-height:620px;background:#eef0f2;border:1px solid #333a42;border-radius:14px;overflow:hidden}.frame iframe{width:100%;height:100%;border:0;display:block}.foot{margin-top:10px;color:#7f8790;font:10px ui-monospace,monospace}
+    @media(max-width:720px){.head{display:block}.head p{margin-top:12px}.frame{height:720px;min-height:0}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="head">
+      <div><div class="eyebrow">PREVIEW / SANDBOX EXTERNAL LINK TEST</div><h1>Steamリンク動作確認</h1></div>
+      <p>Admin key不要。Prototype Labと同じsandbox条件に外部タブ許可だけを追加した状態で、1本リンクと複数タブを確認します。</p>
+    </header>
+    <div class="frame"><iframe id="testFrame" sandbox="allow-scripts allow-modals allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer"></iframe></div>
+    <div class="foot">sandbox: scripts + modals + user-opened popups / network fetch blocked</div>
+  </main>
+
+<script is:inline>
+(() => {
+  const games = [
+    ['Dream Tactics','1897650'],
+    ['LunarLux','1932680'],
+    ['TORSO TENNIS','2824780'],
+    ['Flywrench','337350'],
+    ['モンタビ','3141630'],
+    ['Halls of Torment','2218750'],
+    ['Doloc Town','2285550']
+  ].map(([title, appid]) => ({ title, appid, url:`https://store.steampowered.com/app/${appid}/` }));
+
+  const gameJson = JSON.stringify(games).replace(/</g,'\\u003c');
+  const doc = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+    :root{font-family:Inter,system-ui,-apple-system,"Noto Sans JP",sans-serif;background:#edf0f2;color:#111315;--ink:#111315;--lime:#dfff45;--line:#c8ced4;--muted:#68727a}*{box-sizing:border-box}body{margin:0}.app{width:min(1060px,calc(100% - 24px));margin:auto;padding:26px 0 100px}.hero{border-bottom:2px solid var(--ink);padding-bottom:18px}.eyebrow{font:900 10px ui-monospace,monospace;letter-spacing:.14em}.hero h1{font-size:clamp(42px,7vw,78px);line-height:.86;letter-spacing:-.06em;margin:8px 0 12px}.hero p{max-width:720px;color:var(--muted);font-size:13px;line-height:1.7}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:14px}.card{background:#fff;border:1px solid var(--line);padding:15px}.row{display:flex;justify-content:space-between;gap:12px;align-items:start}.card h2{font-size:19px;margin:0}.appid{font:800 9px ui-monospace;color:#7b848b}.pick{margin-top:12px;border:1px solid #aaa;background:#f5f6f7;padding:9px 11px;font-size:11px;font-weight:900;cursor:pointer}.pick.on{background:var(--lime);border-color:var(--ink)}.single{display:inline-block;margin-top:12px;color:#111;text-decoration:none;font-size:12px;font-weight:900;border-bottom:1px solid #111;padding-bottom:2px}.batch{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);width:min(820px,calc(100% - 20px));background:#111315;color:white;padding:13px 14px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;box-shadow:0 14px 38px #0004}.batch strong{font-size:17px}.batch small{display:block;color:#929aa1;margin-top:3px}.open{border:1px solid var(--lime);background:var(--lime);color:#111;padding:13px 16px;font-weight:900;cursor:pointer}.open:disabled{opacity:.35}.status{margin-top:14px;border:1px dashed #9fa7ae;padding:12px;font-size:12px;line-height:1.6;background:#f8f9fa}.manual{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.manual a{color:#111;border:1px solid #aeb5bb;background:white;text-decoration:none;padding:7px 9px;font-size:10px;font-weight:900}@media(max-width:650px){.grid{grid-template-columns:1fr}.batch{grid-template-columns:1fr}.open{width:100%}}
+  </style></head><body><main class="app"><section class="hero"><div class="eyebrow">MY HARF-WAY / STEAM OPEN TEST</div><h1>Steamを<br>まとめて開く</h1><p>まず「Steamページを1本だけ開く」で外部タブを確認。その後、複数選択してまとめ開きを試してください。</p></section><div id="status" class="status">まだ開いていません。</div><section id="grid" class="grid"></section><aside class="batch"><div><strong><span id="count">0</span>本 選択中</strong><small>ブラウザによって複数タブは1本目以降がブロックされる場合があります。</small></div><button id="open" class="open" disabled>Steamでまとめて開く</button></aside></main><script>
+    const GAMES=${gameJson}; const selected=new Set(); const grid=document.querySelector('#grid'); const count=document.querySelector('#count'); const open=document.querySelector('#open'); const status=document.querySelector('#status');
+    function render(){grid.innerHTML=GAMES.map(g=>'<article class="card"><div class="row"><h2>'+g.title+'</h2><span class="appid">APP '+g.appid+'</span></div><button class="pick '+(selected.has(g.appid)?'on':'')+'" data-id="'+g.appid+'">'+(selected.has(g.appid)?'✓ 選択中':'＋ 選択')+'</button><br><a class="single" href="'+g.url+'" target="_blank" rel="noopener">Steamページを1本だけ開く →</a></article>').join('');document.querySelectorAll('[data-id]').forEach(btn=>btn.onclick=()=>{selected.has(btn.dataset.id)?selected.delete(btn.dataset.id):selected.add(btn.dataset.id);render();sync()})}
+    function sync(){count.textContent=selected.size;open.disabled=!selected.size;open.textContent=selected.size?'Steamでまとめて開く（'+selected.size+'）':'Steamでまとめて開く'}
+    open.onclick=()=>{const chosen=GAMES.filter(g=>selected.has(g.appid)).slice(0,5);let opened=0;chosen.forEach(g=>{try{const w=window.open(g.url,'_blank');if(w){opened++;try{w.opener=null}catch(e){}}}catch(e){}});status.innerHTML='<b>'+opened+' / '+chosen.length+' 本をブラウザへ要求しました。</b><br>複数タブが止まった場合は、各カードの「1本だけ開く」で確認してください。<div class="manual">'+chosen.map(g=>'<a href="'+g.url+'" target="_blank" rel="noopener">'+g.title+' ↗</a>').join('')+'</div>'};
+    render();sync();
+  <\/script></body></html>`;
+  document.querySelector('#testFrame').srcdoc = doc;
+})();
+</script>
+</body>
+</html>
