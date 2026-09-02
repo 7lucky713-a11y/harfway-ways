@@ -59,8 +59,8 @@ export const prerender = true;
 
     <section class="preview">
       <div class="panelhead"><strong>LIVE PREVIEW</strong><span class="grow"></span><div class="device"><button class="on" data-device="desktop">PC</button><button data-device="tablet">TABLET</button><button data-device="mobile">SP</button></div></div>
-      <div class="stage"><div id="frameShell" class="frameShell"><iframe id="frame" sandbox="allow-scripts allow-modals" referrerpolicy="no-referrer"></iframe></div></div>
-      <div class="statusline"><span id="saveState">READY</span><span>Sandbox: scripts only / network blocked</span></div>
+      <div class="stage"><div id="frameShell" class="frameShell"><iframe id="frame" sandbox="allow-scripts allow-modals allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer"></iframe></div></div>
+      <div class="statusline"><span id="saveState">READY</span><span>Sandbox: scripts + external tabs / network blocked</span></div>
     </section>
   </main>
 </div>
