@@ -14,10 +14,16 @@ import {
 const CORE = 'https://harfway-playback.vercel.app/api/core/games';
 const CAPABILITY_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 const ALLOWED_SOURCES = new Set(['ways']);
+const SAVE_CONTEXTS = new Set(['ways', 'scraps', 'sale']);
 
 function cleanSource(value) {
   const source = String(value || '').trim().toLowerCase();
   return ALLOWED_SOURCES.has(source) ? source : '';
+}
+
+function cleanContextSource(value, fallback = '') {
+  const source = String(value || fallback || '').trim().toLowerCase();
+  return SAVE_CONTEXTS.has(source) ? source : '';
 }
 
 function cleanSteam(value) {
@@ -115,11 +121,12 @@ async function resolveCoreIdentity({ gameId, steamAppid }) {
   };
 }
 
-async function saveCanonical(sql, workspaceId, game, source) {
+async function saveCanonical(sql, workspaceId, game, contextSource, capabilitySource) {
   const gameId = String(game.id || '').trim();
   const steamAppid = cleanSteam(game.steamAppid) || null;
   const sourceContext = {
-    source,
+    source: contextSource,
+    capabilitySource,
     bridge: 'save-capability',
     canonicalized: true
   };
@@ -210,17 +217,20 @@ async function useCapability(sql, req, res, body) {
     return res.status(403).json({ ok: false, error: 'save_capability_origin_mismatch' });
   }
 
+  const contextSource = cleanContextSource(body.contextSource, capability.source);
+  if (!contextSource) return res.status(400).json({ ok: false, error: 'save_context_invalid' });
+
   const resolved = await resolveCoreIdentity({ gameId: body.gameId, steamAppid: body.steamAppid });
   if (!resolved.ok) return res.status(resolved.status).json({ ok: false, error: resolved.error });
 
-  const saved = await saveCanonical(sql, capability.workspace_id, resolved.game, capability.source);
+  const saved = await saveCanonical(sql, capability.workspace_id, resolved.game, contextSource, capability.source);
   await sql`
     UPDATE reader.save_capabilities
     SET last_used_at = now(), use_count = use_count + 1
     WHERE id = ${capability.id}
   `;
 
-  return res.status(200).json({ ok: true, ...saved, game: resolved.game });
+  return res.status(200).json({ ok: true, ...saved, contextSource, game: resolved.game });
 }
 
 export default async function handler(req, res) {
@@ -236,7 +246,8 @@ export default async function handler(req, res) {
       return res.status(200).json({
         ok: true,
         mode: process.env.VERCEL_ENV === 'production' ? 'production' : 'isolated-preview',
-        schema: { saveCapabilities: Boolean(schema.save_capabilities) }
+        schema: { saveCapabilities: Boolean(schema.save_capabilities) },
+        contexts: [...SAVE_CONTEXTS]
       });
     }
 
