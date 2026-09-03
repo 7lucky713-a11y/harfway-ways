@@ -47,8 +47,11 @@
 
   function readVolume() {
     try {
-      const stored = Number(localStorage.getItem(VOLUME_KEY));
-      if (Number.isFinite(stored)) return Math.max(0, Math.min(1, stored));
+      const raw = localStorage.getItem(VOLUME_KEY);
+      if (raw !== null && raw !== '') {
+        const stored = Number(raw);
+        if (Number.isFinite(stored)) return Math.max(0, Math.min(1, stored));
+      }
     } catch {}
     return 0.7;
   }
