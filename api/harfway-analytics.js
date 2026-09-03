@@ -8,7 +8,7 @@ const GA4_MEASUREMENT_ID='G-LQVHR07K15';
 
 const intParam=(value,fallback,min,max)=>{const n=Number.parseInt(String(value??''),10);return Number.isFinite(n)?Math.min(max,Math.max(min,n)):fallback};
 const num=v=>Number(v||0);
-const analyticsUrl=()=>process.env.VERCEL_URL?`https://${process.env.VERCEL_URL}/api/analytics`:PROD_ANALYTICS;
+const analyticsUrl=()=>PROD_ANALYTICS;
 const ga4Summary=s=>s?{
   pageViews:num(s.pageViews),sessions:num(s.sessions),activeUsers:num(s.activeUsers),eventCount:num(s.eventCount),
   gameViews:num(s.events?.game_view),plays:num(s.events?.video_start),completes:num(s.events?.video_complete),storeClicks:num(s.events?.store_click),
