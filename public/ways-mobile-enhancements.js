@@ -162,6 +162,17 @@
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
+
+    // Desktop promoted shelf cards are stage-open controls. Their card click
+    // must never perform a native/default navigation to the advertiser URL.
+    // The existing ways-ads.js click handler is allowed to continue and
+    // renders the promoted video/image in the center stage; only the explicit
+    // PROMOTED STORE CTA should navigate away from WAYS.
+    document.addEventListener('click', (event) => {
+      if (innerWidth < 900) return;
+      if (!event.target?.closest?.('.ways-ad-card')) return;
+      event.preventDefault();
+    }, true);
   }
 
   if (document.readyState === 'loading') {
