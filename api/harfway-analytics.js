@@ -72,7 +72,7 @@ export default async function handler(req,res){
     for(const def of definitions){
       const name=def.serviceName;
       if(name==='ways'){
-        services.ways={connected:ways.ok,reportingConnected:ways.ok,reportingProvider:'custom',collection:collection(def),period:`last_${days}_days`,status:ways.status,summary:waysSummary,ga4Summary:ga4Summary(ga4For('ways')),games:waysGames,devices:ways.data?.devices||[],error:ways.ok?null:ways.data?.error,label:def.label,autoSynced:def.source==='manifest'};
+        services.ways={connected:ways.ok,reportingConnected:ways.ok,reportingProvider:'custom',collection:collection(def),period:`last_${days}_days`,status:ways.status,summary:waysSummary,ga4Summary:ga4Summary(ga4For('ways')),games:waysGames,devices:ways.data?.devices||[],attribution:ways.data?.attribution||[],error:ways.ok?null:ways.data?.error,label:def.label,autoSynced:def.source==='manifest'};
         continue;
       }
       if(name==='sale-watch'){

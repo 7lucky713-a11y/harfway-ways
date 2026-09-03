@@ -2,6 +2,7 @@
   const TRACK = '/api/track';
   const GAMES = 'https://harfway-playback.vercel.app/api/games';
   const SK = 'ways_analytics_sid_v1';
+  const ATTR_KEY = 'ways_analytics_attribution_v1';
   const page = location.pathname.startsWith('/archive') ? 'archive' : 'ways';
   const source = location.hostname === 'harfway-playback.vercel.app' ? 'ways' : 'ways-preview';
   const device = innerWidth < 900 ? 'mobile' : 'desktop';
@@ -12,7 +13,35 @@
     sessionStorage.setItem(SK, sid);
   }
 
+  const cleanAttr = (value, max = 160) => String(value || '').trim().slice(0, max);
+  const params = new URLSearchParams(location.search);
+  const incoming = {
+    utm_source: cleanAttr(params.get('utm_source')),
+    utm_medium: cleanAttr(params.get('utm_medium')),
+    utm_campaign: cleanAttr(params.get('utm_campaign')),
+    utm_content: cleanAttr(params.get('utm_content')),
+    referrer_host: (() => {
+      try { return document.referrer ? cleanAttr(new URL(document.referrer).hostname, 120) : ''; }
+      catch { return ''; }
+    })(),
+  };
+  const hasCampaign = Boolean(incoming.utm_source || incoming.utm_medium || incoming.utm_campaign || incoming.utm_content);
+  let attribution = null;
+  try { attribution = JSON.parse(sessionStorage.getItem(ATTR_KEY) || 'null'); } catch {}
+  if (hasCampaign || !attribution) {
+    attribution = {
+      utm_source: incoming.utm_source || (incoming.referrer_host ? 'referral' : 'direct'),
+      utm_medium: incoming.utm_medium || (incoming.referrer_host ? 'referral' : 'none'),
+      utm_campaign: incoming.utm_campaign || '',
+      utm_content: incoming.utm_content || '',
+      referrer_host: incoming.referrer_host || '',
+      landing_path: `${location.pathname}${location.search}`.slice(0, 300),
+    };
+    try { sessionStorage.setItem(ATTR_KEY, JSON.stringify(attribution)); } catch {}
+  }
+
   const post = (event, gameId = '', extra = {}, beacon = false) => {
+    const extraMetadata = extra.metadata && typeof extra.metadata === 'object' ? extra.metadata : {};
     const payload = JSON.stringify({
       event,
       gameId,
@@ -21,6 +50,10 @@
       device,
       source,
       ...extra,
+      metadata: {
+        ...attribution,
+        ...extraMetadata,
+      },
     });
     if (beacon && navigator.sendBeacon) {
       try {

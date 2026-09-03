@@ -42,7 +42,7 @@ export default async function handler(req, res) {
 
   try {
     const sql = neon(connectionString);
-    const [summaryRows, gameRows, deviceRows] = await Promise.all([
+    const [summaryRows, gameRows, deviceRows, attributionRows] = await Promise.all([
       sql`
         WITH filtered AS (
           SELECT * FROM public.ways_analytics_events
@@ -96,6 +96,30 @@ export default async function handler(req, res) {
           AND (${page} = '' OR page = ${page})
         GROUP BY device
         ORDER BY sessions DESC
+      `,
+      sql`
+        WITH filtered AS (
+          SELECT * FROM public.ways_analytics_events
+          WHERE occurred_at >= now() - (${days} * interval '1 day')
+            AND (${device} = '' OR device = ${device})
+            AND (${page} = '' OR page = ${page})
+        )
+        SELECT
+          coalesce(nullif(metadata->>'utm_source',''), 'direct') AS utm_source,
+          coalesce(nullif(metadata->>'utm_medium',''), 'none') AS utm_medium,
+          coalesce(metadata->>'utm_campaign','') AS utm_campaign,
+          coalesce(metadata->>'utm_content','') AS utm_content,
+          coalesce(metadata->>'referrer_host','') AS referrer_host,
+          count(*) FILTER (WHERE event_name = 'page_view')::int AS page_views,
+          count(DISTINCT session_id)::int AS sessions,
+          count(*) FILTER (WHERE event_name = 'view')::int AS game_views,
+          count(*) FILTER (WHERE event_name IN ('play','plays'))::int AS plays,
+          count(*) FILTER (WHERE event_name = 'complete')::int AS completes,
+          count(*) FILTER (WHERE event_name = 'store_click')::int AS store_clicks
+        FROM filtered
+        GROUP BY 1,2,3,4,5
+        ORDER BY sessions DESC, page_views DESC, game_views DESC
+        LIMIT 50
       `
     ]);
 
@@ -121,6 +145,7 @@ export default async function handler(req, res) {
       device: device || 'all',
       summary,
       devices: deviceRows,
+      attribution: attributionRows,
       games: gameRows
     });
   } catch (error) {
