@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 const SOURCE = 'https://harf-way-game-scrapbook.vercel.app/';
 const OUT = 'public/scrapbook/index.html';
 const PROD_HOSTS = "['harfway-playback.vercel.app','harfway-playback-harf-way.vercel.app'].includes(location.hostname)";
+const WAYS_BRIDGE = '<script src="/scrapbook-ways-bridge.js"></script>';
 
 const res = await fetch(SOURCE, { headers: { 'User-Agent': 'HARF-WAY-Scrapbook-Mirror/1.0' } });
 if (!res.ok) throw new Error(`Scrapbook source fetch failed: ${res.status}`);
@@ -52,13 +53,19 @@ for (const [before, after] of replacements) {
   html = html.replace(before, after);
 }
 
+if (!html.includes(WAYS_BRIDGE)) {
+  if (!html.includes('</body>')) throw new Error('Scrapbook body closing tag missing');
+  html = html.replace('</body>', `${WAYS_BRIDGE}\n</body>`);
+}
+
 if (!html.includes("const ADS_SERVE='/api/ads-fair-serve';")) throw new Error('Scrapbook fair-v2 patch missing');
 if (!html.includes('ADS_TRACK_ENABLED')) throw new Error('Scrapbook preview tracking guard missing');
 if (!html.includes('sp-media-fallback')) throw new Error('Scrapbook ad media fallback patch missing');
 if (!html.includes("SCRAPS_LAST_AD_KEY='hwads_last_scraps'")) throw new Error('Scrapbook ad rotation key missing');
 if (!html.includes("+'&avoid='+encodeURIComponent(lastScrapsAdId())")) throw new Error('Scrapbook ad rotation avoid missing');
 if (!html.includes('rememberScrapsAd(ad)')) throw new Error('Scrapbook ad rotation memory missing');
+if (!html.includes(WAYS_BRIDGE)) throw new Error('Scrapbook WAYS bridge injection missing');
 
 await fs.mkdir('public/scrapbook', { recursive: true });
 await fs.writeFile(OUT, html, 'utf8');
-console.log(`[scrapbook-mirror] wrote ${OUT} (${html.length} chars), fair-v2 serve, preview tracking off, ad media playback hardened, reload rotation enabled`);
+console.log(`[scrapbook-mirror] wrote ${OUT} (${html.length} chars), fair-v2 serve, preview tracking off, ad media playback hardened, reload rotation enabled, WAYS play-footage bridge enabled`);
