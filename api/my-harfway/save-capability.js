@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   authenticateDevice,
   bearer,
@@ -35,6 +36,46 @@ function cleanGameId(value) {
   return String(value || '').trim().slice(0, 220);
 }
 
+function cleanSourceItemId(value) {
+  return String(value || '').trim().slice(0, 220);
+}
+
+function cleanTitle(value) {
+  return String(value || '').trim().replace(/\s+/g, ' ').slice(0, 300);
+}
+
+function cleanStoreUrl(value) {
+  const raw = String(value || '').trim().slice(0, 1400);
+  if (!raw) return '';
+  try {
+    const url = new URL(raw);
+    if (!['https:', 'http:'].includes(url.protocol)) return '';
+    url.hash = '';
+    return url.toString().slice(0, 1400);
+  } catch {
+    return '';
+  }
+}
+
+function normalizedStore(value) {
+  const raw = cleanStoreUrl(value);
+  if (!raw) return '';
+  try {
+    const url = new URL(raw);
+    url.hash = '';
+    url.search = '';
+    url.hostname = url.hostname.toLowerCase();
+    url.pathname = url.pathname.replace(/\/+$/, '') || '/';
+    return `${url.protocol}//${url.host}${url.pathname}`;
+  } catch {
+    return '';
+  }
+}
+
+function normalizedTitle(value) {
+  return cleanTitle(value).normalize('NFKC').toLocaleLowerCase('ja-JP');
+}
+
 function sourceOriginAllowed(source, origin) {
   if (source !== 'ways') return false;
   let url;
@@ -70,65 +111,118 @@ function steamFromGame(game) {
   return match ? match[1] : '';
 }
 
-async function fetchCoreById(gameId) {
-  if (!gameId) return null;
-  const response = await fetch(`${CORE}?id=${encodeURIComponent(gameId)}`, {
-    headers: { accept: 'application/json', 'user-agent': 'HARF-WAY-SaveCapability/1.0' },
+async function fetchCoreCatalog() {
+  const response = await fetch(`${CORE}?limit=500`, {
+    headers: { accept: 'application/json', 'user-agent': 'HARF-WAY-UniversalSave/1.0' },
     cache: 'no-store'
   });
-  if (!response.ok) return null;
+  if (!response.ok) return [];
   const data = await response.json().catch(() => null);
-  return data?.ok && Array.isArray(data.games) ? data.games[0] || null : null;
+  return data?.ok && Array.isArray(data.games) ? data.games : [];
 }
 
-async function fetchCoreBySteam(steamAppid) {
-  if (!steamAppid) return null;
-  const response = await fetch(`${CORE}?q=${encodeURIComponent(steamAppid)}&limit=20`, {
-    headers: { accept: 'application/json', 'user-agent': 'HARF-WAY-SaveCapability/1.0' },
-    cache: 'no-store'
-  });
-  if (!response.ok) return null;
-  const data = await response.json().catch(() => null);
-  if (!data?.ok || !Array.isArray(data.games)) return null;
-  return data.games.find((game) => steamFromGame(game) === steamAppid) || null;
-}
-
-async function resolveCoreIdentity({ gameId, steamAppid }) {
+function findCanonical(games, { gameId, steamAppid, storeUrl, title }) {
   const requestedId = cleanGameId(gameId);
-  const requestedSteam = cleanSteam(steamAppid);
-  if (!requestedId && !requestedSteam) return { ok: false, status: 400, error: 'game_identity_required' };
-
-  let game = requestedId ? await fetchCoreById(requestedId) : null;
-  if (!game && requestedSteam) game = await fetchCoreBySteam(requestedSteam);
-  if (!game) return { ok: false, status: 404, error: 'core_game_not_found' };
-
-  const canonicalSteam = steamFromGame(game);
-  if (requestedSteam && canonicalSteam && requestedSteam !== canonicalSteam) {
-    return { ok: false, status: 409, error: 'game_identity_conflict' };
+  if (requestedId && !requestedId.startsWith('pending-')) {
+    const exact = games.find((game) => String(game?.id || '') === requestedId);
+    if (exact) return exact;
   }
-  if (requestedId && requestedId !== String(game.id) && !requestedSteam) {
-    return { ok: false, status: 409, error: 'game_identity_conflict' };
+
+  const requestedSteam = cleanSteam(steamAppid);
+  if (requestedSteam) {
+    const exact = games.find((game) => steamFromGame(game) === requestedSteam);
+    if (exact) return exact;
+  }
+
+  const requestedStore = normalizedStore(storeUrl);
+  if (requestedStore) {
+    const hits = games.filter((game) => {
+      if (normalizedStore(game?.storeUrl) === requestedStore) return true;
+      return (game?.refs || []).some((ref) => normalizedStore(ref?.externalUrl) === requestedStore);
+    });
+    if (hits.length === 1) return hits[0];
+  }
+
+  const requestedTitle = normalizedTitle(title);
+  if (requestedTitle) {
+    const hits = games.filter((game) => normalizedTitle(game?.title) === requestedTitle);
+    if (hits.length === 1) return hits[0];
+  }
+
+  return null;
+}
+
+function provisionalId({ contextSource, sourceItemId, storeUrl, title }) {
+  const seed = [
+    cleanContextSource(contextSource),
+    cleanSourceItemId(sourceItemId),
+    normalizedStore(storeUrl),
+    normalizedTitle(title)
+  ].join('\n');
+  const digest = createHash('sha256').update(seed).digest('hex').slice(0, 24);
+  return `pending-${cleanContextSource(contextSource) || 'harfway'}-${digest}`;
+}
+
+async function resolveIdentity(input, contextSource) {
+  const requested = {
+    gameId: cleanGameId(input.gameId),
+    steamAppid: cleanSteam(input.steamAppid),
+    sourceItemId: cleanSourceItemId(input.sourceItemId),
+    title: cleanTitle(input.title),
+    storeUrl: cleanStoreUrl(input.storeUrl)
+  };
+
+  const games = await fetchCoreCatalog();
+  const canonical = findCanonical(games, requested);
+  if (canonical) {
+    const canonicalSteam = steamFromGame(canonical);
+    if (requested.steamAppid && canonicalSteam && requested.steamAppid !== canonicalSteam) {
+      return { ok: false, status: 409, error: 'game_identity_conflict' };
+    }
+    return {
+      ok: true,
+      game: {
+        id: String(canonical.id || ''),
+        title: cleanTitle(canonical.title) || requested.title,
+        steamAppid: canonicalSteam || requested.steamAppid || '',
+        storeUrl: cleanStoreUrl(canonical.storeUrl) || requested.storeUrl,
+        sourceItemId: requested.sourceItemId,
+        canonicalized: true,
+        identityStatus: 'canonical'
+      }
+    };
+  }
+
+  if (!requested.sourceItemId || !requested.title) {
+    return { ok: false, status: 404, error: 'game_identity_unresolved' };
   }
 
   return {
     ok: true,
     game: {
-      id: String(game.id || ''),
-      title: String(game.title || ''),
-      steamAppid: canonicalSteam || requestedSteam || '',
-      storeUrl: String(game.storeUrl || '')
+      id: provisionalId({ contextSource, ...requested }),
+      title: requested.title,
+      steamAppid: requested.steamAppid,
+      storeUrl: requested.storeUrl,
+      sourceItemId: requested.sourceItemId,
+      canonicalized: false,
+      identityStatus: 'provisional'
     }
   };
 }
 
-async function saveCanonical(sql, workspaceId, game, contextSource, capabilitySource) {
+async function saveIdentity(sql, workspaceId, game, contextSource, capabilitySource) {
   const gameId = String(game.id || '').trim();
   const steamAppid = cleanSteam(game.steamAppid) || null;
   const sourceContext = {
     source: contextSource,
     capabilitySource,
-    bridge: 'save-capability',
-    canonicalized: true
+    bridge: 'save-capability-v2',
+    canonicalized: Boolean(game.canonicalized),
+    identityStatus: String(game.identityStatus || (game.canonicalized ? 'canonical' : 'provisional')),
+    sourceItemId: cleanSourceItemId(game.sourceItemId),
+    title: cleanTitle(game.title),
+    storeUrl: cleanStoreUrl(game.storeUrl)
   };
 
   if (steamAppid) {
@@ -220,10 +314,10 @@ async function useCapability(sql, req, res, body) {
   const contextSource = cleanContextSource(body.contextSource, capability.source);
   if (!contextSource) return res.status(400).json({ ok: false, error: 'save_context_invalid' });
 
-  const resolved = await resolveCoreIdentity({ gameId: body.gameId, steamAppid: body.steamAppid });
+  const resolved = await resolveIdentity(body, contextSource);
   if (!resolved.ok) return res.status(resolved.status).json({ ok: false, error: resolved.error });
 
-  const saved = await saveCanonical(sql, capability.workspace_id, resolved.game, contextSource, capability.source);
+  const saved = await saveIdentity(sql, capability.workspace_id, resolved.game, contextSource, capability.source);
   await sql`
     UPDATE reader.save_capabilities
     SET last_used_at = now(), use_count = use_count + 1
@@ -245,9 +339,10 @@ export default async function handler(req, res) {
       const schema = await readerSchemaStatus(sql);
       return res.status(200).json({
         ok: true,
-        mode: process.env.VERCEL_ENV === 'production' ? 'production' : 'isolated-preview',
+        mode: process.env.VERCEL_ENV === 'production' ? 'production' : 'preview',
         schema: { saveCapabilities: Boolean(schema.save_capabilities) },
-        contexts: [...SAVE_CONTEXTS]
+        contexts: [...SAVE_CONTEXTS],
+        identity: 'core-or-provisional-v2'
       });
     }
 
