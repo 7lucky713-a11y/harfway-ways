@@ -1,177 +1,47 @@
 (()=>{
-  const params=new URLSearchParams(location.search);
-  const gameId=String(params.get('game')||'').trim().replace(/^ways-/,'');
-  const appid=String(params.get('steam')||'').trim();
-  const wait=ms=>new Promise(r=>setTimeout(r,ms));
-  const norm=s=>String(s||'').trim();
-  const appIdFromUrl=url=>String(url||'').match(/store\.steampowered\.com\/app\/(\d+)/i)?.[1]||'';
-
-  const CAP_KEY='hw_my_harfway_save_cap_v1';
-  const SAVED_KEY='hw_my_harfway_saved_v2';
-  const OLD_SAVED_KEY='hw_my_harfway_saved_steam_v1';
-  const SOURCE='ways';
-  const CONTEXT='ways';
-  const IS_PRODUCTION=location.hostname==='harfway-playback.vercel.app';
-  const AUTH_ORIGIN=IS_PRODUCTION?'https://harfway-playlist-tv.vercel.app':location.origin;
-  const AUTH_PATH=IS_PRODUCTION?'/my-harfway-authorize-v2.html':'/my-harfway-inline-preview-authorize.html';
-  const CAP_ENDPOINT='/api/my-harfway/save-capability';
-  const LIVE='/api/games-live';
-  let pendingAuth=null;
-  let liveEntries=[];
-  let liveById=new Map();
-
-  function readJson(key,fallback){try{return JSON.parse(localStorage.getItem(key)||'')||fallback}catch{return fallback}}
-  function writeJson(key,value){try{localStorage.setItem(key,JSON.stringify(value))}catch{}}
-  function savedSet(){const raw=readJson(SAVED_KEY,[]);return new Set(Array.isArray(raw)?raw.map(String):[])}
-  function oldSavedSet(){const raw=readJson(OLD_SAVED_KEY,[]);return new Set(Array.isArray(raw)?raw.map(String):[])}
-  function isSaved(identity){return savedSet().has(identity.key)||(identity.steamAppid&&oldSavedSet().has(String(identity.steamAppid)))}
-  function markSaved(identity,serverGameId=''){
-    const s=savedSet();s.add(String(identity.key));if(serverGameId)s.add(String(serverGameId));writeJson(SAVED_KEY,[...s].slice(-2500));
-    if(identity.steamAppid){const old=oldSavedSet();old.add(String(identity.steamAppid));writeJson(OLD_SAVED_KEY,[...old].slice(-1000))}
-    refreshSavedButtons();
-  }
-  function clearCapability(){try{localStorage.removeItem(CAP_KEY)}catch{}}
-  function capability(){const data=readJson(CAP_KEY,null);if(!data||typeof data!=='object'||typeof data.token!=='string')return null;if(data.source!==SOURCE||data.sourceOrigin!==location.origin)return null;const expires=new Date(data.expiresAt||0).getTime();if(!Number.isFinite(expires)||expires<=Date.now()+60_000){clearCapability();return null}return data}
-  function storeCapability(message){const data={token:String(message.capabilityToken||''),expiresAt:String(message.expiresAt||''),source:SOURCE,sourceOrigin:location.origin};if(!data.token)return null;writeJson(CAP_KEY,data);return data}
-
-  function resolveEntry(raw){
-    if(!raw||typeof raw!=='object')return null;
-    const id=String(raw.id||'').trim();
-    return (id&&liveById.get(id))||raw;
-  }
-  function identityForEntry(raw){
-    const entry=resolveEntry(raw);
-    if(!entry?.id||!entry?.title)return null;
-    const coreId=String(entry.coreId||'').trim();
-    const steam=appIdFromUrl(entry.storeUrl||'');
-    return {
-      key:coreId||`ways:${entry.id}`,
-      gameId:coreId,
-      steamAppid:String(steam||''),
-      sourceItemId:String(entry.id),
-      title:String(entry.title||''),
-      storeUrl:String(entry.storeUrl||''),
-      canonical:Boolean(coreId)
-    };
-  }
-  function fallbackEntry(title,storeUrl=''){
-    const t=norm(title);if(!t)return null;
-    const steam=appIdFromUrl(storeUrl);
-    if(steam){const hit=liveEntries.find(e=>appIdFromUrl(e?.storeUrl)===steam);if(hit)return hit}
-    const hits=liveEntries.filter(e=>norm(e?.title)===t);return hits.length===1?hits[0]:null;
-  }
-  function desktopEntry(){
-    try{
-      if(typeof filtered!=='undefined'&&typeof selected!=='undefined'&&Array.isArray(filtered)){
-        const hit=filtered[Number(selected)];if(hit)return resolveEntry(hit);
-      }
-    }catch{}
-    const title=document.querySelector('.side h2')?.textContent||'';
-    const store=document.querySelector('#links a.store[href],#links a[href]')?.href||'';
-    return fallbackEntry(title,store);
-  }
-  function mobileEntry(card){
-    try{
-      const i=Number(card?.dataset?.i);
-      if(Number.isInteger(i)&&i>=0){
-        const list=(typeof activeTag!=='undefined'&&activeTag&&typeof filtered!=='undefined'&&Array.isArray(filtered))?filtered:((typeof items!=='undefined'&&Array.isArray(items))?items:[]);
-        const hit=list[i];if(hit)return resolveEntry(hit);
-      }
-    }catch{}
-    const title=card?.querySelector('.m-meta h2')?.textContent||'';
-    const store=card?.querySelector('.m-meta a[href]')?.href||'';
-    return fallbackEntry(title,store);
-  }
-
-  function ensureStyle(){
-    if(document.querySelector('#hwTakeHomeStyle'))return;
-    const style=document.createElement('style');style.id='hwTakeHomeStyle';
-    style.textContent=`.hw-take-home{position:relative;z-index:6;pointer-events:auto;touch-action:manipulation;border:1px solid #555a62;background:transparent;color:#fff;padding:9px 11px;font-size:10px;font-weight:900;cursor:pointer;transition:.15s;border-radius:0}.hw-take-home:hover{border-color:var(--accent,#efff35);color:var(--accent,#efff35)}.hw-take-home.is-saved{background:var(--accent,#efff35);border-color:var(--accent,#efff35);color:#111}.hw-take-home.is-busy{opacity:.55;pointer-events:none}.hw-save-toast{position:fixed;z-index:90;left:50%;bottom:24px;transform:translate(-50%,14px);background:#0d0f10ee;color:#f7f8f2;border:1px solid #efff35;padding:11px 14px;font-size:11px;font-weight:900;opacity:0;pointer-events:none;transition:.18s opacity,.18s transform;box-shadow:0 10px 40px #0008}.hw-save-toast.on{opacity:1;transform:translate(-50%,0)}@media(max-width:899px){.m-meta .hw-take-home{display:inline-block;margin-top:10px;margin-left:6px;border-radius:999px;padding:8px 11px;font-size:10px;background:#050505cc}.m-meta .hw-take-home.is-saved{background:var(--accent,#efff35);color:#111}.hw-save-toast{bottom:18px;width:min(88vw,360px);text-align:center}}`;
-    document.head.appendChild(style);
-  }
-  function toast(text){let el=document.querySelector('#hwSaveToast');if(!el){el=document.createElement('div');el.id='hwSaveToast';el.className='hw-save-toast';document.body.appendChild(el)}el.textContent=text;el.classList.add('on');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('on'),1800)}
-  function identityFromButton(button){return {key:String(button.dataset.key||''),gameId:String(button.dataset.game||''),steamAppid:String(button.dataset.steam||''),sourceItemId:String(button.dataset.sourceItem||''),title:String(button.dataset.title||''),storeUrl:String(button.dataset.store||''),canonical:button.dataset.canonical==='1'}}
-  function setButtonState(button,identity,{busy=false}={}){const saved=isSaved(identity);button.classList.toggle('is-saved',saved);button.classList.toggle('is-busy',busy);button.textContent=busy?'保存中…':saved?'♥ 持ち帰り済み':'♡ 持ち帰る';button.setAttribute('aria-pressed',saved?'true':'false')}
-  function refreshSavedButtons(){document.querySelectorAll('.hw-take-home[data-key]').forEach(button=>setButtonState(button,identityFromButton(button)))}
-  function makeButton(identity){const button=document.createElement('button');button.type='button';button.className='hw-take-home';button.dataset.key=identity.key;button.dataset.game=identity.gameId;button.dataset.steam=identity.steamAppid;button.dataset.sourceItem=identity.sourceItemId;button.dataset.title=identity.title;button.dataset.store=identity.storeUrl;button.dataset.canonical=identity.canonical?'1':'0';button.setAttribute('aria-label','MY HARF-WAYに持ち帰る');setButtonState(button,identity);return button}
-  function removeButtonAndOpenLink(existing){if(!existing)return;const next=existing.nextElementSibling;if(next?.classList?.contains('hw-my-harfway-open'))next.remove();existing.remove()}
-
-  function decorateDesktop(){
-    const links=document.querySelector('#links');if(!links)return;
-    const identity=identityForEntry(desktopEntry());const existing=links.querySelector('.hw-take-home');
-    if(!identity){removeButtonAndOpenLink(existing);return}
-    if(existing&&existing.dataset.key===identity.key){setButtonState(existing,identity);return}
-    removeButtonAndOpenLink(existing);
-    const b=makeButton(identity);const store=links.querySelector('a.store[href]');if(store)store.insertAdjacentElement('afterend',b);else links.appendChild(b);
-  }
-  function decorateMobile(){
-    document.querySelectorAll('.m-card').forEach(card=>{
-      const meta=card.querySelector('.m-meta');if(!meta)return;
-      const identity=identityForEntry(mobileEntry(card));const existing=meta.querySelector('.hw-take-home');
-      if(!identity){removeButtonAndOpenLink(existing);return}
-      if(existing&&existing.dataset.key===identity.key){setButtonState(existing,identity);return}
-      removeButtonAndOpenLink(existing);
-      const b=makeButton(identity);const store=meta.querySelector('a[href]');if(store)store.insertAdjacentElement('afterend',b);else meta.appendChild(b);
-    });
-  }
-  function refreshDecorations(){decorateDesktop();decorateMobile()}
-
-  function authUrl(identity){const url=new URL(AUTH_PATH,AUTH_ORIGIN);url.searchParams.set('source',SOURCE);url.searchParams.set('context',CONTEXT);url.searchParams.set('origin',location.origin);if(identity.gameId)url.searchParams.set('game',identity.gameId);if(identity.steamAppid)url.searchParams.set('steam',identity.steamAppid);url.searchParams.set('source_item',identity.sourceItemId);url.searchParams.set('title',identity.title);if(identity.storeUrl)url.searchParams.set('store',identity.storeUrl);return url.toString()}
-  async function inlineSave(identity,cap,retryAuth=true){
-    const buttons=[...document.querySelectorAll(`.hw-take-home[data-key="${CSS.escape(identity.key)}"]`)];buttons.forEach(b=>setButtonState(b,identity,{busy:true}));
-    try{
-      const response=await fetch(CAP_ENDPOINT,{method:'POST',headers:{'content-type':'application/json','authorization':`Bearer ${cap.token}`},body:JSON.stringify({action:'save',gameId:identity.gameId,steamAppid:identity.steamAppid,sourceItemId:identity.sourceItemId,title:identity.title,storeUrl:identity.storeUrl,contextSource:CONTEXT}),cache:'no-store'});
-      const data=await response.json().catch(()=>({}));
-      if(response.ok&&data?.ok){markSaved(identity,data.game?.id||data.gameId||'');toast('MY HARF-WAYに持ち帰りました ✓');return true}
-      if(retryAuth&&[401,403,410].includes(response.status)){clearCapability();buttons.forEach(b=>setButtonState(b,identity));return authorizeAndSave(identity)}
-      throw new Error(data?.error||'save_failed');
-    }catch{buttons.forEach(b=>setButtonState(b,identity));toast('持ち帰れませんでした。もう一度お試しください');return false}
-  }
-  function authorizeAndSave(identity){
-    if(!IS_PRODUCTION){markSaved(identity);toast(`Preview：${identity.canonical?'CORE':'仮ID'}で持ち帰りました ✓`);return Promise.resolve(true)}
-    if(pendingAuth)return pendingAuth.promise;
-    let resolvePromise;const promise=new Promise(resolve=>{resolvePromise=resolve});
-    const popup=window.open(authUrl(identity),'hwMyHarfwayAuthorize','popup=yes,width=520,height=720,resizable=yes,scrollbars=yes');
-    if(!popup){toast('初回設定の小窓を開けませんでした');resolvePromise(false);return promise}
-    const pending={identity,popup,resolve:resolvePromise,promise,timer:0};pendingAuth=pending;
-    document.querySelectorAll(`.hw-take-home[data-key="${CSS.escape(identity.key)}"]`).forEach(b=>setButtonState(b,identity,{busy:true}));
-    pending.timer=setInterval(()=>{if(pendingAuth!==pending)return;if(popup.closed){clearInterval(pending.timer);pendingAuth=null;refreshSavedButtons();resolvePromise(false)}},350);
-    return promise;
-  }
-  window.addEventListener('message',event=>{
-    if(event.origin!==AUTH_ORIGIN||!pendingAuth)return;
-    const message=event.data;if(!message||message.type!=='hw-save-capability'||String(message.source||'')!==SOURCE||String(message.sourceOrigin||'')!==location.origin||String(message.contextSource||'')!==CONTEXT)return;
-    if(String(message.sourceItemId||'')!==pendingAuth.identity.sourceItemId)return;
-    const pending=pendingAuth;pendingAuth=null;clearInterval(pending.timer);const cap=storeCapability(message);
-    if(message.saved)markSaved(pending.identity,String(message.gameId||''));if(message.saved)toast('MY HARF-WAYに持ち帰りました ✓');
-    try{if(!pending.popup.closed)pending.popup.close()}catch{}pending.resolve(Boolean(cap&&message.saved));
-  });
-  function onTakeHomeButton(button){
-    const identity=identityFromButton(button);if(!identity.key||button.classList.contains('is-busy'))return;
-    if(isSaved(identity)){toast('すでに持ち帰り済みです ✓');return}
-    const cap=capability();if(cap)inlineSave(identity,cap);else authorizeAndSave(identity);
-  }
-  document.addEventListener('click',event=>{
-    const button=event.target?.closest?.('.hw-take-home');if(!button)return;
-    event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();onTakeHomeButton(button);
-  },true);
-
-  async function loadLiveData(){
-    try{const j=await fetch(LIVE,{cache:'no-store'}).then(r=>r.json());liveEntries=Array.isArray(j?.entries)?j.entries:[];liveById=new Map(liveEntries.map(e=>[String(e?.id||''),e]));}catch{liveEntries=[];liveById=new Map()}
-    refreshDecorations();
-  }
-  function bootTakeHome(){
-    ensureStyle();loadLiveData();refreshDecorations();
-    let scheduled=false;const schedule=()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;refreshDecorations()})};
-    new MutationObserver(schedule).observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['href','class']});
-    setInterval(schedule,900);
-  }
-
-  async function targetTitle(){try{const r=await fetch(LIVE,{cache:'no-store'});const j=await r.json();const entries=j?.entries||[];const hit=gameId?entries.find(x=>norm(x?.id)===gameId):entries.find(x=>appIdFromUrl(x?.storeUrl)===appid);return norm(hit?.title)}catch{return ''}}
-  async function openDesktop(title){for(let page=0;page<12;page++){const cards=[...document.querySelectorAll('.game')];const hit=cards.find(card=>norm(card.querySelector('.gtitle')?.textContent)===title);if(hit){hit.click();hit.scrollIntoView({behavior:'smooth',block:'nearest'});const v=document.querySelector('.video-frame video');if(v)setTimeout(()=>v.play().catch(()=>{}),60);return true}const more=document.querySelector('#shelfMore');if(!more)return false;more.click();await wait(180)}return false}
-  async function openMobile(title){const feed=document.querySelector('#mfeed');if(!feed)return false;for(let turn=0;turn<40;turn++){const cards=[...feed.querySelectorAll('.m-card')];const hit=cards.find(card=>norm(card.querySelector('.m-meta h2')?.textContent)===title);if(hit){hit.scrollIntoView({behavior:'auto',block:'start'});await wait(180);const v=hit.querySelector('video');if(v){const src=v.dataset?.src;if(src&&!v.getAttribute('src'))v.src=src;v.play().catch(()=>{})}return true}const last=cards.at(-1);if(last)last.scrollIntoView({behavior:'auto',block:'start'});await wait(180)}return false}
-  async function bootDeeplink(){if(!gameId&&!/^\d+$/.test(appid))return;const title=await targetTitle();if(!title)return;if(innerWidth>=900){for(let i=0;i<25&&!document.querySelector('.game');i++)await wait(120);await openDesktop(title)}else{for(let i=0;i<25&&!document.querySelector('.m-card');i++)await wait(120);await openMobile(title)}}
-
-  bootTakeHome();
-  bootDeeplink();
+const P=new URLSearchParams(location.search),deepGame=String(P.get('game')||'').replace(/^ways-/,''),deepSteam=String(P.get('steam')||'');
+const wait=ms=>new Promise(r=>setTimeout(r,ms)),norm=v=>String(v||'').trim(),steamOf=u=>String(u||'').match(/store\.steampowered\.com\/app\/(\d+)/i)?.[1]||'';
+const CAP_KEY='hw_my_harfway_save_cap_v1',REMOVE_KEY='hw_my_harfway_remove_caps_v1',SAVED_KEY='hw_my_harfway_saved_v2',OLD_KEY='hw_my_harfway_saved_steam_v1';
+const SOURCE='ways',CONTEXT='ways',PROD=location.hostname==='harfway-playback.vercel.app',AUTH_ORIGIN=PROD?'https://harfway-playlist-tv.vercel.app':location.origin,AUTH_PATH=PROD?'/my-harfway-authorize-v2.html':'/my-harfway-inline-preview-authorize.html',ENDPOINT='/api/my-harfway/save-capability',LIVE='/api/games-live';
+let pending=null,live=[],byId=new Map();
+const read=(k,f)=>{try{return JSON.parse(localStorage.getItem(k)||'')||f}catch{return f}},write=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
+const savedSet=()=>new Set(Array.isArray(read(SAVED_KEY,[]))?read(SAVED_KEY,[]):[]),oldSet=()=>new Set(Array.isArray(read(OLD_KEY,[]))?read(OLD_KEY,[]):[]);
+function isSaved(id){return savedSet().has(id.key)||(id.steamAppid&&oldSet().has(id.steamAppid))}
+function markSaved(id,server=''){const s=savedSet();s.add(id.key);if(server)s.add(server);write(SAVED_KEY,[...s]);if(id.steamAppid){const o=oldSet();o.add(id.steamAppid);write(OLD_KEY,[...o])}refreshButtons()}
+function clearSaved(id,server=''){const s=savedSet();s.delete(id.key);if(server)s.delete(server);write(SAVED_KEY,[...s]);if(id.steamAppid){const o=oldSet();o.delete(id.steamAppid);write(OLD_KEY,[...o])}clearRemove(id,server);refreshButtons()}
+function saveCap(){const x=read(CAP_KEY,null);if(!x?.token||x.source!==SOURCE||x.sourceOrigin!==location.origin)return null;const e=new Date(x.expiresAt||0).getTime();if(!Number.isFinite(e)||e<Date.now()+60000){localStorage.removeItem(CAP_KEY);return null}return x}
+function storeSaveCap(m){const x={token:String(m.capabilityToken||''),expiresAt:String(m.expiresAt||''),source:SOURCE,sourceOrigin:location.origin};if(x.token)write(CAP_KEY,x);return x.token?x:null}
+function removeMap(){const x=read(REMOVE_KEY,{});return x&&typeof x==='object'&&!Array.isArray(x)?x:{}}
+function storeRemove(id,m){const token=String(m.removeCapabilityToken||''),gameId=String(m.removeGameId||m.gameId||'');if(!token||!gameId)return null;const x={token,gameId,expiresAt:String(m.removeExpiresAt||'')},map=removeMap();map[id.key]=x;map[gameId]=x;write(REMOVE_KEY,map);return x}
+function getRemove(id){const x=removeMap()[id.key];if(!x?.token)return null;if(x.expiresAt){const e=new Date(x.expiresAt).getTime();if(!Number.isFinite(e)||e<Date.now()+30000){clearRemove(id,x.gameId);return null}}return x}
+function clearRemove(id,server=''){const map=removeMap(),x=map[id.key];delete map[id.key];if(server)delete map[server];if(x?.gameId)delete map[x.gameId];write(REMOVE_KEY,map)}
+function entry(raw){if(!raw||typeof raw!=='object')return null;return byId.get(String(raw.id||''))||raw}
+function identity(raw){const x=entry(raw);if(!x?.id||!x?.title)return null;const core=String(x.coreId||''),steam=steamOf(x.storeUrl);return{key:core||`ways:${x.id}`,gameId:core,steamAppid:steam,sourceItemId:String(x.id),title:String(x.title),storeUrl:String(x.storeUrl||''),canonical:Boolean(core)}}
+function fallback(title,url=''){const steam=steamOf(url);if(steam){const x=live.find(v=>steamOf(v.storeUrl)===steam);if(x)return x}const hits=live.filter(v=>norm(v.title)===norm(title));return hits.length===1?hits[0]:null}
+function desktopEntry(){try{if(typeof filtered!=='undefined'&&typeof selected!=='undefined'&&Array.isArray(filtered)&&filtered[Number(selected)])return entry(filtered[Number(selected)])}catch{}return fallback(document.querySelector('.side h2')?.textContent,document.querySelector('#links a.store[href]')?.href)}
+function mobileEntry(card){try{const i=Number(card.dataset.i),list=(typeof activeTag!=='undefined'&&activeTag&&typeof filtered!=='undefined')?filtered:items;if(Array.isArray(list)&&list[i])return entry(list[i])}catch{}return fallback(card.querySelector('h2')?.textContent,card.querySelector('a[href]')?.href)}
+function style(){if(document.querySelector('#hwTakeHomeStyle'))return;const s=document.createElement('style');s.id='hwTakeHomeStyle';s.textContent='.hw-take-home{position:relative;z-index:6;pointer-events:auto;touch-action:manipulation;border:1px solid #555a62;background:transparent;color:#fff;padding:9px 11px;font-size:10px;font-weight:900;cursor:pointer}.hw-take-home:hover{border-color:var(--accent,#efff35);color:var(--accent,#efff35)}.hw-take-home.is-saved{background:var(--accent,#efff35);border-color:var(--accent,#efff35);color:#111}.hw-take-home.is-busy{opacity:.55;pointer-events:none}.hw-save-toast{position:fixed;z-index:90;left:50%;bottom:24px;transform:translate(-50%,14px);background:#0d0f10ee;color:#f7f8f2;border:1px solid #efff35;padding:11px 14px;font-size:11px;font-weight:900;opacity:0;pointer-events:none;transition:.18s}.hw-save-toast.on{opacity:1;transform:translate(-50%,0)}@media(max-width:899px){.m-meta .hw-take-home{display:inline-block;margin:10px 0 0 6px;border-radius:999px;padding:8px 11px;background:#050505cc}.m-meta .hw-take-home.is-saved{background:var(--accent,#efff35);color:#111}}';document.head.appendChild(s)}
+function toast(t){let e=document.querySelector('#hwSaveToast');if(!e){e=document.createElement('div');e.id='hwSaveToast';e.className='hw-save-toast';document.body.appendChild(e)}e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),1700)}
+function fromButton(b){return{key:String(b.dataset.key||''),gameId:String(b.dataset.game||''),steamAppid:String(b.dataset.steam||''),sourceItemId:String(b.dataset.sourceItem||''),title:String(b.dataset.title||''),storeUrl:String(b.dataset.store||''),canonical:b.dataset.canonical==='1'}}
+function state(b,id,busy=false){const saved=isSaved(id);b.classList.toggle('is-saved',saved);b.classList.toggle('is-busy',busy);b.textContent=busy?'処理中…':saved?'持ち帰り済み':'持ち帰る';b.setAttribute('aria-pressed',saved?'true':'false');b.setAttribute('aria-label',saved?'MY HARF-WAYへの持ち帰りを取り消す':'MY HARF-WAYに持ち帰る')}
+function refreshButtons(){document.querySelectorAll('.hw-take-home[data-key]').forEach(b=>state(b,fromButton(b)))}
+function button(id){const b=document.createElement('button');b.type='button';b.className='hw-take-home';Object.assign(b.dataset,{key:id.key,game:id.gameId,steam:id.steamAppid,sourceItem:id.sourceItemId,title:id.title,store:id.storeUrl,canonical:id.canonical?'1':'0'});state(b,id);return b}
+function removeOld(b){if(!b)return;const n=b.nextElementSibling;if(n?.classList?.contains('hw-my-harfway-open'))n.remove();b.remove()}
+function decorateDesktop(){const box=document.querySelector('#links');if(!box)return;const id=identity(desktopEntry()),old=box.querySelector('.hw-take-home');if(!id){removeOld(old);return}if(old?.dataset.key===id.key){state(old,id);return}removeOld(old);const b=button(id),store=box.querySelector('a.store[href]');store?store.insertAdjacentElement('afterend',b):box.appendChild(b)}
+function decorateMobile(){document.querySelectorAll('.m-card').forEach(card=>{const box=card.querySelector('.m-meta');if(!box)return;const id=identity(mobileEntry(card)),old=box.querySelector('.hw-take-home');if(!id){removeOld(old);return}if(old?.dataset.key===id.key){state(old,id);return}removeOld(old);const b=button(id),store=box.querySelector('a[href]');store?store.insertAdjacentElement('afterend',b):box.appendChild(b)})}
+const decorate=()=>{decorateDesktop();decorateMobile()};
+function authUrl(id,mode){const u=new URL(AUTH_PATH,AUTH_ORIGIN);for(const[k,v]of Object.entries({mode,source:SOURCE,context:CONTEXT,origin:location.origin,game:id.gameId,steam:id.steamAppid,source_item:id.sourceItemId,title:id.title,store:id.storeUrl}))if(v)u.searchParams.set(k,v);return u.toString()}
+async function post(body,token){const r=await fetch(ENDPOINT,{method:'POST',headers:{'content-type':'application/json','authorization':`Bearer ${token}`},body:JSON.stringify(body),cache:'no-store'}),data=await r.json().catch(()=>({}));return{r,data}}
+async function inlineSave(id,cap){document.querySelectorAll(`.hw-take-home[data-key="${CSS.escape(id.key)}"]`).forEach(b=>state(b,id,true));const {r,data}=await post({action:'save',gameId:id.gameId,steamAppid:id.steamAppid,sourceItemId:id.sourceItemId,title:id.title,storeUrl:id.storeUrl,contextSource:CONTEXT},cap.token).catch(()=>({r:null,data:{}}));if(r?.ok&&data?.ok){const server=String(data.gameId||data.game?.id||'');markSaved(id,server);storeRemove(id,data);toast('MY HARF-WAYに持ち帰りました ✓');return}if([401,403,410].includes(r?.status)){localStorage.removeItem(CAP_KEY);return authorize(id,'save')}refreshButtons();toast('持ち帰れませんでした。もう一度お試しください')}
+async function inlineRemove(id,rem){document.querySelectorAll(`.hw-take-home[data-key="${CSS.escape(id.key)}"]`).forEach(b=>state(b,id,true));const {r,data}=await post({action:'remove',savedGameId:rem.gameId},rem.token).catch(()=>({r:null,data:{}}));if(r?.ok&&data?.removed){clearSaved(id,String(data.gameId||rem.gameId));toast('持ち帰りを取り消しました');return}if([401,403,404,410].includes(r?.status)){clearRemove(id,rem.gameId);return authorize(id,'remove')}refreshButtons();toast('取り消せませんでした。もう一度お試しください')}
+function authorize(id,mode){if(pending)return pending.promise;let done;const promise=new Promise(r=>done=r),popup=window.open(authUrl(id,mode),'hwMyHarfwayAuthorize','popup=yes,width=520,height=720,resizable=yes,scrollbars=yes');if(!popup){toast('確認用の小窓を開けませんでした');done(false);return promise}pending={id,mode,popup,done,promise,timer:setInterval(()=>{if(pending&&popup.closed){clearInterval(pending.timer);pending=null;refreshButtons();done(false)}},350)};document.querySelectorAll(`.hw-take-home[data-key="${CSS.escape(id.key)}"]`).forEach(b=>state(b,id,true));return promise}
+window.addEventListener('message',e=>{if(e.origin!==AUTH_ORIGIN||!pending)return;const m=e.data;if(!m||!['hw-save-capability','hw-remove-result'].includes(String(m.type||''))||String(m.source||'')!==SOURCE||String(m.sourceOrigin||'')!==location.origin||String(m.sourceItemId||'')!==pending.id.sourceItemId)return;const p=pending;pending=null;clearInterval(p.timer);if(m.removed){clearSaved(p.id,String(m.gameId||''));toast('持ち帰りを取り消しました');p.done(true)}else{const cap=storeSaveCap(m);if(m.saved){markSaved(p.id,String(m.gameId||''));storeRemove(p.id,m);toast('MY HARF-WAYに持ち帰りました ✓')}p.done(Boolean(cap&&m.saved))}try{p.popup.close()}catch{}});
+document.addEventListener('click',e=>{const b=e.target?.closest?.('.hw-take-home');if(!b)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();const id=fromButton(b);if(!id.key||b.classList.contains('is-busy'))return;if(isSaved(id)){const rem=getRemove(id);rem?inlineRemove(id,rem):authorize(id,'remove')}else{const cap=saveCap();cap?inlineSave(id,cap):authorize(id,'save')}},true);
+async function load(){try{const j=await fetch(LIVE,{cache:'no-store'}).then(r=>r.json());live=Array.isArray(j?.entries)?j.entries:[];byId=new Map(live.map(x=>[String(x?.id||''),x]))}catch{live=[];byId=new Map()}decorate()}
+function boot(){style();load();decorate();let q=false;const schedule=()=>{if(q)return;q=true;requestAnimationFrame(()=>{q=false;decorate()})};new MutationObserver(schedule).observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['href','class']});setInterval(schedule,900)}
+async function targetTitle(){try{const j=await fetch(LIVE,{cache:'no-store'}).then(r=>r.json()),xs=j?.entries||[],hit=deepGame?xs.find(x=>norm(x.id)===deepGame):xs.find(x=>steamOf(x.storeUrl)===deepSteam);return norm(hit?.title)}catch{return''}}
+async function openDesktop(title){for(let p=0;p<12;p++){const hit=[...document.querySelectorAll('.game')].find(c=>norm(c.querySelector('.gtitle')?.textContent)===title);if(hit){hit.click();hit.scrollIntoView({behavior:'smooth',block:'nearest'});return true}const more=document.querySelector('#shelfMore');if(!more)return false;more.click();await wait(180)}return false}
+async function openMobile(title){const feed=document.querySelector('#mfeed');if(!feed)return false;for(let i=0;i<40;i++){const hit=[...feed.querySelectorAll('.m-card')].find(c=>norm(c.querySelector('h2')?.textContent)===title);if(hit){hit.scrollIntoView({behavior:'auto',block:'start'});return true}feed.querySelector('.m-card:last-of-type')?.scrollIntoView({behavior:'auto',block:'start'});await wait(180)}return false}
+async function deeplink(){if(!deepGame&&!/^\d+$/.test(deepSteam))return;const title=await targetTitle();if(!title)return;if(innerWidth>=900){for(let i=0;i<25&&!document.querySelector('.game');i++)await wait(120);await openDesktop(title)}else{for(let i=0;i<25&&!document.querySelector('.m-card');i++)await wait(120);await openMobile(title)}}
+boot();deeplink();
 })();

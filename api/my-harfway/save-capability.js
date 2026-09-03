@@ -12,350 +12,49 @@ import {
   sendError
 } from '../../lib/my-harfway-db.js';
 
-const CORE = 'https://harfway-playback.vercel.app/api/core/games';
-const CAPABILITY_TTL_MS = 90 * 24 * 60 * 60 * 1000;
-const ALLOWED_SOURCES = new Set(['ways']);
-const SAVE_CONTEXTS = new Set(['ways', 'scraps', 'sale']);
+const CORE='https://harfway-playback.vercel.app/api/core/games';
+const CAPABILITY_TTL_MS=90*24*60*60*1000;
+const ALLOWED_SOURCES=new Set(['ways']);
+const SAVE_CONTEXTS=new Set(['ways','scraps','sale']);
+const REMOVE_SOURCE='ways-remove';
 
-function cleanSource(value) {
-  const source = String(value || '').trim().toLowerCase();
-  return ALLOWED_SOURCES.has(source) ? source : '';
-}
+const cleanSource=v=>{const s=String(v||'').trim().toLowerCase();return ALLOWED_SOURCES.has(s)?s:''};
+const cleanContextSource=(v,f='')=>{const s=String(v||f||'').trim().toLowerCase();return SAVE_CONTEXTS.has(s)?s:''};
+const cleanSteam=v=>/^\d{1,12}$/.test(String(v||'').trim())?String(v||'').trim():'';
+const cleanGameId=v=>String(v||'').trim().slice(0,220);
+const cleanSourceItemId=v=>String(v||'').trim().slice(0,220);
+const cleanTitle=v=>String(v||'').trim().replace(/\s+/g,' ').slice(0,300);
+function cleanStoreUrl(value){const raw=String(value||'').trim().slice(0,1400);if(!raw)return'';try{const u=new URL(raw);if(!['https:','http:'].includes(u.protocol))return'';u.hash='';return u.toString().slice(0,1400)}catch{return''}}
+function normalizedStore(value){const raw=cleanStoreUrl(value);if(!raw)return'';try{const u=new URL(raw);u.hash='';u.search='';u.hostname=u.hostname.toLowerCase();u.pathname=u.pathname.replace(/\/+$/,'')||'/';return `${u.protocol}//${u.host}${u.pathname}`}catch{return''}}
+const normalizedTitle=v=>cleanTitle(v).normalize('NFKC').toLocaleLowerCase('ja-JP');
 
-function cleanContextSource(value, fallback = '') {
-  const source = String(value || fallback || '').trim().toLowerCase();
-  return SAVE_CONTEXTS.has(source) ? source : '';
-}
-
-function cleanSteam(value) {
-  const raw = String(value || '').trim();
-  return /^\d{1,12}$/.test(raw) ? raw : '';
-}
-
-function cleanGameId(value) {
-  return String(value || '').trim().slice(0, 220);
-}
-
-function cleanSourceItemId(value) {
-  return String(value || '').trim().slice(0, 220);
-}
-
-function cleanTitle(value) {
-  return String(value || '').trim().replace(/\s+/g, ' ').slice(0, 300);
-}
-
-function cleanStoreUrl(value) {
-  const raw = String(value || '').trim().slice(0, 1400);
-  if (!raw) return '';
-  try {
-    const url = new URL(raw);
-    if (!['https:', 'http:'].includes(url.protocol)) return '';
-    url.hash = '';
-    return url.toString().slice(0, 1400);
-  } catch {
-    return '';
-  }
-}
-
-function normalizedStore(value) {
-  const raw = cleanStoreUrl(value);
-  if (!raw) return '';
-  try {
-    const url = new URL(raw);
-    url.hash = '';
-    url.search = '';
-    url.hostname = url.hostname.toLowerCase();
-    url.pathname = url.pathname.replace(/\/+$/, '') || '/';
-    return `${url.protocol}//${url.host}${url.pathname}`;
-  } catch {
-    return '';
-  }
-}
-
-function normalizedTitle(value) {
-  return cleanTitle(value).normalize('NFKC').toLocaleLowerCase('ja-JP');
-}
-
-function sourceOriginAllowed(source, origin) {
-  if (source !== 'ways') return false;
-  let url;
-  try { url = new URL(String(origin || '')); } catch { return false; }
-  if (url.protocol !== 'https:' || url.pathname !== '/' || url.search || url.hash) return false;
-
-  if (process.env.VERCEL_ENV === 'production') {
-    return url.origin === 'https://harfway-playback.vercel.app';
-  }
-
-  if (
-    process.env.VERCEL_ENV === 'preview' &&
-    String(process.env.VERCEL_GIT_COMMIT_REF || '') === 'preview/my-harfway-sync-20260902'
-  ) {
-    return url.hostname.startsWith('harfway-playback-') && url.hostname.endsWith('-harf-way.vercel.app');
-  }
-
+function sourceOriginAllowed(source,origin){
+  if(source!=='ways')return false;let u;try{u=new URL(String(origin||''))}catch{return false}
+  if(u.protocol!=='https:'||u.pathname!=='/'||u.search||u.hash)return false;
+  if(process.env.VERCEL_ENV==='production')return u.origin==='https://harfway-playback.vercel.app';
+  if(process.env.VERCEL_ENV==='preview'&&String(process.env.VERCEL_GIT_COMMIT_REF||'')==='preview/my-harfway-sync-20260902')return u.hostname.startsWith('harfway-playback-')&&u.hostname.endsWith('-harf-way.vercel.app');
   return false;
 }
+function requestOrigin(req){const direct=String(req.headers?.origin||'').trim();if(direct)return direct;const ref=String(req.headers?.referer||'').trim();if(!ref)return'';try{return new URL(ref).origin}catch{return''}}
+function steamFromGame(game){const ref=(game?.refs||[]).find(x=>x?.service==='steam'&&/^\d+$/.test(String(x.externalId||'')));if(ref)return String(ref.externalId);const m=String(game?.storeUrl||'').match(/store\.steampowered\.com\/app\/(\d+)/i);return m?m[1]:''}
+async function fetchCoreCatalog(){const r=await fetch(`${CORE}?limit=500`,{headers:{accept:'application/json','user-agent':'HARF-WAY-UniversalSave/1.1'},cache:'no-store'});if(!r.ok)return[];const j=await r.json().catch(()=>null);return j?.ok&&Array.isArray(j.games)?j.games:[]}
+function findCanonical(games,{gameId,steamAppid,storeUrl,title}){const id=cleanGameId(gameId);if(id&&!id.startsWith('pending-')){const hit=games.find(g=>String(g?.id||'')===id);if(hit)return hit}const steam=cleanSteam(steamAppid);if(steam){const hit=games.find(g=>steamFromGame(g)===steam);if(hit)return hit}const store=normalizedStore(storeUrl);if(store){const hits=games.filter(g=>normalizedStore(g?.storeUrl)===store||(g?.refs||[]).some(r=>normalizedStore(r?.externalUrl)===store));if(hits.length===1)return hits[0]}const t=normalizedTitle(title);if(t){const hits=games.filter(g=>normalizedTitle(g?.title)===t);if(hits.length===1)return hits[0]}return null}
+function provisionalId({contextSource,sourceItemId,storeUrl,title}){const seed=[cleanContextSource(contextSource),cleanSourceItemId(sourceItemId),normalizedStore(storeUrl),normalizedTitle(title)].join('\n');return `pending-${cleanContextSource(contextSource)||'harfway'}-${createHash('sha256').update(seed).digest('hex').slice(0,24)}`}
+async function resolveIdentity(input,contextSource){const requested={gameId:cleanGameId(input.gameId),steamAppid:cleanSteam(input.steamAppid),sourceItemId:cleanSourceItemId(input.sourceItemId),title:cleanTitle(input.title),storeUrl:cleanStoreUrl(input.storeUrl)};const games=await fetchCoreCatalog();const canonical=findCanonical(games,requested);if(canonical){const steam=steamFromGame(canonical);if(requested.steamAppid&&steam&&requested.steamAppid!==steam)return{ok:false,status:409,error:'game_identity_conflict'};return{ok:true,game:{id:String(canonical.id||''),title:cleanTitle(canonical.title)||requested.title,steamAppid:steam||requested.steamAppid||'',storeUrl:cleanStoreUrl(canonical.storeUrl)||requested.storeUrl,sourceItemId:requested.sourceItemId,canonicalized:true,identityStatus:'canonical'}}}if(!requested.sourceItemId||!requested.title)return{ok:false,status:404,error:'game_identity_unresolved'};return{ok:true,game:{id:provisionalId({contextSource,...requested}),title:requested.title,steamAppid:requested.steamAppid,storeUrl:requested.storeUrl,sourceItemId:requested.sourceItemId,canonicalized:false,identityStatus:'provisional'}}}
 
-function requestOrigin(req) {
-  const direct = String(req.headers?.origin || '').trim();
-  if (direct) return direct;
-  const referer = String(req.headers?.referer || '').trim();
-  if (!referer) return '';
-  try { return new URL(referer).origin; } catch { return ''; }
-}
+async function saveIdentity(sql,workspaceId,game,contextSource,capabilitySource){const gameId=String(game.id||'').trim(),steamAppid=cleanSteam(game.steamAppid)||null;const sourceContext={source:contextSource,capabilitySource,bridge:'save-capability-v2',canonicalized:Boolean(game.canonicalized),identityStatus:String(game.identityStatus||(game.canonicalized?'canonical':'provisional')),sourceItemId:cleanSourceItemId(game.sourceItemId),title:cleanTitle(game.title),storeUrl:cleanStoreUrl(game.storeUrl)};if(steamAppid){const duplicate=await sql`SELECT game_id FROM reader.saved_games WHERE workspace_id=${workspaceId} AND steam_appid=${steamAppid} LIMIT 1`;if(duplicate?.[0]&&duplicate[0].game_id!==gameId){await sql`UPDATE reader.saved_games SET source_context=source_context||${JSON.stringify(sourceContext)}::jsonb,updated_at=now() WHERE workspace_id=${workspaceId} AND game_id=${duplicate[0].game_id}`;return{saved:true,deduped:true,gameId:duplicate[0].game_id}}}await sql`INSERT INTO reader.saved_games (workspace_id,game_id,steam_appid,source_context) VALUES (${workspaceId},${gameId},${steamAppid},${JSON.stringify(sourceContext)}::jsonb) ON CONFLICT (workspace_id,game_id) DO UPDATE SET steam_appid=COALESCE(reader.saved_games.steam_appid,EXCLUDED.steam_appid),source_context=reader.saved_games.source_context||EXCLUDED.source_context,updated_at=now()`;return{saved:true,deduped:false,gameId}}
 
-function steamFromGame(game) {
-  const ref = (game?.refs || []).find((item) => item?.service === 'steam' && /^\d+$/.test(String(item.externalId || '')));
-  if (ref) return String(ref.externalId);
-  const match = String(game?.storeUrl || '').match(/store\.steampowered\.com\/app\/(\d+)/i);
-  return match ? match[1] : '';
-}
+const gameDigest=id=>createHash('sha256').update(String(id||'')).digest('hex').slice(0,24);
+async function createRemoveCapability(sql,{workspaceId,sourceOrigin,createdByDeviceId,gameId,expiresAt}){const token=randomSecret('hwrc_',32);const id=`rem_${gameDigest(gameId)}_${randomSecret('',8)}`;const exp=new Date(Math.min(new Date(expiresAt||Date.now()+CAPABILITY_TTL_MS).getTime()||Date.now()+CAPABILITY_TTL_MS,Date.now()+CAPABILITY_TTL_MS)).toISOString();await sql`INSERT INTO reader.save_capabilities (id,workspace_id,token_hash,source,source_origin,created_by_device_id,expires_at) VALUES (${id},${workspaceId},${hashSecret(token)},${REMOVE_SOURCE},${sourceOrigin},${createdByDeviceId||null},${exp})`;return{removeCapabilityToken:token,removeGameId:String(gameId),removeExpiresAt:exp}}
 
-async function fetchCoreCatalog() {
-  const response = await fetch(`${CORE}?limit=500`, {
-    headers: { accept: 'application/json', 'user-agent': 'HARF-WAY-UniversalSave/1.0' },
-    cache: 'no-store'
-  });
-  if (!response.ok) return [];
-  const data = await response.json().catch(() => null);
-  return data?.ok && Array.isArray(data.games) ? data.games : [];
-}
+async function issueCapability(sql,req,res,body){const source=cleanSource(body.source),sourceOrigin=String(body.sourceOrigin||'').trim();if(!source)return res.status(400).json({ok:false,error:'capability_source_invalid'});if(!sourceOriginAllowed(source,sourceOrigin))return res.status(400).json({ok:false,error:'capability_origin_invalid'});const device=await authenticateDevice(sql,bearer(req));if(!device)return res.status(401).json({ok:false,error:'invalid_device_token'});const id=randomSecret('cap_',14),token=randomSecret('hwsc_',32),expiresAt=new Date(Date.now()+CAPABILITY_TTL_MS).toISOString();await sql`INSERT INTO reader.save_capabilities (id,workspace_id,token_hash,source,source_origin,created_by_device_id,expires_at) VALUES (${id},${device.workspace_id},${hashSecret(token)},${source},${sourceOrigin},${device.id},${expiresAt})`;return res.status(201).json({ok:true,capabilityToken:token,source,sourceOrigin,expiresAt})}
 
-function findCanonical(games, { gameId, steamAppid, storeUrl, title }) {
-  const requestedId = cleanGameId(gameId);
-  if (requestedId && !requestedId.startsWith('pending-')) {
-    const exact = games.find((game) => String(game?.id || '') === requestedId);
-    if (exact) return exact;
-  }
+async function loadCapability(sql,req,requiredSource){const rawToken=bearer(req);if(!rawToken)return{error:'capability_required',status:401};const rows=await sql`SELECT id,workspace_id,source,source_origin,created_by_device_id,expires_at FROM reader.save_capabilities WHERE token_hash=${hashSecret(rawToken)} AND revoked_at IS NULL LIMIT 1`;const cap=rows?.[0]||null;if(!cap)return{error:'capability_invalid',status:401};if(requiredSource&&String(cap.source)!==requiredSource)return{error:'capability_scope_invalid',status:403};const exp=new Date(cap.expires_at).getTime();if(!Number.isFinite(exp)||exp<=Date.now())return{error:'capability_expired',status:410};const origin=requestOrigin(req);if(!origin||origin!==String(cap.source_origin))return{error:'capability_origin_mismatch',status:403};return{cap}}
 
-  const requestedSteam = cleanSteam(steamAppid);
-  if (requestedSteam) {
-    const exact = games.find((game) => steamFromGame(game) === requestedSteam);
-    if (exact) return exact;
-  }
+async function useSaveCapability(sql,req,res,body){const loaded=await loadCapability(sql,req,'ways');if(!loaded.cap)return res.status(loaded.status).json({ok:false,error:loaded.error});const cap=loaded.cap,contextSource=cleanContextSource(body.contextSource,cap.source);if(!contextSource)return res.status(400).json({ok:false,error:'save_context_invalid'});const resolved=await resolveIdentity(body,contextSource);if(!resolved.ok)return res.status(resolved.status).json({ok:false,error:resolved.error});const saved=await saveIdentity(sql,cap.workspace_id,resolved.game,contextSource,cap.source);const removal=await createRemoveCapability(sql,{workspaceId:cap.workspace_id,sourceOrigin:cap.source_origin,createdByDeviceId:cap.created_by_device_id,gameId:saved.gameId,expiresAt:cap.expires_at});await sql`UPDATE reader.save_capabilities SET last_used_at=now(),use_count=use_count+1 WHERE id=${cap.id}`;return res.status(200).json({ok:true,...saved,...removal,contextSource,game:resolved.game})}
 
-  const requestedStore = normalizedStore(storeUrl);
-  if (requestedStore) {
-    const hits = games.filter((game) => {
-      if (normalizedStore(game?.storeUrl) === requestedStore) return true;
-      return (game?.refs || []).some((ref) => normalizedStore(ref?.externalUrl) === requestedStore);
-    });
-    if (hits.length === 1) return hits[0];
-  }
+async function issueRemoveForDevice(sql,req,res,body){const source=cleanSource(body.source),sourceOrigin=String(body.sourceOrigin||'').trim();if(!source||!sourceOriginAllowed(source,sourceOrigin))return res.status(400).json({ok:false,error:'remove_capability_request_invalid'});const device=await authenticateDevice(sql,bearer(req));if(!device)return res.status(401).json({ok:false,error:'invalid_device_token'});const contextSource=cleanContextSource(body.contextSource,source);if(!contextSource)return res.status(400).json({ok:false,error:'save_context_invalid'});const resolved=await resolveIdentity(body,contextSource);if(!resolved.ok)return res.status(resolved.status).json({ok:false,error:resolved.error});const steam=cleanSteam(resolved.game.steamAppid);const rows=steam?await sql`SELECT game_id FROM reader.saved_games WHERE workspace_id=${device.workspace_id} AND (game_id=${resolved.game.id} OR steam_appid=${steam}) LIMIT 1`:await sql`SELECT game_id FROM reader.saved_games WHERE workspace_id=${device.workspace_id} AND game_id=${resolved.game.id} LIMIT 1`;const row=rows?.[0];if(!row)return res.status(404).json({ok:false,error:'saved_game_not_found'});const removal=await createRemoveCapability(sql,{workspaceId:device.workspace_id,sourceOrigin,createdByDeviceId:device.id,gameId:row.game_id,expiresAt:new Date(Date.now()+CAPABILITY_TTL_MS).toISOString()});return res.status(201).json({ok:true,...removal})}
 
-  const requestedTitle = normalizedTitle(title);
-  if (requestedTitle) {
-    const hits = games.filter((game) => normalizedTitle(game?.title) === requestedTitle);
-    if (hits.length === 1) return hits[0];
-  }
+async function useRemoveCapability(sql,req,res,body){const loaded=await loadCapability(sql,req,REMOVE_SOURCE);if(!loaded.cap)return res.status(loaded.status).json({ok:false,error:loaded.error});const cap=loaded.cap,gameId=cleanGameId(body.savedGameId||body.gameId);if(!gameId)return res.status(400).json({ok:false,error:'remove_game_id_required'});if(!String(cap.id).startsWith(`rem_${gameDigest(gameId)}_`))return res.status(403).json({ok:false,error:'remove_capability_game_mismatch'});const rows=await sql`DELETE FROM reader.saved_games WHERE workspace_id=${cap.workspace_id} AND game_id=${gameId} RETURNING game_id`;await sql`UPDATE reader.save_capabilities SET last_used_at=now(),use_count=use_count+1,revoked_at=now() WHERE id=${cap.id}`;if(!rows?.[0])return res.status(404).json({ok:false,error:'saved_game_not_found'});return res.status(200).json({ok:true,removed:true,gameId})}
 
-  return null;
-}
-
-function provisionalId({ contextSource, sourceItemId, storeUrl, title }) {
-  const seed = [
-    cleanContextSource(contextSource),
-    cleanSourceItemId(sourceItemId),
-    normalizedStore(storeUrl),
-    normalizedTitle(title)
-  ].join('\n');
-  const digest = createHash('sha256').update(seed).digest('hex').slice(0, 24);
-  return `pending-${cleanContextSource(contextSource) || 'harfway'}-${digest}`;
-}
-
-async function resolveIdentity(input, contextSource) {
-  const requested = {
-    gameId: cleanGameId(input.gameId),
-    steamAppid: cleanSteam(input.steamAppid),
-    sourceItemId: cleanSourceItemId(input.sourceItemId),
-    title: cleanTitle(input.title),
-    storeUrl: cleanStoreUrl(input.storeUrl)
-  };
-
-  const games = await fetchCoreCatalog();
-  const canonical = findCanonical(games, requested);
-  if (canonical) {
-    const canonicalSteam = steamFromGame(canonical);
-    if (requested.steamAppid && canonicalSteam && requested.steamAppid !== canonicalSteam) {
-      return { ok: false, status: 409, error: 'game_identity_conflict' };
-    }
-    return {
-      ok: true,
-      game: {
-        id: String(canonical.id || ''),
-        title: cleanTitle(canonical.title) || requested.title,
-        steamAppid: canonicalSteam || requested.steamAppid || '',
-        storeUrl: cleanStoreUrl(canonical.storeUrl) || requested.storeUrl,
-        sourceItemId: requested.sourceItemId,
-        canonicalized: true,
-        identityStatus: 'canonical'
-      }
-    };
-  }
-
-  if (!requested.sourceItemId || !requested.title) {
-    return { ok: false, status: 404, error: 'game_identity_unresolved' };
-  }
-
-  return {
-    ok: true,
-    game: {
-      id: provisionalId({ contextSource, ...requested }),
-      title: requested.title,
-      steamAppid: requested.steamAppid,
-      storeUrl: requested.storeUrl,
-      sourceItemId: requested.sourceItemId,
-      canonicalized: false,
-      identityStatus: 'provisional'
-    }
-  };
-}
-
-async function saveIdentity(sql, workspaceId, game, contextSource, capabilitySource) {
-  const gameId = String(game.id || '').trim();
-  const steamAppid = cleanSteam(game.steamAppid) || null;
-  const sourceContext = {
-    source: contextSource,
-    capabilitySource,
-    bridge: 'save-capability-v2',
-    canonicalized: Boolean(game.canonicalized),
-    identityStatus: String(game.identityStatus || (game.canonicalized ? 'canonical' : 'provisional')),
-    sourceItemId: cleanSourceItemId(game.sourceItemId),
-    title: cleanTitle(game.title),
-    storeUrl: cleanStoreUrl(game.storeUrl)
-  };
-
-  if (steamAppid) {
-    const duplicate = await sql`
-      SELECT game_id FROM reader.saved_games
-      WHERE workspace_id = ${workspaceId}
-        AND steam_appid = ${steamAppid}
-      LIMIT 1
-    `;
-    if (duplicate?.[0] && duplicate[0].game_id !== gameId) {
-      await sql`
-        UPDATE reader.saved_games
-        SET source_context = source_context || ${JSON.stringify(sourceContext)}::jsonb,
-            updated_at = now()
-        WHERE workspace_id = ${workspaceId}
-          AND game_id = ${duplicate[0].game_id}
-      `;
-      return { saved: true, deduped: true, gameId: duplicate[0].game_id };
-    }
-  }
-
-  await sql`
-    INSERT INTO reader.saved_games (workspace_id, game_id, steam_appid, source_context)
-    VALUES (${workspaceId}, ${gameId}, ${steamAppid}, ${JSON.stringify(sourceContext)}::jsonb)
-    ON CONFLICT (workspace_id, game_id) DO UPDATE SET
-      steam_appid = COALESCE(reader.saved_games.steam_appid, EXCLUDED.steam_appid),
-      source_context = reader.saved_games.source_context || EXCLUDED.source_context,
-      updated_at = now()
-  `;
-  return { saved: true, deduped: false, gameId };
-}
-
-async function issueCapability(sql, req, res, body) {
-  const source = cleanSource(body.source);
-  const sourceOrigin = String(body.sourceOrigin || '').trim();
-  if (!source) return res.status(400).json({ ok: false, error: 'capability_source_invalid' });
-  if (!sourceOriginAllowed(source, sourceOrigin)) {
-    return res.status(400).json({ ok: false, error: 'capability_origin_invalid' });
-  }
-
-  const device = await authenticateDevice(sql, bearer(req));
-  if (!device) return res.status(401).json({ ok: false, error: 'invalid_device_token' });
-
-  const id = randomSecret('cap_', 14);
-  const token = randomSecret('hwsc_', 32);
-  const expiresAt = new Date(Date.now() + CAPABILITY_TTL_MS).toISOString();
-
-  await sql`
-    INSERT INTO reader.save_capabilities (
-      id, workspace_id, token_hash, source, source_origin, created_by_device_id, expires_at
-    ) VALUES (
-      ${id}, ${device.workspace_id}, ${hashSecret(token)}, ${source}, ${sourceOrigin}, ${device.id}, ${expiresAt}
-    )
-  `;
-
-  return res.status(201).json({
-    ok: true,
-    capabilityToken: token,
-    source,
-    sourceOrigin,
-    expiresAt
-  });
-}
-
-async function useCapability(sql, req, res, body) {
-  const rawToken = bearer(req);
-  if (!rawToken) return res.status(401).json({ ok: false, error: 'save_capability_required' });
-
-  const rows = await sql`
-    SELECT id, workspace_id, source, source_origin, expires_at
-    FROM reader.save_capabilities
-    WHERE token_hash = ${hashSecret(rawToken)}
-      AND revoked_at IS NULL
-    LIMIT 1
-  `;
-  const capability = rows?.[0] || null;
-  if (!capability) return res.status(401).json({ ok: false, error: 'save_capability_invalid' });
-
-  const expires = new Date(capability.expires_at).getTime();
-  if (!Number.isFinite(expires) || expires <= Date.now()) {
-    return res.status(410).json({ ok: false, error: 'save_capability_expired' });
-  }
-
-  const origin = requestOrigin(req);
-  if (!origin || origin !== String(capability.source_origin)) {
-    return res.status(403).json({ ok: false, error: 'save_capability_origin_mismatch' });
-  }
-
-  const contextSource = cleanContextSource(body.contextSource, capability.source);
-  if (!contextSource) return res.status(400).json({ ok: false, error: 'save_context_invalid' });
-
-  const resolved = await resolveIdentity(body, contextSource);
-  if (!resolved.ok) return res.status(resolved.status).json({ ok: false, error: resolved.error });
-
-  const saved = await saveIdentity(sql, capability.workspace_id, resolved.game, contextSource, capability.source);
-  await sql`
-    UPDATE reader.save_capabilities
-    SET last_used_at = now(), use_count = use_count + 1
-    WHERE id = ${capability.id}
-  `;
-
-  return res.status(200).json({ ok: true, ...saved, contextSource, game: resolved.game });
-}
-
-export default async function handler(req, res) {
-  cors(res);
-  if (req.method === 'OPTIONS') return res.status(204).end();
-
-  try {
-    const sql = getSql();
-    await ensureReaderSchema(sql);
-
-    if (req.method === 'GET') {
-      const schema = await readerSchemaStatus(sql);
-      return res.status(200).json({
-        ok: true,
-        mode: process.env.VERCEL_ENV === 'production' ? 'production' : 'preview',
-        schema: { saveCapabilities: Boolean(schema.save_capabilities) },
-        contexts: [...SAVE_CONTEXTS],
-        identity: 'core-or-provisional-v2'
-      });
-    }
-
-    if (req.method !== 'POST') {
-      return res.status(405).json({ ok: false, error: 'method_not_allowed' });
-    }
-
-    const body = parseBody(req);
-    const action = String(body.action || '').trim();
-    if (action === 'issue') return issueCapability(sql, req, res, body);
-    if (action === 'save') return useCapability(sql, req, res, body);
-    return res.status(400).json({ ok: false, error: 'unknown_action' });
-  } catch (error) {
-    return sendError(res, error);
-  }
-}
+export default async function handler(req,res){cors(res);if(req.method==='OPTIONS')return res.status(204).end();try{const sql=getSql();await ensureReaderSchema(sql);if(req.method==='GET'){const schema=await readerSchemaStatus(sql);return res.status(200).json({ok:true,mode:process.env.VERCEL_ENV==='production'?'production':'preview',schema:{saveCapabilities:Boolean(schema.save_capabilities)},contexts:[...SAVE_CONTEXTS],identity:'core-or-provisional-v2',cancel:'per-game-remove-capability-v1'})}if(req.method!=='POST')return res.status(405).json({ok:false,error:'method_not_allowed'});const body=parseBody(req),action=String(body.action||'').trim();if(action==='issue')return issueCapability(sql,req,res,body);if(action==='save')return useSaveCapability(sql,req,res,body);if(action==='issue_remove')return issueRemoveForDevice(sql,req,res,body);if(action==='remove')return useRemoveCapability(sql,req,res,body);return res.status(400).json({ok:false,error:'unknown_action'})}catch(error){return sendError(res,error)}}
