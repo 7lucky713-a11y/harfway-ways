@@ -14,7 +14,7 @@
       const nextHref=url.pathname+url.search;
 
       if(a.getAttribute('href')!==nextHref)a.setAttribute('href',nextHref);
-      if(a.textContent!=='WAYSで再生 ↗')a.textContent='WAYSで再生 ↗';
+      if(a.textContent!=='実際に遊んでいるところを見る ↗')a.textContent='実際に遊んでいるところを見る ↗';
       a.dataset.deeplink='steam-appid';
     });
   }
