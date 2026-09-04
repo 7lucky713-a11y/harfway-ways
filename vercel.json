@@ -11,7 +11,7 @@
     },
     {
       "source": "/x-player/:id",
-      "destination": "/api/ways-share?id=:id&mode=xplayer"
+      "destination": "/api/ways-x-player?id=:id"
     },
     {
       "source": "/ads-portal",
