@@ -1,6 +1,5 @@
 (()=>{
   const SOURCE='harfway';
-  const MEDIUM='ways';
   const STEAM_HOST='store.steampowered.com';
 
   function decorate(raw){
@@ -8,7 +7,7 @@
       const url=new URL(String(raw||''),location.href);
       if(url.hostname.toLowerCase()!==STEAM_HOST)return String(raw||'');
       url.searchParams.set('utm_source',SOURCE);
-      url.searchParams.set('utm_medium',MEDIUM);
+      url.searchParams.delete('utm_medium');
       return url.href;
     }catch{return String(raw||'')}
   }
@@ -39,5 +38,5 @@
     }
   }).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['href']});
 
-  window.HARFWAY_STEAM_UTM={decorate,source:SOURCE,medium:MEDIUM};
+  window.HARFWAY_STEAM_UTM={decorate,source:SOURCE};
 })();
