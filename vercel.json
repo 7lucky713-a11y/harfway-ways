@@ -10,6 +10,10 @@
       "destination": "/api/ways-share?id=:id&mode=embed"
     },
     {
+      "source": "/x-player/:id",
+      "destination": "/api/ways-share?id=:id&mode=xplayer"
+    },
+    {
       "source": "/ads-portal",
       "destination": "/api/ads-portal-proxy?path=/"
     },
