@@ -1,6 +1,7 @@
 import gamesLiveHandler from './games-live.js';
 
 const PROD_ORIGIN = 'https://harfway-playback.vercel.app';
+const X_SITE = '@harf_way';
 
 function escapeHtml(value = '') {
   return String(value).replace(/[&<>"']/g, (char) => ({
@@ -46,11 +47,16 @@ function notFound(res) {
   return res.status(404).end('<!doctype html><meta charset="utf-8"><title>WAYS / NOT FOUND</title><body style="background:#090909;color:#fff;font-family:system-ui;padding:40px">WAYSの作品が見つかりませんでした。</body>');
 }
 
+function queryValue(value, fallback = '') {
+  return String(Array.isArray(value) ? value[0] : (value ?? fallback)).trim();
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end('Method Not Allowed');
 
-  const id = String(Array.isArray(req.query?.id) ? req.query.id[0] : (req.query?.id || '')).trim();
-  const mode = String(Array.isArray(req.query?.mode) ? req.query.mode[0] : (req.query?.mode || 'share')) === 'embed' ? 'embed' : 'share';
+  const id = queryValue(req.query?.id);
+  const requestedMode = queryValue(req.query?.mode, 'share');
+  const mode = ['share', 'embed', 'xplayer'].includes(requestedMode) ? requestedMode : 'share';
   if (!id) return notFound(res);
 
   try {
@@ -63,7 +69,9 @@ export default async function handler(req, res) {
     const encodedId = encodeURIComponent(id);
     const runtimeShareUrl = `${runtimeOrigin}/share/${encodedId}`;
     const runtimeEmbedUrl = `${runtimeOrigin}/embed/${encodedId}`;
+    const runtimeXPlayerUrl = `${runtimeOrigin}/x-player/${encodedId}`;
     const publicShareUrl = `${PROD_ORIGIN}/share/${encodedId}`;
+    const publicXPlayerUrl = `${PROD_ORIGIN}/x-player/${encodedId}`;
     const waysUrl = `${runtimeOrigin}/?game=${encodedId}&utm_source=ways_share&utm_medium=share_link&utm_campaign=ways_game_share&utm_content=${encodedId}`;
     const title = String(game.title || 'WAYS');
     const description = String(game.description || '').trim() || `20秒でゲームを掘る。HARF-WAY / WAYSで「${title}」を見る。`;
@@ -82,9 +90,15 @@ export default async function handler(req, res) {
 <meta property="og:url" content="${escapeHtml(publicShareUrl)}">
 ${image ? `<meta property="og:image" content="${escapeHtml(image)}"><meta property="og:image:secure_url" content="${escapeHtml(image)}"><meta property="og:image:width" content="${width}"><meta property="og:image:height" content="${height}">` : ''}
 ${video ? `<meta property="og:video" content="${escapeHtml(video)}"><meta property="og:video:secure_url" content="${escapeHtml(video)}"><meta property="og:video:type" content="video/mp4"><meta property="og:video:width" content="${width}"><meta property="og:video:height" content="${height}">` : ''}
-<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:card" content="player">
+<meta name="twitter:site" content="${X_SITE}">
+<meta name="twitter:creator" content="${X_SITE}">
 <meta name="twitter:title" content="${escapeHtml(pageTitle)}">
 <meta name="twitter:description" content="${escapeHtml(description)}">
+<meta name="twitter:player" content="${escapeHtml(publicXPlayerUrl)}">
+<meta name="twitter:player:width" content="${width}">
+<meta name="twitter:player:height" content="${height}">
+${video ? `<meta name="twitter:player:stream" content="${escapeHtml(video)}"><meta name="twitter:player:stream:content_type" content="video/mp4">` : ''}
 ${image ? `<meta name="twitter:image" content="${escapeHtml(image)}"><meta name="twitter:image:alt" content="${escapeHtml(title)}">` : ''}
 <link rel="canonical" href="${escapeHtml(publicShareUrl)}">`;
 
@@ -92,16 +106,19 @@ ${image ? `<meta name="twitter:image" content="${escapeHtml(image)}"><meta name=
 :root{color-scheme:dark;--bg:#090909;--panel:#111214;--line:#292b30;--text:#f5f5ef;--muted:#999da5;--accent:#efff35}
 *{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}a{color:inherit}.frame{position:relative;background:#000;overflow:hidden}.frame video{width:100%;height:100%;display:block;object-fit:contain;background:#000}.brand{font-size:10px;letter-spacing:.15em;color:var(--accent);font-weight:900}.title{font-weight:950;letter-spacing:-.035em}.muted{color:var(--muted)}.cta{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;background:var(--accent);color:#111;font-weight:950;border-radius:999px}.preview-note{padding:9px 12px;background:#171912;border:1px solid #39400e;color:#d9e62f;font-size:10px;line-height:1.55}`;
 
-    const previewNote = isPreview
-      ? '<div class="preview-note">PREVIEW / Vercel保護中のため、X・Discordなど外部クローラーからのカード取得は本番公開後にのみ確認できます。ここでは共有ページと埋め込みプレイヤー本体を確認できます。</div>'
+    const previewNote = isPreview && mode !== 'xplayer'
+      ? '<div class="preview-note">PREVIEW / XのPlayer CardはVercel保護のため本番公開後に確認します。埋め込みプレイヤーの表示崩れはここで確認できます。</div>'
       : '';
 
     const embedBody = `
-<main class="embed-shell">
+<main class="embed-shell${isPreview ? ' has-preview' : ''}">
   ${previewNote}
   <div class="frame"><video controls playsinline preload="metadata" ${image ? `poster="${escapeHtml(image)}"` : ''} src="${escapeHtml(video)}"></video></div>
-  <div class="embed-bar"><div><div class="brand">HARF-WAY / WAYS</div><div class="title">${escapeHtml(title)}</div></div><a class="cta" target="_blank" rel="noopener" href="${escapeHtml(waysUrl)}">WAYSで見る ↗</a></div>
+  <div class="embed-bar"><div class="embed-copy"><div class="brand">HARF-WAY / WAYS</div><div class="title">${escapeHtml(title)}</div></div><a class="cta" target="_blank" rel="noopener" href="${escapeHtml(waysUrl)}">WAYSで見る ↗</a></div>
 </main>`;
+
+    const xPlayerBody = `
+<main class="x-player"><video controls playsinline preload="metadata" ${image ? `poster="${escapeHtml(image)}"` : ''} src="${escapeHtml(video)}"></video></main>`;
 
     const shareBody = `
 <main class="share-shell">
@@ -113,18 +130,21 @@ ${image ? `<meta name="twitter:image" content="${escapeHtml(image)}"><meta name=
   </section>
 </main>`;
 
-    const modeCss = mode === 'embed'
-      ? `.embed-shell{width:100vw;height:100vh;display:grid;grid-template-rows:auto minmax(0,1fr) auto;background:#080808}.embed-shell .frame{min-height:0}.embed-shell .frame video{height:100%}.embed-bar{display:flex;gap:16px;align-items:center;justify-content:space-between;padding:12px 14px;border-top:1px solid var(--line);background:#0d0e10}.embed-bar .title{font-size:14px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw}.embed-bar .cta{padding:9px 12px;font-size:10px;white-space:nowrap}@media(max-width:520px){.embed-bar{padding:9px 10px}.embed-bar .brand{font-size:8px}.embed-bar .title{font-size:12px}.embed-bar .cta{padding:8px 10px;font-size:9px}}`
-      : `.share-shell{min-height:100vh;max-width:1100px;margin:0 auto;padding:32px 20px 64px}.share-shell>.preview-note{margin-bottom:16px}.back{display:inline-block;color:#b9bdc5;text-decoration:none;font-size:11px;margin-bottom:18px}.card{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(280px,.65fr);background:var(--panel);border:1px solid var(--line);min-height:480px}.share-frame{display:grid;place-items:center}.share-frame video{max-height:76vh}.copy{padding:30px;display:flex;flex-direction:column;justify-content:center}.copy h1{font-size:clamp(32px,4vw,62px);line-height:.95;margin:12px 0 16px}.copy p{font-size:13px;line-height:1.8;color:#c8cbd0}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.actions .cta,.actions .sub{padding:11px 14px;font-size:10px}.actions .sub{border:1px solid #444850;text-decoration:none}@media(max-width:780px){.share-shell{padding:16px 12px 40px}.card{grid-template-columns:1fr;min-height:0}.share-frame{aspect-ratio:16/9}.share-frame video{height:100%}.copy{padding:20px}.copy h1{font-size:36px}}`;
+    const embedCss = `html,body{width:100%;height:100%;overflow:hidden}.embed-shell{width:100vw;height:100vh;display:grid;grid-template-rows:minmax(0,1fr) 42px;background:#080808;overflow:hidden}.embed-shell.has-preview{grid-template-rows:auto minmax(0,1fr) 42px}.embed-shell .frame{min-width:0;min-height:0;overflow:hidden}.embed-shell .frame video{height:100%}.embed-bar{min-width:0;overflow:hidden;display:flex;gap:8px;align-items:center;padding:6px 8px;border-top:1px solid var(--line);background:#0d0e10}.embed-copy{flex:1 1 auto;min-width:0;overflow:hidden}.embed-copy .brand{font-size:7px;line-height:1;margin-bottom:3px}.embed-copy .title{min-width:0;font-size:10px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.embed-bar .cta{flex:0 0 auto;padding:7px 9px;font-size:8px;white-space:nowrap}@media(max-width:420px){.embed-copy .brand{display:none}.embed-copy .title{font-size:9px}.embed-bar .cta{padding:6px 8px;font-size:7px}}`;
+    const xPlayerCss = `html,body{width:100%;height:100%;overflow:hidden;background:#000}.x-player{width:100vw;height:100vh;overflow:hidden;background:#000}.x-player video{display:block;width:100%;height:100%;object-fit:contain;background:#000}`;
+    const shareCss = `.share-shell{min-height:100vh;max-width:1100px;margin:0 auto;padding:32px 20px 64px}.share-shell>.preview-note{margin-bottom:16px}.back{display:inline-block;color:#b9bdc5;text-decoration:none;font-size:11px;margin-bottom:18px}.card{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(280px,.65fr);background:var(--panel);border:1px solid var(--line);min-height:480px}.share-frame{display:grid;place-items:center}.share-frame video{max-height:76vh}.copy{padding:30px;display:flex;flex-direction:column;justify-content:center}.copy h1{font-size:clamp(32px,4vw,62px);line-height:.95;margin:12px 0 16px}.copy p{font-size:13px;line-height:1.8;color:#c8cbd0}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.actions .cta,.actions .sub{padding:11px 14px;font-size:10px}.actions .sub{border:1px solid #444850;text-decoration:none}@media(max-width:780px){.share-shell{padding:16px 12px 40px}.card{grid-template-columns:1fr;min-height:0}.share-frame{aspect-ratio:16/9}.share-frame video{height:100%}.copy{padding:20px}.copy h1{font-size:36px}}`;
 
-    const html = `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#090909"><title>${escapeHtml(pageTitle)}</title>${meta}<style>${commonCss}${modeCss}</style></head><body>${mode === 'embed' ? embedBody : shareBody}</body></html>`;
+    const body = mode === 'embed' ? embedBody : mode === 'xplayer' ? xPlayerBody : shareBody;
+    const modeCss = mode === 'embed' ? embedCss : mode === 'xplayer' ? xPlayerCss : shareCss;
+    const html = `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#090909"><title>${escapeHtml(pageTitle)}</title>${meta}<style>${commonCss}${modeCss}</style></head><body>${body}</body></html>`;
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('X-Ways-Share-Url', runtimeShareUrl);
     res.setHeader('X-Ways-Embed-Url', runtimeEmbedUrl);
-    if (mode === 'embed') {
+    res.setHeader('X-Ways-X-Player-Url', runtimeXPlayerUrl);
+    if (mode === 'embed' || mode === 'xplayer') {
       res.setHeader('Content-Security-Policy', "default-src 'none'; img-src https: data:; media-src https:; style-src 'unsafe-inline'; frame-ancestors *; base-uri 'none'; form-action 'none'");
     }
     return res.status(200).end(html);
