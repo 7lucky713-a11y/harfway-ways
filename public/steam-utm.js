@@ -7,7 +7,6 @@
       const url=new URL(String(raw||''),location.href);
       if(url.hostname.toLowerCase()!==STEAM_HOST)return String(raw||'');
       url.searchParams.set('utm_source',SOURCE);
-      url.searchParams.delete('utm_medium');
       return url.href;
     }catch{return String(raw||'')}
   }
