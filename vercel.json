@@ -3,7 +3,11 @@
   "rewrites": [
     {
       "source": "/share/:id",
-      "destination": "/api/ways-share?id=:id&mode=share"
+      "destination": "/api/ways-share-social?id=:id&mode=share"
+    },
+    {
+      "source": "/share-image/:id",
+      "destination": "/api/ways-share-image?id=:id"
     },
     {
       "source": "/embed/:id",
