@@ -118,7 +118,10 @@ ${image ? `<meta name="twitter:image" content="${escapeHtml(image)}"><meta name=
 </main>`;
 
     const xPlayerBody = `
-<main class="x-player"><video controls playsinline preload="metadata" ${image ? `poster="${escapeHtml(image)}"` : ''} src="${escapeHtml(video)}"></video></main>`;
+<main class="x-player">
+  <video controls playsinline preload="metadata" ${image ? `poster="${escapeHtml(image)}"` : ''} src="${escapeHtml(video)}"></video>
+  <a class="x-entry" target="_blank" rel="noopener" href="${escapeHtml(waysUrl)}" aria-label="WAYSでこの作品を見る"><span>WAYSで見る</span><b>↗</b></a>
+</main>`;
 
     const shareBody = `
 <main class="share-shell">
@@ -131,7 +134,7 @@ ${image ? `<meta name="twitter:image" content="${escapeHtml(image)}"><meta name=
 </main>`;
 
     const embedCss = `html,body{width:100%;height:100%;overflow:hidden}.embed-shell{width:100vw;height:100vh;display:grid;grid-template-rows:minmax(0,1fr) 42px;background:#080808;overflow:hidden}.embed-shell.has-preview{grid-template-rows:auto minmax(0,1fr) 42px}.embed-shell .frame{min-width:0;min-height:0;overflow:hidden}.embed-shell .frame video{height:100%}.embed-bar{min-width:0;overflow:hidden;display:flex;gap:8px;align-items:center;padding:6px 8px;border-top:1px solid var(--line);background:#0d0e10}.embed-copy{flex:1 1 auto;min-width:0;overflow:hidden}.embed-copy .brand{font-size:7px;line-height:1;margin-bottom:3px}.embed-copy .title{min-width:0;font-size:10px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.embed-bar .cta{flex:0 0 auto;padding:7px 9px;font-size:8px;white-space:nowrap}@media(max-width:420px){.embed-copy .brand{display:none}.embed-copy .title{font-size:9px}.embed-bar .cta{padding:6px 8px;font-size:7px}}`;
-    const xPlayerCss = `html,body{width:100%;height:100%;overflow:hidden;background:#000}.x-player{width:100vw;height:100vh;overflow:hidden;background:#000}.x-player video{display:block;width:100%;height:100%;object-fit:contain;background:#000}`;
+    const xPlayerCss = `html,body{width:100%;height:100%;overflow:hidden;background:#000}.x-player{position:relative;width:100vw;height:100vh;overflow:hidden;background:#000}.x-player video{display:block;width:100%;height:100%;object-fit:contain;background:#000}.x-entry{position:absolute;z-index:4;right:12px;bottom:50px;display:inline-flex;align-items:center;gap:7px;padding:8px 10px;border:1px solid #ffffff36;border-radius:999px;background:#050505b8;color:#f4f5ef;text-decoration:none;font-size:10px;font-weight:900;line-height:1;letter-spacing:.01em;backdrop-filter:blur(8px);opacity:.72;transition:opacity .16s ease,background .16s ease,border-color .16s ease,transform .16s ease}.x-entry b{color:var(--accent);font-size:11px}.x-entry:hover,.x-entry:focus-visible{opacity:1;background:#0c0d0ee8;border-color:var(--accent);transform:translateY(-1px)}@media(max-width:520px){.x-entry{right:8px;bottom:44px;padding:7px 9px;font-size:9px;opacity:.78}}`;
     const shareCss = `.share-shell{min-height:100vh;max-width:1100px;margin:0 auto;padding:32px 20px 64px}.share-shell>.preview-note{margin-bottom:16px}.back{display:inline-block;color:#b9bdc5;text-decoration:none;font-size:11px;margin-bottom:18px}.card{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(280px,.65fr);background:var(--panel);border:1px solid var(--line);min-height:480px}.share-frame{display:grid;place-items:center}.share-frame video{max-height:76vh}.copy{padding:30px;display:flex;flex-direction:column;justify-content:center}.copy h1{font-size:clamp(32px,4vw,62px);line-height:.95;margin:12px 0 16px}.copy p{font-size:13px;line-height:1.8;color:#c8cbd0}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.actions .cta,.actions .sub{padding:11px 14px;font-size:10px}.actions .sub{border:1px solid #444850;text-decoration:none}@media(max-width:780px){.share-shell{padding:16px 12px 40px}.card{grid-template-columns:1fr;min-height:0}.share-frame{aspect-ratio:16/9}.share-frame video{height:100%}.copy{padding:20px}.copy h1{font-size:36px}}`;
 
     const body = mode === 'embed' ? embedBody : mode === 'xplayer' ? xPlayerBody : shareBody;
