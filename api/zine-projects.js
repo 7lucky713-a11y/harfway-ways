@@ -1,5 +1,5 @@
 import { neon } from '@neondatabase/serverless';
-import { authorizeArchiveRequest, archiveCors } from './archive-core.js';
+import { authorizeArchiveRequest } from './archive-core.js';
 
 const CONTENT_TYPE = 'zine_project';
 const SOURCE = 'zine-editor';
@@ -25,6 +25,26 @@ function parseBody(req) {
 
 function makeId() {
   return `zine-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function allowedZineOrigin(origin='') {
+  if (!origin) return false;
+  if (origin === 'https://harfway-zine-editor.vercel.app') return true;
+  if (origin === 'https://harfway-zine-editor-harf-way.vercel.app') return true;
+  return /^https:\/\/harfway-zine-editor-[a-z0-9-]+-harf-way\.vercel\.app$/i.test(origin);
+}
+
+function zineCors(req, res) {
+  const origin = String(req.headers.origin || '');
+  if (allowedZineOrigin(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Vary', 'Origin');
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Key, X-Showcase-Admin-Key');
 }
 
 function normalizeProject(input = {}) {
@@ -55,7 +75,7 @@ function normalizeRow(row = {}, includeProject = false) {
 }
 
 export default async function handler(req, res) {
-  archiveCors(res);
+  zineCors(req, res);
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   if (req.method === 'OPTIONS') return res.status(204).end();
