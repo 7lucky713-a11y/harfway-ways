@@ -21,6 +21,18 @@ const desktopDirect = `    card?.addEventListener('click', (e) => {
       record('store_visit');
     });`;
 
+const desktopAudioStateBefore = `    if (!frame || !v) return;
+    clearDesktopAdMedia();`;
+const desktopAudioStateAfter = `    if (!frame || !v) return;
+    const preserveMuted = v.muted;
+    clearDesktopAdMedia();`;
+const desktopVideoMuteBefore = `      v.src = ad.mediaUrl;
+      v.muted = true;
+      v.loop = true;`;
+const desktopVideoMuteAfter = `      v.src = ad.mediaUrl;
+      v.muted = preserveMuted;
+      v.loop = true;`;
+
 const mobileBefore = `    const card = feed.querySelector('.ways-ad-mobile');
     card?.querySelector('.ways-ad-mobile-store')?.addEventListener('click', async () => {
       await record('click');
@@ -51,8 +63,16 @@ else if (!source.includes(serveAfter)) throw new Error('[ways-ads-r2] serve path
 if (source.includes(desktopDirect)) source = source.replace(desktopDirect, desktopStage);
 else if (!source.includes(desktopStage)) throw new Error('[ways-ads-r2] desktop stage click block not found');
 
+// Preserve the user's current WAYS sound state when the main stage switches
+// from a normal game video to a promoted video.
+if (source.includes(desktopAudioStateBefore)) source = source.replace(desktopAudioStateBefore, desktopAudioStateAfter);
+else if (!source.includes(desktopAudioStateAfter)) throw new Error('[ways-ads-r2] desktop audio state block not found');
+
+if (source.includes(desktopVideoMuteBefore)) source = source.replace(desktopVideoMuteBefore, desktopVideoMuteAfter);
+else if (!source.includes(desktopVideoMuteAfter)) throw new Error('[ways-ads-r2] desktop video mute block not found');
+
 if (source.includes(mobileBefore)) source = source.replace(mobileBefore, mobileAfter);
 else if (!source.includes(mobileAfter)) throw new Error('[ways-ads-r2] mobile click block not found');
 
 fs.writeFileSync(file, source);
-console.log('[ways-ads-r2] fair-v2 serve + desktop stage preview + mobile direct sponsor link applied');
+console.log('[ways-ads-r2] fair-v2 serve + desktop stage preview + WAYS sound inheritance + mobile direct sponsor link applied');
