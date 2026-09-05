@@ -15,6 +15,14 @@ const source = raw
   .replace(
     "v.src=nextSrc;userPaused=false;$('#pause').textContent='⏸';v.play().catch(()=>{});startShelfAfterMain()",
     "if(x.thumbnailUrl)v.setAttribute('poster',x.thumbnailUrl);v.src=nextSrc;userPaused=false;$('#pause').textContent='⏸';const clearPoster=()=>v.removeAttribute('poster');v.addEventListener('playing',clearPoster,{once:true});v.play().catch(()=>{});startShelfAfterMain()"
+  )
+  .replace(
+    "$('#tags').onclick=e=>{const b=e.target.closest('[data-tag]');if(!b)return;const current=filtered[selected]?.id||'';setTagShelf(b.dataset.tag,current)};",
+    "$('#tags').onclick=e=>{const b=e.target.closest('[data-tag]');if(!b)return;if(b.dataset.tag===activeTag){resetShelf();return}const current=filtered[selected]?.id||'';setTagShelf(b.dataset.tag,current)};"
+  )
+  .replace(
+    "if(tb){e.preventDefault();e.stopPropagation();setTagShelf(tb.dataset.mtag);return}",
+    "if(tb){e.preventDefault();e.stopPropagation();if(tb.dataset.mtag===activeTag){resetShelf();return}setTagShelf(tb.dataset.mtag);return}"
   );
 if (/const API\s*=\s*['"]\/api\/games['"]\s*;/.test(source)) {
   throw new Error('Legacy /api/games binding remains in WAYS frontend');
