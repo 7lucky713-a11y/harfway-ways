@@ -1,4 +1,5 @@
 const DEFAULT_R2_ORIGIN = 'https://pub-2d323c5412584bc480059c19872176e1.r2.dev';
+const WAYS_ORIGIN = 'https://harfway-playback.vercel.app/';
 
 function escapeHtml(value = '') {
   return String(value).replace(/[&<>"']/g, (char) => ({
@@ -56,6 +57,27 @@ function titleFromUrl(raw = '') {
   }
 }
 
+function cleanTitle(value = '', fallback = 'R2 VIDEO') {
+  const out = queryValue(value).replace(/[\r\n\t]+/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 160);
+  return out || fallback;
+}
+
+function cleanGameId(value = '') {
+  const out = queryValue(value).replace(/^ways-/, '').slice(0, 160);
+  return /^[A-Za-z0-9._:-]+$/.test(out) ? out : '';
+}
+
+function waysUrl(gameId = '') {
+  const id = cleanGameId(gameId);
+  if (!id) return '';
+  const url = new URL(WAYS_ORIGIN);
+  url.searchParams.set('game', id);
+  url.searchParams.set('utm_source', 'harfway');
+  url.searchParams.set('utm_medium', 'wp_embed');
+  url.searchParams.set('utm_campaign', 'ways_entry');
+  return url.toString();
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end('Method Not Allowed');
 
@@ -68,13 +90,20 @@ export default async function handler(req, res) {
     return res.status(404).end('<!doctype html><meta charset="utf-8"><title>HARF-WAY / VIDEO NOT FOUND</title><body style="margin:0;background:#090909;color:#fff;font-family:system-ui;display:grid;place-items:center;height:100vh">動画を読み込めませんでした。</body>');
   }
 
-  const title = titleFromUrl(video);
+  const gameId = cleanGameId(req.query?.game);
+  const title = cleanTitle(req.query?.title, titleFromUrl(video));
+  const destination = waysUrl(gameId);
+  const hasWays = Boolean(destination);
   const safeTitle = escapeHtml(title);
   const safeVideo = escapeHtml(video);
+  const safeWays = escapeHtml(destination);
+  const brand = hasWays ? 'HARF-WAY / WAYS' : 'HARF-WAY / VIDEO';
+  const waysButton = hasWays ? `<a class="ways" href="${safeWays}" target="_blank" rel="noopener">WAYSで見る ↗</a>` : '';
+
   const html = `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#090909"><title>${safeTitle} | HARF-WAY</title><style>
 :root{color-scheme:dark;--bg:#090909;--line:#292b30;--text:#f5f5ef;--muted:#999da5;--accent:#efff35}
-*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}.embed-shell{width:100vw;height:100vh;display:grid;grid-template-rows:minmax(0,1fr) 46px;background:#080808;overflow:hidden}.frame{min-width:0;min-height:0;overflow:hidden;background:#000}.frame video{display:block;width:100%;height:100%;object-fit:contain;background:#000}.embed-bar{min-width:0;overflow:hidden;display:flex;gap:8px;align-items:center;padding:6px 8px;border-top:1px solid var(--line);background:#0d0e10}.play,.sound{height:32px;border:1px solid #343840;border-radius:7px;background:#17191d;color:var(--text);font:800 10px/1 system-ui;cursor:pointer}.play{padding:0 10px;min-width:58px}.sound{width:34px;padding:0}.audio{display:flex;align-items:center;gap:6px}.volume{width:78px;accent-color:var(--accent)}.embed-copy{flex:1 1 auto;min-width:0;overflow:hidden}.brand{font-size:7px;line-height:1;margin-bottom:3px;letter-spacing:.15em;color:var(--accent);font-weight:900}.title{min-width:0;font-size:10px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:950;letter-spacing:-.02em}.mark{flex:0 0 auto;color:var(--muted);font-size:8px;font-weight:850;letter-spacing:.08em}@media(max-width:430px){.volume{display:none}.embed-copy .brand{display:none}.title{font-size:9px}.play{min-width:54px;padding:0 8px}.mark{font-size:7px}}
-</style></head><body><main class="embed-shell"><div class="frame"><video id="hwVideo" playsinline webkit-playsinline loop preload="metadata" controlslist="nodownload nofullscreen noplaybackrate noremoteplayback" disablepictureinpicture src="${safeVideo}"></video></div><div class="embed-bar"><button id="hwPlay" class="play" type="button">▶ 再生</button><div class="embed-copy"><div class="brand">HARF-WAY / VIDEO</div><div class="title">${safeTitle}</div></div><div class="audio"><button id="hwSound" class="sound" type="button" aria-label="ミュート切り替え" title="音声">🔇</button><input id="hwVolume" class="volume" type="range" min="0" max="1" step="0.05" value="0.7" aria-label="音量"></div><div class="mark">R2</div></div></main><script>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}.embed-shell{width:100vw;height:100vh;display:grid;grid-template-rows:minmax(0,1fr) 48px;background:#080808;overflow:hidden}.frame{min-width:0;min-height:0;overflow:hidden;background:#000}.frame video{display:block;width:100%;height:100%;object-fit:contain;background:#000}.embed-bar{min-width:0;overflow:hidden;display:flex;gap:8px;align-items:center;padding:6px 8px;border-top:1px solid var(--line);background:#0d0e10}.play,.sound{height:34px;border:1px solid #343840;border-radius:7px;background:#17191d;color:var(--text);font:800 10px/1 system-ui;cursor:pointer}.play{padding:0 10px;min-width:58px}.sound{width:34px;padding:0}.audio{display:flex;align-items:center;gap:6px}.volume{width:78px;accent-color:var(--accent)}.embed-copy{flex:1 1 auto;min-width:0;overflow:hidden}.brand{font-size:7px;line-height:1;margin-bottom:4px;letter-spacing:.15em;color:var(--accent);font-weight:900}.title{min-width:0;font-size:11px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:950;letter-spacing:-.02em}.ways{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;height:30px;padding:0 10px;border-radius:999px;background:var(--accent);color:#0b0c0e;text-decoration:none;font:950 9px/1 system-ui;white-space:nowrap}.ways:hover{filter:brightness(.96)}@media(max-width:480px){.volume{display:none}.embed-copy .brand{display:none}.title{font-size:9px}.play{min-width:52px;padding:0 7px}.ways{height:28px;padding:0 8px;font-size:8px}}
+</style></head><body><main class="embed-shell"><div class="frame"><video id="hwVideo" playsinline webkit-playsinline loop preload="metadata" controlslist="nodownload nofullscreen noplaybackrate noremoteplayback" disablepictureinpicture src="${safeVideo}"></video></div><div class="embed-bar"><button id="hwPlay" class="play" type="button">▶ 再生</button><div class="embed-copy"><div class="brand">${brand}</div><div class="title">${safeTitle}</div></div><div class="audio"><button id="hwSound" class="sound" type="button" aria-label="ミュート切り替え" title="音声">🔇</button><input id="hwVolume" class="volume" type="range" min="0" max="1" step="0.05" value="0.7" aria-label="音量"></div>${waysButton}</div></main><script>
 (function(){
   const video=document.getElementById('hwVideo');
   const play=document.getElementById('hwPlay');
