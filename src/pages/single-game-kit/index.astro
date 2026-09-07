@@ -5,170 +5,18 @@ const configJson = JSON.stringify(singleGameConfigs).replace(/</g, '\\u003c');
 ---
 <!doctype html>
 <html lang="ja">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="robots" content="noindex,nofollow" />
-  <title>HARF-WAY SINGLE GAME KIT — Preview</title>
-  <style is:global>
-    :root{
-      --bg:#151715;--panel:#1d211e;--panel2:#252a26;--text:#e8ece7;--muted:#a7b0a7;
-      --accent:#9db68c;--accent2:#d1c18e;--line:#3d463e;--shell:#101210;
-    }
-    *{box-sizing:border-box}html{background:var(--shell)}body{margin:0;background:var(--shell);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif}
-    button,input,textarea{font:inherit}.top{position:sticky;top:0;z-index:10;background:#101210ed;border-bottom:1px solid #303730;backdrop-filter:blur(12px)}
-    .topin{max-width:1480px;margin:auto;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px}.top strong{font-size:18px;letter-spacing:.02em}.top small{color:#8f998f}
-    .layout{max-width:1480px;margin:auto;padding:24px;display:grid;grid-template-columns:minmax(0,1fr) 370px;gap:22px}.panel{border:1px solid #303730;background:#151815;border-radius:18px;overflow:hidden}
-    .presetbar{padding:18px;border-bottom:1px solid #303730;display:flex;gap:10px;flex-wrap:wrap;align-items:center}.presetbar b{margin-right:6px}.preset{border:1px solid #424c43;background:#202520;color:#dfe5de;padding:9px 13px;border-radius:10px;font-weight:800;cursor:pointer}.preset.on{background:#e7ede5;color:#151815;border-color:#e7ede5}
-    .preview{--g-bg:#171b18;--g-panel:#202621;--g-panel2:#272e28;--g-text:#e1e8df;--g-muted:#a8b2a7;--g-accent:#93ad82;--g-accent2:#c2b58e;--g-line:#3c463d;background:var(--g-bg);color:var(--g-text);min-height:760px;font-family:Georgia,'Noto Serif JP',serif}
-    .sitehead{border-bottom:1px solid var(--g-line);background:color-mix(in srgb,var(--g-bg) 94%,transparent)}.siteheadin,.sitewrap{max-width:1050px;margin:auto;padding-left:24px;padding-right:24px}.siteheadin{min-height:68px;display:flex;align-items:center;justify-content:space-between}.brand{font-size:27px;font-weight:900;letter-spacing:-.05em}.brand em{font-style:normal;color:var(--g-accent)}.adminfake{border:1px solid var(--g-line);background:var(--g-panel);padding:8px 11px;border-radius:9px;font:800 12px ui-monospace,monospace}
-    .hero{padding-top:48px;padding-bottom:26px}.stamp{display:inline-block;border:1px solid var(--g-accent);color:var(--g-accent);padding:5px 8px;border-radius:6px;font:900 11px ui-monospace,monospace}.hero h1{font-size:clamp(54px,7vw,94px);line-height:.8;letter-spacing:-.07em;margin:17px 0 24px}.hero h1 em{font-style:normal;color:var(--g-accent)}.hero p{max-width:760px;color:color-mix(in srgb,var(--g-text) 82%,var(--g-muted));font-size:16px;line-height:1.9}
-    .filters{display:flex;gap:8px;flex-wrap:wrap;margin:24px 0}.filter{border:1px solid var(--g-line);background:var(--g-panel);color:var(--g-text);padding:9px 12px;border-radius:9px;font-weight:900;cursor:pointer}.filter.on{background:var(--g-accent);border-color:var(--g-accent);color:#111511}
-    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0 26px}.stat{background:var(--g-panel);border:1px solid var(--g-line);border-radius:12px;padding:14px}.stat b{display:block;color:var(--g-accent2);font-size:28px}.stat small{font:800 10px ui-monospace,monospace;color:var(--g-muted)}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-bottom:42px}.card{background:var(--g-panel);border:1px solid var(--g-line);border-radius:14px;padding:18px;min-height:180px}.card small{font:900 10px ui-monospace,monospace;color:var(--g-accent)}.card h3{font-size:22px;line-height:1.35;margin:8px 0}.card p{margin:0;color:color-mix(in srgb,var(--g-text) 80%,var(--g-muted));font-size:14px;line-height:1.8}.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}.tag{border:1px solid var(--g-line);background:var(--g-panel2);padding:4px 7px;border-radius:999px;font:800 10px ui-monospace,monospace}
-    .side{display:flex;flex-direction:column;gap:14px}.box{border:1px solid #303730;background:#151815;border-radius:16px;padding:18px}.box h2{font-size:15px;margin:0 0 12px}.box p{color:#a9b2aa;font-size:13px;line-height:1.7;margin:8px 0}.kv{display:grid;grid-template-columns:110px 1fr;gap:7px 10px;padding:10px 0;border-top:1px solid #2a302b;font-size:12px}.kv:first-of-type{border-top:0}.kv span{color:#879087}.kv code{color:#d8ded7;overflow-wrap:anywhere}.fields{display:grid;gap:8px}.field{border:1px solid #303730;background:#1d211e;border-radius:10px;padding:10px}.field b{display:block;font-size:12px}.field small{color:#8f998f}.check{display:flex;gap:8px;align-items:flex-start;margin:9px 0;color:#cbd2cb;font-size:12px;line-height:1.5}.dot{width:18px;height:18px;border-radius:50%;background:#8faa80;color:#111;display:grid;place-items:center;font-size:11px;font-weight:900;flex:0 0 auto}.copy{width:100%;border:1px solid #4a554b;background:#e1e8df;color:#151815;padding:10px 12px;border-radius:10px;font-weight:900;cursor:pointer;margin-top:8px}.status{font-size:11px;color:#8f998f;margin-top:8px;min-height:16px}.footer{max-width:1480px;margin:auto;padding:0 24px 28px;color:#697169;font:800 10px ui-monospace,monospace}
-    @media(max-width:1000px){.layout{grid-template-columns:1fr}.side{display:grid;grid-template-columns:1fr 1fr}.preview{min-height:auto}}
-    @media(max-width:680px){.topin,.layout{padding-left:14px;padding-right:14px}.layout{padding-top:14px}.siteheadin,.sitewrap{padding-left:16px;padding-right:16px}.grid{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}.side{grid-template-columns:1fr}.hero h1{font-size:54px}}
-  </style>
-</head>
-<body>
-  <header class="top">
-    <div class="topin">
-      <div><strong>HARF-WAY SINGLE GAME KIT</strong><br><small>config-driven prototype / v{SINGLE_GAME_KIT_VERSION}</small></div>
-      <small>PREVIEW ONLY · DB / R2 mutation OFF</small>
-    </div>
-  </header>
-
-  <main class="layout">
-    <section class="panel">
-      <div class="presetbar" id="presetBar"><b>GAME PRESET</b></div>
-      <div class="preview" id="preview">
-        <div class="sitehead"><div class="siteheadin"><div class="brand" id="brand"></div><div class="adminfake">＋記録 / 編集</div></div></div>
-        <div class="sitewrap hero">
-          <span class="stamp" id="badge"></span>
-          <h1 id="heroTitle"></h1>
-          <p id="description"></p>
-          <div class="filters" id="filters"></div>
-          <div class="stats" id="stats"></div>
-        </div>
-        <div class="sitewrap grid" id="grid"></div>
-      </div>
-    </section>
-
-    <aside class="side">
-      <section class="box">
-        <h2>差し替えられるもの</h2>
-        <div class="check"><span class="dot">✓</span><span>ゲーム名 / サイト名 / キャッチコピー</span></div>
-        <div class="check"><span class="dot">✓</span><span>4カテゴリと表示ラベル</span></div>
-        <div class="check"><span class="dot">✓</span><span>ゲーム固有の入力項目名</span></div>
-        <div class="check"><span class="dot">✓</span><span>配色 / アクセント</span></div>
-        <div class="check"><span class="dot">✓</span><span>Neon source / ID prefix</span></div>
-        <div class="check"><span class="dot">✓</span><span>R2 namespace</span></div>
-      </section>
-
-      <section class="box">
-        <h2>現在のCONFIG</h2>
-        <div class="kv"><span>GAME</span><code id="cfgGame"></code></div>
-        <div class="kv"><span>SITE</span><code id="cfgSite"></code></div>
-        <div class="kv"><span>DB SOURCE</span><code id="cfgSource"></code></div>
-        <div class="kv"><span>ID PREFIX</span><code id="cfgId"></code></div>
-        <div class="kv"><span>R2 PREFIX</span><code id="cfgR2"></code></div>
-        <div class="kv"><span>CONTENT</span><code id="cfgContent"></code></div>
-      </section>
-
-      <section class="box">
-        <h2>ゲーム固有フィールド</h2>
-        <div class="fields" id="fieldList"></div>
-        <p>ここだけ変えれば「猫 / クラス」を「武器 / ステージ」「ジョーカー / ステーク」などへ交換できます。</p>
-      </section>
-
-      <section class="box">
-        <h2>次の実装段階</h2>
-        <p>このPreviewでは設定レイヤーだけを検証しています。採用後は共通CRUD API / R2 uploaderへ `gameId` を渡し、sourceとnamespaceをconfigから決定する構成へ進めます。</p>
-        <button class="copy" id="copyConfig">このCONFIGをコピー</button>
-        <div class="status" id="copyStatus"></div>
-      </section>
-    </aside>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>HARF-WAY SINGLE GAME KIT — Preview</title></head>
+<body style="margin:0;background:#101210;color:#e8ece7;font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Yu Gothic',Meiryo,sans-serif">
+  <main style="max-width:980px;margin:auto;padding:48px 22px">
+    <p style="color:#93ad82;font-weight:900">HARF-WAY SINGLE GAME KIT / v{SINGLE_GAME_KIT_VERSION}</p>
+    <h1 style="font-size:clamp(48px,8vw,92px);line-height:.92;margin:12px 0 22px">ゲームを差し替えて<br>専門サイトを増やす。</h1>
+    <p style="max-width:760px;color:#a7b0a7;line-height:1.9">共通CRUD・Neon Preview DB・R2画像/動画アップロードまでCONFIG駆動にした統合Previewです。MewgenicsとBalatroはDB source / ID prefix / R2 namespaceまで分離されています。</p>
+    <div id="games" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:30px"></div>
   </main>
-  <footer class="footer">SINGLE GAME KIT / HARF-WAY — prototype does not write Production DB or R2</footer>
-
   <script id="kitConfigs" type="application/json" set:html={configJson}></script>
   <script is:inline>
-    (() => {
-      const configs = JSON.parse(document.getElementById('kitConfigs').textContent || '[]');
-      let current = configs[0];
-      let activeFilter = 'all';
-      const $ = (id) => document.getElementById(id);
-      const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-
-      function setTheme(theme) {
-        const root = $('preview');
-        root.style.setProperty('--g-bg', theme.bg);
-        root.style.setProperty('--g-panel', theme.panel);
-        root.style.setProperty('--g-panel2', theme.panel2);
-        root.style.setProperty('--g-text', theme.text);
-        root.style.setProperty('--g-muted', theme.muted);
-        root.style.setProperty('--g-accent', theme.accent);
-        root.style.setProperty('--g-accent2', theme.accent2);
-        root.style.setProperty('--g-line', theme.line);
-      }
-
-      function renderPresets() {
-        $('presetBar').innerHTML = '<b>GAME PRESET</b>' + configs.map((c) => `<button class="preset ${c.id === current.id ? 'on' : ''}" data-preset="${esc(c.id)}">${esc(c.gameName)}</button>`).join('');
-        document.querySelectorAll('[data-preset]').forEach((button) => {
-          button.onclick = () => {
-            current = configs.find((c) => c.id === button.dataset.preset) || configs[0];
-            activeFilter = 'all';
-            render();
-          };
-        });
-      }
-
-      function renderCards() {
-        const categories = new Map(current.categories.map((c) => [c.id, c]));
-        const list = activeFilter === 'all' ? current.samples : current.samples.filter((item) => item.type === activeFilter);
-        $('grid').innerHTML = list.length ? list.map((item) => {
-          const cat = categories.get(item.type) || { short: item.type };
-          const tags = [item.subject, item.role, ...(item.tags || [])].filter(Boolean);
-          return `<article class="card"><small>${esc(cat.short)}</small><h3>${esc(item.title)}</h3><p>${esc(item.memo)}</p><div class="tags">${tags.map((tag) => `<span class="tag">${esc(tag)}</span>`).join('')}</div></article>`;
-        }).join('') : '<div class="card"><p>この種類のサンプルはまだありません。</p></div>';
-      }
-
-      function render() {
-        setTheme(current.theme);
-        renderPresets();
-        $('brand').innerHTML = `${esc(current.siteName.split(' ')[0])} <em>${esc(current.siteName.split(' ').slice(1).join(' ') || 'LOG')}</em>`;
-        $('badge').textContent = current.badge;
-        $('heroTitle').innerHTML = current.hero.map((line, index) => index === current.hero.length - 1 ? `<em>${esc(line)}</em>` : esc(line)).join('<br>');
-        $('description').textContent = current.description;
-        $('filters').innerHTML = `<button class="filter ${activeFilter === 'all' ? 'on' : ''}" data-filter="all">ALL</button>` + current.categories.map((c) => `<button class="filter ${activeFilter === c.id ? 'on' : ''}" data-filter="${esc(c.id)}">${esc(c.label)}</button>`).join('');
-        document.querySelectorAll('[data-filter]').forEach((button) => {
-          button.onclick = () => { activeFilter = button.dataset.filter || 'all'; render(); };
-        });
-        $('stats').innerHTML = current.categories.map((c) => `<div class="stat"><b>${current.samples.filter((x) => x.type === c.id).length}</b><small>${esc(c.short)}</small></div>`).join('');
-        $('cfgGame').textContent = current.gameName;
-        $('cfgSite').textContent = current.siteName;
-        $('cfgSource').textContent = current.data.source;
-        $('cfgId').textContent = current.data.idPrefix;
-        $('cfgR2').textContent = current.data.r2Prefix;
-        $('cfgContent').textContent = current.data.contentTypePrefix + '*';
-        $('fieldList').innerHTML = Object.values(current.fields).map((field) => `<div class="field"><b>${esc(field.label)}</b><small>key: ${esc(field.key)} / 例: ${esc(field.placeholder)}</small></div>`).join('');
-        renderCards();
-      }
-
-      $('copyConfig').onclick = async () => {
-        try {
-          await navigator.clipboard.writeText(JSON.stringify(current, null, 2));
-          $('copyStatus').textContent = 'CONFIGをコピーしました。';
-        } catch {
-          $('copyStatus').textContent = 'コピーできませんでした。';
-        }
-      };
-
-      const requested = new URLSearchParams(location.search).get('game');
-      if (requested) current = configs.find((c) => c.id === requested) || current;
-      render();
-    })();
+    const configs=JSON.parse(document.getElementById('kitConfigs').textContent||'[]');
+    document.getElementById('games').innerHTML=configs.map((c)=>`<section style="border:1px solid #303730;background:#171a17;border-radius:16px;padding:20px"><small style="color:#8f998f">${c.data.source}</small><h2 style="font-size:28px;margin:8px 0">${c.siteName}</h2><p style="color:#a7b0a7">${c.gameName} / ${c.categories.map(x=>x.label).join('・')}</p><div style="display:flex;gap:8px;flex-wrap:wrap"><a style="color:#101210;background:#e1e8df;padding:9px 12px;border-radius:9px;text-decoration:none;font-weight:900" href="/single-game-kit/${c.id}/">公開ページ</a><a style="color:#e1e8df;border:1px solid #4a554b;padding:9px 12px;border-radius:9px;text-decoration:none;font-weight:900" href="/single-game-kit/${c.id}/admin/">管理画面</a></div></section>`).join('');
   </script>
 </body>
 </html>
