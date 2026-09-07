@@ -1,0 +1,54 @@
+---
+import { singleGameConfigs } from '../../../lib/single-game-kit/configs.js';
+
+export function getStaticPaths() {
+  return singleGameConfigs.map((config) => ({ params: { game: config.id }, props: { config } }));
+}
+
+const { config } = Astro.props;
+const configJson = JSON.stringify(config).replace(/</g, '\\u003c');
+const vars = Object.entries(config.theme).map(([k,v]) => `--${k}:${v}`).join(';');
+const parts = config.siteName.split(' ');
+---
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>{config.siteName} 管理 — {config.gameName}</title>
+  <link rel="stylesheet" href="/single-game-kit/style.css" />
+</head>
+<body style={vars}>
+  <header class="top"><div class="wrap row"><div class="brand">{parts[0]} <b>{parts.slice(1).join(' ') || 'LOG'}</b> / ADMIN</div><a href={`/single-game-kit/${config.id}/`}>公開ページ</a></div></header>
+  <main class="admin-layout">
+    <section class="panel">
+      <h2>{config.gameName} の記録</h2>
+      <p class="notice">ゲームCONFIGからカテゴリ・固有フィールド・DB source・R2 namespaceを自動切替します。PreviewではProduction DBへ書き込みません。</p>
+      <form id="form" class="form">
+        <input type="hidden" id="editId" />
+        <div class="two">
+          <div class="field"><label for="type">種類</label><select id="type">{config.categories.map((c)=><option value={c.id}>{c.label}</option>)}</select></div>
+          <div class="field"><label for="title">タイトル</label><input id="title" maxlength="240" required placeholder="今日残したいこと" /></div>
+        </div>
+        <div class="two">
+          <div class="field"><label for="subject">{config.fields.subject.label}</label><input id="subject" maxlength="180" placeholder={config.fields.subject.placeholder} /></div>
+          <div class="field"><label for="role">{config.fields.role.label}</label><input id="role" maxlength="180" placeholder={config.fields.role.placeholder} /></div>
+        </div>
+        <div class="field"><label for="tags">タグ</label><input id="tags" placeholder="カンマ区切り" /></div>
+        <div class="field"><label for="memo">メモ</label><textarea id="memo" required placeholder="プレイ中に気づいたこと、攻略途中の仮説など"></textarea></div>
+        <div class="field"><label for="mediaFile">画像 / 動画</label><input id="mediaFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm" /><div id="mediaStatus" class="media-status">R2を確認しています…</div></div>
+        <div class="actions"><button id="save" class="btn primary" type="submit">保存する</button><button id="clearInputs" class="btn" type="button">入力をクリア</button></div>
+      </form>
+    </section>
+    <aside class="panel">
+      <h2>保存済み</h2>
+      <div id="list"><div class="empty">読み込み中…</div></div>
+    </aside>
+  </main>
+  <footer class="wrap footer">{config.siteName} / SINGLE GAME KIT — <span id="storageLabel">checking storage…</span></footer>
+  <script id="gameConfig" type="application/json" set:html={configJson}></script>
+  <script is:inline>window.__SINGLE_GAME_KIT__ = JSON.parse(document.getElementById('gameConfig').textContent || '{}');</script>
+  <script src="/single-game-kit/runtime.js"></script>
+</body>
+</html>
