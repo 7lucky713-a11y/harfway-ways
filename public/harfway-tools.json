@@ -107,6 +107,28 @@
           "scope": "page"
         }
       }
+    },
+    {
+      "id": "single-game-kit",
+      "project_slug": "harfway-playback",
+      "public_url": "https://harfway-playback.vercel.app/single-game-kit/",
+      "admin_url": "https://harfway-playback.vercel.app/single-game-kit/sites-admin/",
+      "sync_source": "page-manifest",
+      "manifest": {
+        "harfway": true,
+        "id": "single-game-kit",
+        "name": "SINGLE GAME KIT",
+        "project_slug": "harfway-playback",
+        "group": "CREATE",
+        "role": "1ゲーム専門サイト生成基盤",
+        "description": "Neonのゲーム設定から1ゲーム専門サイトを共通エンジンで生成・管理する基盤。サイト追加・文言・カテゴリ・配色変更をVercelデプロイなしで反映できる。",
+        "public_url": "https://harfway-playback.vercel.app/single-game-kit/",
+        "admin_url": "https://harfway-playback.vercel.app/single-game-kit/sites-admin/",
+        "control_center": {
+          "sync": true,
+          "scope": "page"
+        }
+      }
     }
   ]
 }
