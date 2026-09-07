@@ -1,6 +1,7 @@
 import staticGamesHandler from './games.js';
 
 const EDITOR_URL = process.env.WAYS_EDITOR_URL || 'https://harfway-playback-editor.vercel.app';
+const CORE_API_URL = process.env.HARFWAY_CORE_API_URL || 'https://harfway-playback.vercel.app/api/core/games';
 
 function fallbackPayload() {
   let statusCode = 200;
@@ -77,6 +78,54 @@ async function fetchEditorGames() {
   return entries;
 }
 
+function preferText(coreValue, waysValue) {
+  const value = String(coreValue || '').trim();
+  return value || waysValue;
+}
+
+async function mergeCoreMetadata(entries) {
+  try {
+    const response = await fetch(`${CORE_API_URL}?limit=500`, {
+      method: 'GET',
+      cache: 'no-store',
+      headers: { accept: 'application/json' }
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data?.ok || !Array.isArray(data.games)) {
+      throw new Error(`core_api_${response.status}`);
+    }
+
+    const byId = new Map(data.games.map(game => [String(game?.id || ''), game]));
+    let matched = 0;
+    const merged = entries.map(entry => {
+      const core = byId.get(entry.id);
+      if (!core) return entry;
+      matched += 1;
+      return {
+        ...entry,
+        title: preferText(core.title, entry.title),
+        description: preferText(core.description, entry.description),
+        storeUrl: preferText(core.storeUrl, entry.storeUrl),
+        articleUrl: preferText(core.articleUrl, entry.articleUrl),
+        category: preferText(core.category, entry.category),
+        tags: Array.isArray(core.tags) && core.tags.length ? core.tags : entry.tags,
+        coreLinked: true
+      };
+    });
+
+    return {
+      entries: merged,
+      core: { ok: true, matched, total: entries.length, version: String(data.version || '') }
+    };
+  } catch (error) {
+    console.warn('[ways-games-live] core unavailable; keeping editor metadata:', error?.message || error);
+    return {
+      entries,
+      core: { ok: false, matched: 0, total: entries.length, fallback: true }
+    };
+  }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -86,10 +135,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    const entries = await fetchEditorGames();
+    const editorEntries = await fetchEditorGames();
+    const { entries, core } = await mergeCoreMetadata(editorEntries);
     return res.status(200).json({
       ok: true,
-      source: 'playback-editor-live',
+      source: core.ok ? 'playback-editor-live+shared-content-core' : 'playback-editor-live',
+      core,
       entries,
       count: entries.length
     });
@@ -100,7 +151,8 @@ export default async function handler(req, res) {
       return res.status(200).json({
         ...fallback,
         source: 'playback-editor-fallback',
-        stale: true
+        stale: true,
+        core: { ok: false, skipped: true }
       });
     } catch (fallbackError) {
       console.error('[ways-games-live] fallback failed:', fallbackError?.message || fallbackError);
