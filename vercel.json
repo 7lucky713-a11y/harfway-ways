@@ -7,6 +7,7 @@
     { "source": "/single-game/:game/", "destination": "/single-game-shell/?game=:game" },
     { "source": "/share/:id", "destination": "/api/ways-share-social?id=:id&mode=share" },
     { "source": "/share-image/:id", "destination": "/api/ways-share-image?id=:id" },
+    { "source": "/embed/r2/:token", "destination": "/api/r2-embed?token=:token" },
     { "source": "/embed/:id", "destination": "/api/ways-share?id=:id&mode=embed" },
     { "source": "/x-player/:id", "destination": "/api/ways-x-player?id=:id" },
     { "source": "/ads-portal", "destination": "/api/ads-portal-proxy?path=/" },
