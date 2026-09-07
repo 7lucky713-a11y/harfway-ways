@@ -1,43 +1,20 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
-    {
-      "source": "/share/:id",
-      "destination": "/api/ways-share-social?id=:id&mode=share"
-    },
-    {
-      "source": "/share-image/:id",
-      "destination": "/api/ways-share-image?id=:id"
-    },
-    {
-      "source": "/embed/:id",
-      "destination": "/api/ways-share?id=:id&mode=embed"
-    },
-    {
-      "source": "/x-player/:id",
-      "destination": "/api/ways-x-player?id=:id"
-    },
-    {
-      "source": "/ads-portal",
-      "destination": "/api/ads-portal-proxy?path=/"
-    },
-    {
-      "source": "/ads-portal/",
-      "destination": "/api/ads-portal-proxy?path=/"
-    },
-    {
-      "source": "/_next/static/:path*",
-      "destination": "/api/ads-portal-proxy?path=/_next/static/:path*"
-    }
+    { "source": "/single-game/:game/admin", "destination": "/single-game-shell/admin/?game=:game" },
+    { "source": "/single-game/:game/admin/", "destination": "/single-game-shell/admin/?game=:game" },
+    { "source": "/single-game/:game", "destination": "/single-game-shell/?game=:game" },
+    { "source": "/single-game/:game/", "destination": "/single-game-shell/?game=:game" },
+    { "source": "/share/:id", "destination": "/api/ways-share-social?id=:id&mode=share" },
+    { "source": "/share-image/:id", "destination": "/api/ways-share-image?id=:id" },
+    { "source": "/embed/:id", "destination": "/api/ways-share?id=:id&mode=embed" },
+    { "source": "/x-player/:id", "destination": "/api/ways-x-player?id=:id" },
+    { "source": "/ads-portal", "destination": "/api/ads-portal-proxy?path=/" },
+    { "source": "/ads-portal/", "destination": "/api/ads-portal-proxy?path=/" },
+    { "source": "/_next/static/:path*", "destination": "/api/ads-portal-proxy?path=/_next/static/:path*" }
   ],
   "crons": [
-    {
-      "path": "/api/weekly-harfway-cron",
-      "schedule": "0 0,12 * * 1"
-    },
-    {
-      "path": "/api/ways-core-sync",
-      "schedule": "*/15 * * * *"
-    }
+    { "path": "/api/weekly-harfway-cron", "schedule": "0 0,12 * * 1" },
+    { "path": "/api/ways-core-sync", "schedule": "*/15 * * * *" }
   ]
 }
