@@ -49,6 +49,6 @@ const parts = config.siteName.split(' ');
   <footer class="wrap footer">{config.siteName} / SINGLE GAME KIT — <span id="storageLabel">checking storage…</span></footer>
   <script id="gameConfig" type="application/json" set:html={configJson}></script>
   <script is:inline>window.__SINGLE_GAME_KIT__ = JSON.parse(document.getElementById('gameConfig').textContent || '{}');</script>
-  <script src="/single-game-kit/runtime.js"></script>
+  <script is:inline src="/single-game-kit/runtime.js"></script>
 </body>
 </html>
