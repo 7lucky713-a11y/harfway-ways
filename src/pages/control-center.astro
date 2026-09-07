@@ -13,7 +13,7 @@
 <header class="top"><div class="brand">HARF-WAY / CONTROL CENTER <small>Production v0.3</small></div><div class="actions"><nav class="nav"><button data-view="system" class="active">SYSTEM</button><button data-view="analytics">ANALYTICS</button><button data-view="ops">OPS</button></nav><a class="linkbtn" href="/memory">MEMORY</a><a class="linkbtn" href="https://harfway-vercel-hub.vercel.app/" target="_blank" rel="noreferrer">OLD HUB ↗</a></div></header>
 <main class="wrap">
 <section class="hero"><div><div class="ey">HARF-WAY OPERATING SYSTEM</div><h1>ONE<br>PLACE.</h1></div><div><p>現役システムを整理しつつ、これから追加されるHARF-WAYツールは自動同期。役割・入口・稼働状態・計測を1箇所で追える管理センターです。</p><div id="state" class="state">SYSTEM / ANALYTICS / OPS を読み込み中…</div></div></section>
-<section class="kpis"><div class="kpi"><small>ACTIVE SYSTEMS</small><b id="activeCount">16</b><i>手動整理＋自動同期</i></div><div class="kpi"><small>AUTO SYNC</small><b id="autoCount">0</b><i>基準点以降の新規ツール</i></div><div class="kpi"><small>LIVE HEALTH</small><b id="healthCount">—</b><i>主要16サービス</i></div><div class="kpi"><small>GA4 COLLECTION</small><b id="gaCount">—</b><i>主要5サービス</i></div><div class="kpi"><small>GA4 REPORTING</small><b id="reportCount">—</b><i>Data API</i></div></section>
+<section class="kpis"><div class="kpi"><small>ACTIVE SYSTEMS</small><b id="activeCount">17</b><i>手動整理＋自動同期</i></div><div class="kpi"><small>AUTO SYNC</small><b id="autoCount">0</b><i>基準点以降の新規ツール</i></div><div class="kpi"><small>LIVE HEALTH</small><b id="healthCount">—</b><i>主要16サービス</i></div><div class="kpi"><small>GA4 COLLECTION</small><b id="gaCount">—</b><i>主要5サービス</i></div><div class="kpi"><small>GA4 REPORTING</small><b id="reportCount">—</b><i>Data API</i></div></section>
 
 <section id="view-system" class="view active">
 <section class="panel"><h2>SYSTEM FLOW</h2><div class="pipeline"><div class="step"><strong>01 INPUT</strong><b>素材を集める</b><span>R2・過去記事・切れ端・ゲーム情報。</span></div><div class="step"><strong>02 CORE</strong><b>DBでつなぐ</b><span>作品・動画・記事を共通の情報として保持。</span></div><div class="step"><strong>03 CREATE</strong><b>再編集する</b><span>WAYS / Yorimichi / ZINEなどのEditor。</span></div><div class="step"><strong>04 PUBLISH</strong><b>公開する</b><span>フィード・ショーケース・プレイリストへ。</span></div><div class="step"><strong>05 OPERATE</strong><b>測る・守る</b><span>Analytics / OPS / Cleanup / Rollback。</span></div></div></section>
@@ -41,7 +41,8 @@ const SYSTEMS=[
  {group:'DATA / CORE',note:'素材と共通データを管理',items:[
   {id:'db-master',name:'DB MASTER',role:'DB全体管理',desc:'作品・動画・記事など共通DBを閲覧・編集。',links:[['OPEN','/db-master']]},
   {id:'salvager',name:'ARCHIVE SALVAGER',role:'過去記事回収',desc:'過去記事URLから内容をサルベージしてDBへ統合。',links:[['OPEN','/salvage/']]},
-  {id:'r2-media',name:'R2 MEDIA MANAGER',role:'メディア管理',desc:'R2内の動画・画像を一覧確認し、不要ファイルや重複を整理。',links:[['OPEN','https://harfway-showcase-manager-v2.vercel.app/r2-media.html']]}
+  {id:'r2-media',name:'R2 MEDIA MANAGER',role:'メディア管理',desc:'R2内の動画・画像を一覧確認し、不要ファイルや重複を整理。',links:[['OPEN','https://harfway-showcase-manager-v2.vercel.app/r2-media.html']]},
+  {id:'r2-wp-embed',name:'R2 → WORDPRESS',role:'WordPress埋め込み',desc:'R2動画をHARF-WAYプレイヤー経由のiframeへ変換し、ゲーム名・WAYSリンクも付与。',links:[['OPEN','https://harfway-showcase-manager-v2.vercel.app/r2-wp-iframe-live.html']]}
  ]},
  {group:'CREATE',note:'素材をコンテンツへ変換',items:[
   {id:'ways-editor',name:'WAYS EDITOR',role:'短尺動画投稿',desc:'R2動画・ストア情報・紹介文をWAYSへ登録。',links:[['OPEN','https://harfway-playback-editor.vercel.app/']]},
