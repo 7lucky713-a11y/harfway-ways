@@ -3,7 +3,6 @@ import { archiveCors, archiveDatabaseConfig, authorizeArchiveRequest } from './a
 
 const PROJECT_ID = 'wispy-recipe-34518010';
 const PRODUCTION_BRANCH_ID = 'br-noisy-boat-awncea92';
-const PREVIEW_BRANCH_ID = 'br-mute-fire-aw1c2dpw';
 const SOURCE = 'private-game-notes';
 const NOTE_TYPE = 'private_game_note';
 const GAME_TYPE = 'private_game_note_game';
@@ -63,7 +62,6 @@ function validMedia(media) {
 
 async function databaseContext() {
   const config = archiveDatabaseConfig();
-  const expectedBranchId = config.production ? PRODUCTION_BRANCH_ID : PREVIEW_BRANCH_ID;
   if (!config.url) {
     const error = new Error(config.production ? 'production_database_not_configured' : 'preview_database_not_configured');
     error.status = 503;
@@ -80,10 +78,19 @@ async function databaseContext() {
   const projectId = clean(info.project_id, 80);
   const branchId = clean(info.branch_id, 80);
   const tableReady = clean(info.contents_table, 120) === 'core.contents';
-  if (projectId !== PROJECT_ID || branchId !== expectedBranchId || !tableReady) {
+  const branchSafe = config.production
+    ? branchId === PRODUCTION_BRANCH_ID
+    : Boolean(branchId) && branchId !== PRODUCTION_BRANCH_ID;
+  if (projectId !== PROJECT_ID || !branchSafe || !tableReady) {
     const error = new Error('database_identity_mismatch');
     error.status = 409;
-    error.details = { projectId: projectId || null, branchId: branchId || null, expectedBranchId, tableReady };
+    error.details = {
+      projectId: projectId || null,
+      branchId: branchId || null,
+      production: config.production,
+      productionBranchId: PRODUCTION_BRANCH_ID,
+      tableReady
+    };
     throw error;
   }
   return { sql, production: config.production, branchId, storage: config.production ? 'shared-content-core' : 'neon-preview' };
