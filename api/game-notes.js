@@ -3,6 +3,7 @@ import { archiveCors, archiveDatabaseConfig, authorizeArchiveRequest } from './a
 
 const PROJECT_ID = 'wispy-recipe-34518010';
 const PRODUCTION_BRANCH_ID = 'br-noisy-boat-awncea92';
+const PREVIEW_BRANCH_ID = 'br-bold-butterfly-aw2ztgbd';
 const SOURCE = 'private-game-notes';
 const NOTE_TYPE = 'private_game_note';
 const GAME_TYPE = 'private_game_note_game';
@@ -60,8 +61,26 @@ function validMedia(media) {
   }).filter(Boolean);
 }
 
+function databaseConfig() {
+  const production = process.env.VERCEL_ENV === 'production';
+  if (production) {
+    return {
+      production,
+      storage: 'shared-content-core',
+      expectedBranchId: PRODUCTION_BRANCH_ID,
+      url: archiveDatabaseConfig().url || ''
+    };
+  }
+  return {
+    production,
+    storage: 'game-notes-preview',
+    expectedBranchId: PREVIEW_BRANCH_ID,
+    url: process.env.SINGLE_GAME_KIT_PREVIEW_DATABASE_URL || ''
+  };
+}
+
 async function databaseContext() {
-  const config = archiveDatabaseConfig();
+  const config = databaseConfig();
   if (!config.url) {
     const error = new Error(config.production ? 'production_database_not_configured' : 'preview_database_not_configured');
     error.status = 503;
@@ -78,22 +97,19 @@ async function databaseContext() {
   const projectId = clean(info.project_id, 80);
   const branchId = clean(info.branch_id, 80);
   const tableReady = clean(info.contents_table, 120) === 'core.contents';
-  const branchSafe = config.production
-    ? branchId === PRODUCTION_BRANCH_ID
-    : Boolean(branchId) && branchId !== PRODUCTION_BRANCH_ID;
+  const branchSafe = branchId === config.expectedBranchId;
   if (projectId !== PROJECT_ID || !branchSafe || !tableReady) {
     const error = new Error('database_identity_mismatch');
     error.status = 409;
     error.details = {
       projectId: projectId || null,
       branchId: branchId || null,
-      production: config.production,
-      productionBranchId: PRODUCTION_BRANCH_ID,
+      expectedBranchId: config.expectedBranchId,
       tableReady
     };
     throw error;
   }
-  return { sql, production: config.production, branchId, storage: config.production ? 'shared-content-core' : 'neon-preview' };
+  return { sql, production: config.production, branchId, storage: config.storage };
 }
 
 async function authorize(req, production) {
