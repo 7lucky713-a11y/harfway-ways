@@ -129,6 +129,26 @@
           "scope": "page"
         }
       }
+    },
+    {
+      "id": "private-game-notebook",
+      "project_slug": "harfway-playback",
+      "admin_url": "https://harfway-playback.vercel.app/game-notes/",
+      "sync_source": "page-manifest",
+      "manifest": {
+        "harfway": true,
+        "id": "private-game-notebook",
+        "name": "PRIVATE GAME NOTEBOOK",
+        "project_slug": "harfway-playback",
+        "group": "DATA / CORE",
+        "role": "個人ゲームインプットDB",
+        "description": "プレイ中の気づき・画像・動画・セリフ・キャラ・テーマを非公開で蓄積し、後から検索・索引・再利用する本人専用ゲームノート。",
+        "admin_url": "https://harfway-playback.vercel.app/game-notes/",
+        "control_center": {
+          "sync": true,
+          "scope": "page"
+        }
+      }
     }
   ]
 }
