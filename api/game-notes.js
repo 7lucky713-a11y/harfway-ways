@@ -8,6 +8,7 @@ const SOURCE = 'private-game-notes';
 const NOTE_TYPE = 'private_game_note';
 const GAME_TYPE = 'private_game_note_game';
 const DICTIONARY_TYPE = 'private_game_note_type';
+const PRIVATE_URL = '/game-notes/';
 const DEFAULT_TYPES = [
   ['memo', 'メモ'],
   ['idea', 'アイデア'],
@@ -186,10 +187,10 @@ async function bootstrap(sql) {
     const metadata = JSON.stringify({ system: true, createdAt: new Date().toISOString() });
     await sql`
       INSERT INTO core.contents
-        (id, content_type, title, body_text, status, source, metadata, created_at, updated_at)
+        (id, content_type, title, url, body_text, status, source, metadata, created_at, updated_at)
       VALUES
-        (${dbId('type', id)}, ${DICTIONARY_TYPE}, ${name}, '', 'active', ${SOURCE}, CAST(${metadata} AS jsonb), now(), now())
-      ON CONFLICT (id) DO UPDATE SET status = 'active', title = EXCLUDED.title, updated_at = now()
+        (${dbId('type', id)}, ${DICTIONARY_TYPE}, ${name}, ${PRIVATE_URL}, '', 'active', ${SOURCE}, CAST(${metadata} AS jsonb), now(), now())
+      ON CONFLICT (id) DO UPDATE SET url = EXCLUDED.url, status = 'active', title = EXCLUDED.title, updated_at = now()
       WHERE core.contents.source = ${SOURCE}
     `;
   }
@@ -228,10 +229,10 @@ async function upsertDictionary(sql, entity, body) {
   });
   const rows = await sql`
     INSERT INTO core.contents
-      (id, content_type, title, body_text, status, source, metadata, created_at, updated_at)
+      (id, content_type, title, url, body_text, status, source, metadata, created_at, updated_at)
     VALUES
-      (${id}, ${contentType}, ${title}, '', 'active', ${SOURCE}, CAST(${metadata} AS jsonb), now(), now())
-    ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, metadata = EXCLUDED.metadata, status = 'active', updated_at = now()
+      (${id}, ${contentType}, ${title}, ${PRIVATE_URL}, '', 'active', ${SOURCE}, CAST(${metadata} AS jsonb), now(), now())
+    ON CONFLICT (id) DO UPDATE SET url = EXCLUDED.url, title = EXCLUDED.title, metadata = EXCLUDED.metadata, status = 'active', updated_at = now()
     WHERE core.contents.source = ${SOURCE}
     RETURNING id, content_type, title, body_text, metadata, created_at, updated_at
   `;
@@ -276,10 +277,11 @@ async function upsertNote(sql, body) {
   const excerpt = text.slice(0, 280);
   const rows = await sql`
     INSERT INTO core.contents
-      (id, content_type, title, excerpt, body_text, status, source, metadata, created_at, updated_at)
+      (id, content_type, title, url, excerpt, body_text, status, source, metadata, created_at, updated_at)
     VALUES
-      (${id}, ${NOTE_TYPE}, ${title}, ${excerpt}, ${text}, 'active', ${SOURCE}, CAST(${metadata} AS jsonb), now(), now())
+      (${id}, ${NOTE_TYPE}, ${title}, ${PRIVATE_URL}, ${excerpt}, ${text}, 'active', ${SOURCE}, CAST(${metadata} AS jsonb), now(), now())
     ON CONFLICT (id) DO UPDATE SET
+      url = EXCLUDED.url,
       title = EXCLUDED.title,
       excerpt = EXCLUDED.excerpt,
       body_text = EXCLUDED.body_text,
