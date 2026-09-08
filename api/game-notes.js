@@ -8,7 +8,6 @@ const SOURCE = 'private-game-notes';
 const NOTE_TYPE = 'private_game_note';
 const GAME_TYPE = 'private_game_note_game';
 const DICTIONARY_TYPE = 'private_game_note_type';
-const PRIVATE_URL = '/game-notes/';
 const DEFAULT_TYPES = [
   ['memo', 'メモ'],
   ['idea', 'アイデア'],
@@ -46,6 +45,9 @@ function publicId(id, entity) {
 function dbId(entity, id) {
   const raw = clean(id, 160).replace(new RegExp(`^game-notes:${entity}:`), '');
   return `game-notes:${entity}:${raw || crypto.randomUUID()}`;
+}
+function privateRecordUrl(entity, id) {
+  return `/game-notes/_private/${entity}/${encodeURIComponent(publicId(id, entity))}`;
 }
 function validMedia(media) {
   if (!Array.isArray(media)) return [];
@@ -184,12 +186,14 @@ async function listAll(sql) {
 
 async function bootstrap(sql) {
   for (const [id, name] of DEFAULT_TYPES) {
+    const recordId = dbId('type', id);
+    const recordUrl = privateRecordUrl('type', recordId);
     const metadata = JSON.stringify({ system: true, createdAt: new Date().toISOString() });
     await sql`
       INSERT INTO core.contents
         (id, content_type, title, url, body_text, status, source, metadata, created_at, updated_at)
       VALUES
-        (${dbId('type', id)}, ${DICTIONARY_TYPE}, ${name}, ${PRIVATE_URL}, '', 'active', ${SOURCE}, CAST(${metadata} AS jsonb), now(), now())
+        (${recordId}, ${DICTIONARY_TYPE}, ${name}, ${recordUrl}, '', 'active', ${SOURCE}, CAST(${metadata} AS jsonb), now(), now())
       ON CONFLICT (id) DO UPDATE SET url = EXCLUDED.url, status = 'active', title = EXCLUDED.title, updated_at = now()
       WHERE core.contents.source = ${SOURCE}
     `;
@@ -222,6 +226,7 @@ async function upsertDictionary(sql, entity, body) {
     const error = new Error('name_required'); error.status = 400; throw error;
   }
   const id = dbId(entity, body.id);
+  const recordUrl = privateRecordUrl(entity, id);
   await ensureUniqueTitle(sql, contentType, title, body.id ? id : '');
   const metadata = JSON.stringify({
     ...(isGame ? { canonicalGameId: clean(body.canonicalGameId, 180) } : { system: false }),
@@ -231,7 +236,7 @@ async function upsertDictionary(sql, entity, body) {
     INSERT INTO core.contents
       (id, content_type, title, url, body_text, status, source, metadata, created_at, updated_at)
     VALUES
-      (${id}, ${contentType}, ${title}, ${PRIVATE_URL}, '', 'active', ${SOURCE}, CAST(${metadata} AS jsonb), now(), now())
+      (${id}, ${contentType}, ${title}, ${recordUrl}, '', 'active', ${SOURCE}, CAST(${metadata} AS jsonb), now(), now())
     ON CONFLICT (id) DO UPDATE SET url = EXCLUDED.url, title = EXCLUDED.title, metadata = EXCLUDED.metadata, status = 'active', updated_at = now()
     WHERE core.contents.source = ${SOURCE}
     RETURNING id, content_type, title, body_text, metadata, created_at, updated_at
@@ -261,6 +266,7 @@ async function upsertNote(sql, body) {
   await assertDictionaryExists(sql, 'game', gameId);
   await assertDictionaryExists(sql, 'type', typeId);
   const id = dbId('note', body.id);
+  const recordUrl = privateRecordUrl('note', id);
   const title = clean(body.title, 280) || clean(text.replace(/\s+/g, ' '), 60);
   const outputStatus = ['private', 'candidate', 'exported'].includes(body.outputStatus) ? body.outputStatus : 'private';
   const metadata = JSON.stringify({
@@ -279,7 +285,7 @@ async function upsertNote(sql, body) {
     INSERT INTO core.contents
       (id, content_type, title, url, excerpt, body_text, status, source, metadata, created_at, updated_at)
     VALUES
-      (${id}, ${NOTE_TYPE}, ${title}, ${PRIVATE_URL}, ${excerpt}, ${text}, 'active', ${SOURCE}, CAST(${metadata} AS jsonb), now(), now())
+      (${id}, ${NOTE_TYPE}, ${title}, ${recordUrl}, ${excerpt}, ${text}, 'active', ${SOURCE}, CAST(${metadata} AS jsonb), now(), now())
     ON CONFLICT (id) DO UPDATE SET
       url = EXCLUDED.url,
       title = EXCLUDED.title,
