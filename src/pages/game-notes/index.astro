@@ -1,0 +1,99 @@
+---
+const title = 'PRIVATE GAME NOTEBOOK';
+---
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow,noarchive" />
+  <meta name="referrer" content="same-origin" />
+  <title>{title}</title>
+  <link rel="stylesheet" href="/game-notes/style.css" />
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="side">
+    <div class="brand"><b>GN</b><span>GAME NOTES<small>PRIVATE WORKSPACE</small></span></div>
+    <button class="primary wide" id="open-note">＋ 断片を追加</button>
+    <nav id="nav">
+      <button class="nav on" data-view="inbox">INBOX <em id="count-inbox">0</em></button>
+      <button class="nav" data-view="library">LIBRARY <em id="count-library">0</em></button>
+      <button class="nav" data-view="game">GAME <em id="count-games">0</em></button>
+      <button class="nav" data-view="index">INDEX <em id="count-index">0</em></button>
+      <button class="nav" data-view="editor">EDITOR <em>⚙</em></button>
+    </nav>
+    <div class="side-note">● PRIVATE ONLY<small>本文・検索結果は管理キー認証後のみ取得</small></div>
+  </aside>
+
+  <main class="main">
+    <header class="top">
+      <div class="search">⌕ <input id="search" placeholder="ゲーム、タグ、キャラ、言葉から探す" /><kbd>⌘ K</kbd></div>
+      <button class="ghost" id="dig">↻ 掘り返す</button>
+      <button class="ghost" id="candidate-filter">出力候補 <i id="candidate-count">0</i></button>
+    </header>
+
+    <section class="view show" id="view-inbox">
+      <div class="head"><div><small>CAPTURE FIRST, ORGANIZE LATER</small><h1>INBOX</h1><p>遊んでいて引っかかったものを、整理しすぎず置いておく。</p></div></div>
+      <div class="capture">
+        <label>GAME<select id="quick-game"></select></label>
+        <label>TYPE<select id="quick-type"></select></label>
+        <div class="capture-body"><textarea id="quick-body" placeholder="何か引っかかった？ 一言だけでも残す。"></textarea><div class="capture-actions"><button class="ghost" id="quick-full">詳しく入力</button><button class="primary" id="quick-save">保存</button></div></div>
+      </div>
+      <h2>最近の断片</h2>
+      <div class="cards" id="inbox-cards"></div>
+    </section>
+
+    <section class="view" id="view-library">
+      <div class="head"><div><small>ALL FRAGMENTS</small><h1>LIBRARY</h1><p>文章・画像・動画を横断して、自分がゲームから拾ったものを探す。</p></div></div>
+      <div class="chips" id="type-filters"></div>
+      <div class="library" id="library-list"></div>
+    </section>
+
+    <section class="view" id="view-game">
+      <div class="game-layout">
+        <div class="game-list" id="game-list"></div>
+        <div class="game-panel"><div class="game-head"><div><small>GAME NOTEBOOK</small><h1 id="game-title">ゲームを選択</h1><p id="game-meta"></p></div><button class="primary" id="game-add">＋ このゲームに追加</button></div><div class="stats" id="game-stats"></div><div id="game-notes"></div></div>
+      </div>
+    </section>
+
+    <section class="view" id="view-index">
+      <div class="head"><div><small>YOUR PERSONAL INDEX</small><h1>INDEX</h1><p>ゲーム名ではなく、「自分が何に反応したか」から記録を掘る。</p></div></div>
+      <div class="index-grid"><div class="panel"><h2>タグ</h2><div id="index-tags"></div></div><div class="panel"><h2>キャラクター / 人物</h2><div id="index-characters"></div></div><div class="panel full"><h2>キーワード / テーマ</h2><div class="cloud" id="index-themes"></div></div></div>
+    </section>
+
+    <section class="view" id="view-editor">
+      <div class="head"><div><small>YOUR DICTIONARY</small><h1>EDITOR</h1><p>ゲームと種類はここで増やす。使われている項目は誤削除できない。</p></div></div>
+      <div class="editor-grid">
+        <div class="panel"><h2>GAMES</h2><form class="dict-add" id="game-form"><input id="game-name" placeholder="ゲーム名" required /><button class="primary">追加</button></form><div class="dict-list" id="editor-games"></div></div>
+        <div class="panel"><h2>TYPES</h2><form class="dict-add" id="type-form"><input id="type-name" placeholder="例：演出メモ" required /><button class="primary">追加</button></form><div class="dict-list" id="editor-types"></div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="overlay" id="note-overlay" aria-hidden="true"><div class="dialog">
+  <div class="dialog-head"><div><small>PRIVATE NOTE</small><h2 id="note-dialog-title">断片を追加</h2></div><button class="icon" data-close="note">×</button></div>
+  <form id="note-form">
+    <input type="hidden" id="note-id" />
+    <div class="form-grid">
+      <label>ゲーム<select id="note-game" required></select></label>
+      <label>種類<select id="note-type" required></select></label>
+      <label class="full">タイトル <span>任意</span><input id="note-title" placeholder="空欄なら本文から自動生成" /></label>
+      <label class="full">メモ<textarea id="note-body" required placeholder="整っていなくてOK。あとで検索できれば十分。"></textarea></label>
+      <div class="full multi-field" data-multi="tags"><b>タグ</b><div class="multi-input"><input placeholder="1件ずつ入力" /><button type="button">決定</button></div><div class="tokens"></div></div>
+      <div class="full multi-field" data-multi="characters"><b>キャラ / 人物</b><div class="multi-input"><input placeholder="1件ずつ入力" /><button type="button">決定</button></div><div class="tokens"></div></div>
+      <div class="full multi-field" data-multi="themes"><b>キーワード / テーマ</b><div class="multi-input"><input placeholder="1件ずつ入力" /><button type="button">決定</button></div><div class="tokens"></div></div>
+      <label class="full">画像 / 動画<input id="note-media" type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm" /><span class="help">画像8MB / 動画20MBまで。複数選択可。保存時にR2へ送ります。</span></label>
+      <div class="full media-list" id="note-media-list"></div>
+      <label>状態<select id="note-status"><option value="private">PRIVATE</option><option value="candidate">出力候補</option><option value="exported">使用済み</option></select></label>
+    </div>
+    <div class="dialog-foot"><button type="button" class="danger hidden" id="delete-note">削除</button><div class="spacer"></div><button type="button" class="ghost" data-close="note">キャンセル</button><button class="primary" id="save-note">保存する</button></div>
+  </form>
+</div></div>
+
+<div class="overlay locked" id="lock-overlay"><div class="lock-card"><div class="brand lock-brand"><b>GN</b><span>PRIVATE GAME NOTEBOOK<small>HARF-WAY PRIVATE INPUT</small></span></div><h1>UNLOCK</h1><p>このワークスペースの本文とメディアは管理キー認証後に読み込みます。</p><form id="unlock-form"><input id="admin-key" type="password" autocomplete="current-password" placeholder="HARF-WAY 管理キー" /><button class="primary">開く</button></form><small id="lock-message">Previewでは認証なしで検証できます。</small></div></div>
+<div class="toast" id="toast"></div>
+<script src="/game-notes/runtime.js"></script>
+</body>
+</html>
