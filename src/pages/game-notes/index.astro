@@ -10,6 +10,31 @@ const title = 'PRIVATE GAME NOTEBOOK';
   <meta name="referrer" content="same-origin" />
   <title>{title}</title>
   <link rel="stylesheet" href="/game-notes/style.css" />
+  <style is:global>
+    /* Readability pass: input surfaces are intentionally much larger than archive/list UI. */
+    .capture>label{font-size:15px!important;line-height:1.45!important;padding:18px!important}
+    .capture select{font-size:17px!important;line-height:1.45!important;margin-top:10px!important}
+    .capture-body{padding:18px 20px!important}
+    .capture textarea{height:112px!important;font-size:22px!important;line-height:1.6!important}
+    .capture-actions{padding-top:13px!important;gap:10px!important}
+    .capture-actions .primary,.capture-actions .ghost{font-size:15px!important;padding:12px 16px!important}
+    .dialog{width:min(920px,96vw)!important}
+    .dialog-head,.dialog-foot{padding:20px 24px!important}
+    .dialog-head small{font-size:13px!important}
+    .dialog-head h2{font-size:30px!important;margin-top:6px!important}
+    .form-grid{gap:17px!important;padding:22px 24px!important}
+    .form-grid label,.multi-field>b{font-size:16px!important;line-height:1.45!important}
+    .form-grid label span,.help{font-size:13px!important;line-height:1.55!important}
+    .form-grid input,.form-grid select,.form-grid textarea,.multi-input input{font-size:18px!important;padding:14px 15px!important;border-radius:10px!important}
+    .form-grid textarea{min-height:210px!important;line-height:1.7!important}
+    .multi-input{gap:9px!important}
+    .multi-input button{font-size:15px!important;padding:12px 16px!important}
+    .tokens{gap:8px!important}
+    .token{font-size:14px!important;padding:7px 10px!important}
+    .media-row b{font-size:14px!important}.media-row small{font-size:11px!important}
+    .dialog-foot .primary,.dialog-foot .ghost,.dialog-foot .danger{font-size:15px!important;padding:12px 16px!important}
+    @media(max-width:700px){.capture textarea{font-size:19px!important}.form-grid label,.multi-field>b{font-size:15px!important}.form-grid input,.form-grid select,.form-grid textarea,.multi-input input{font-size:17px!important}}
+  </style>
 </head>
 <body>
 <div class="app" id="app">
@@ -86,7 +111,7 @@ const title = 'PRIVATE GAME NOTEBOOK';
       <div class="full multi-field" data-multi="themes"><b>キーワード / テーマ</b><div class="multi-input"><input placeholder="1件ずつ入力" /><button type="button">決定</button></div><div class="tokens"></div></div>
       <label class="full">画像 / 動画<input id="note-media" type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm" /><span class="help">画像8MB / 動画20MBまで。複数選択可。保存時にR2へ送ります。</span></label>
       <div class="full media-list" id="note-media-list"></div>
-      <label>状態<select id="note-status"><option value="private">PRIVATE</option><option value="candidate">出力候補</option><option value="exported">使用済み</option></select></label>
+      <label>活用状態<select id="note-status"><option value="private">ストック（自分用）</option><option value="candidate">出力候補</option><option value="exported">使用済み</option></select><span class="help">ここを変えても公開はされません。素材を整理するための目印です。</span></label>
     </div>
     <div class="dialog-foot"><button type="button" class="danger hidden" id="delete-note">削除</button><div class="spacer"></div><button type="button" class="ghost" data-close="note">キャンセル</button><button class="primary" id="save-note">保存する</button></div>
   </form>
