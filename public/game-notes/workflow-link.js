@@ -1,36 +1,33 @@
 (() => {
   const top = document.querySelector('.top');
-  if (top && !document.getElementById('workflow-open-link')) {
-    const link = document.createElement('a');
-    link.id = 'workflow-open-link';
-    link.href = '/game-notes/workflow/';
-    link.target = '_blank';
-    link.rel = 'noopener';
-    link.className = 'ghost';
-    link.textContent = 'WORKFLOW ↗';
-    link.style.textDecoration = 'none';
-    link.style.display = 'inline-flex';
-    link.style.alignItems = 'center';
-    top.appendChild(link);
+  if (!top) return;
+
+  let workflow = document.getElementById('workflow-open-link');
+  if (!workflow) {
+    workflow = document.createElement('a');
+    workflow.id = 'workflow-open-link';
+    workflow.href = '/game-notes/workflow/';
+    workflow.target = '_blank';
+    workflow.rel = 'noopener';
+    workflow.className = 'ghost';
+    workflow.textContent = 'WORKFLOW ↗';
+    workflow.style.textDecoration = 'none';
+    workflow.style.display = 'inline-flex';
+    workflow.style.alignItems = 'center';
+    top.appendChild(workflow);
   }
 
-  const nav = document.getElementById('nav');
-  if (nav && !document.getElementById('private-clips-nav-link')) {
+  if (!document.getElementById('private-clips-open-link')) {
     const clips = document.createElement('a');
-    clips.id = 'private-clips-nav-link';
+    clips.id = 'private-clips-open-link';
     clips.href = '/private-clips/';
     clips.target = '_blank';
     clips.rel = 'noopener';
-    clips.className = 'nav';
-    clips.innerHTML = 'CLIPS <em>↗</em>';
+    clips.className = 'ghost';
+    clips.textContent = 'CLIPS ↗';
     clips.style.textDecoration = 'none';
-    nav.appendChild(clips);
-  }
-
-  if (!document.getElementById('game-notes-extra-nav-style')) {
-    const style = document.createElement('style');
-    style.id = 'game-notes-extra-nav-style';
-    style.textContent = '@media(max-width:700px){.side nav{grid-template-columns:repeat(6,minmax(0,1fr))}}';
-    document.head.appendChild(style);
+    clips.style.display = 'inline-flex';
+    clips.style.alignItems = 'center';
+    workflow.insertAdjacentElement('afterend', clips);
   }
 })();
