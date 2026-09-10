@@ -1,0 +1,44 @@
+---
+const ids = [
+  ['1249480', 'Ex-Zodiac'],
+  ['3124230', 'Jackal'],
+  ['1662480', 'Nuclear Blaze'],
+  ['1181610', 'Roto Force'],
+  ['266210', '片道勇者'],
+  ['2132850', 'Rabbit and Steel'],
+];
+---
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>HARF-WAY Sale Image Proxy Preview</title>
+    <style>
+      :root { font-family: system-ui, sans-serif; background:#f8f6f0; color:#181818; }
+      body { margin:0; padding:32px; }
+      main { max-width:1100px; margin:0 auto; }
+      h1 { font-size:28px; font-weight:600; }
+      p { color:#77736b; }
+      .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+      article { border:1px solid #d6d0c5; background:#fffefa; }
+      img { display:block; width:100%; aspect-ratio:460/215; object-fit:cover; background:#ddd; }
+      div { padding:12px; }
+      code { font-size:12px; }
+      @media(max-width:760px){ .grid{grid-template-columns:1fr;} }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>SALE WATCH / IMAGE PROXY PREVIEW</h1>
+      <p>6枚すべて表示されれば、Steam画像をVercel経由で配信できています。</p>
+      <section class="grid">
+        {ids.map(([appid, title]) => (
+          <article>
+            <img src={`/api/sale-image-public?appid=${appid}`} alt={title} />
+            <div><strong>{title}</strong><br/><code>{appid}</code></div>
+          </article>
+        ))}
+      </section>
+    </main>
+  </body>
+</html>
