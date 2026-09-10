@@ -16,6 +16,7 @@
   ],
   "crons": [
     { "path": "/api/weekly-harfway-cron", "schedule": "0 0,12 * * 1" },
-    { "path": "/api/ways-core-sync", "schedule": "*/15 * * * *" }
+    { "path": "/api/ways-core-sync", "schedule": "*/15 * * * *" },
+    { "path": "/api/sales-snapshot-refresh", "schedule": "7,22,37,52 * * * *" }
   ]
 }
