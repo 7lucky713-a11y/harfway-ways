@@ -19,6 +19,8 @@
     const clips = document.createElement('a');
     clips.id = 'private-clips-nav-link';
     clips.href = '/private-clips/';
+    clips.target = '_blank';
+    clips.rel = 'noopener';
     clips.className = 'nav';
     clips.innerHTML = 'CLIPS <em>↗</em>';
     clips.style.textDecoration = 'none';
