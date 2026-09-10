@@ -49,7 +49,13 @@
       body.hw-writing-vertical textarea[data-hw-writing],body.hw-writing-vertical [data-hw-writing="read"]{writing-mode:vertical-rl;text-orientation:mixed;line-break:strict}
       body.hw-writing-vertical textarea[data-hw-writing]{min-height:300px;min-width:220px;max-width:100%;padding:16px;overflow:auto;resize:both}
       body.hw-writing-vertical [data-hw-writing="read"]{max-height:70vh;min-height:240px;overflow:auto;padding:12px 8px;white-space:pre-wrap}
-      @media(max-width:760px){#hw-private-tool-shell{width:100%;margin-left:0;justify-content:flex-start;gap:5px;overflow-x:auto;flex-wrap:nowrap;padding-top:8px}#hw-private-tool-shell a,#hw-private-tool-shell button{font-size:9px;padding:8px 9px}#hw-private-tool-shell .hw-sep{flex:0 0 1px}#hw-count-popover{top:auto;right:10px;left:10px;bottom:14px;width:auto}}
+      @media(max-width:760px){
+        .top:has(#hw-private-tool-shell),.topbar:has(#hw-private-tool-shell){height:auto!important;min-height:70px;flex-wrap:wrap!important;align-items:center!important;padding-top:9px!important;padding-bottom:9px!important}
+        #hw-private-tool-shell{width:100%;margin-left:0;justify-content:flex-start;gap:5px;overflow-x:auto;flex-wrap:nowrap;padding-top:2px;padding-bottom:2px}
+        #hw-private-tool-shell a,#hw-private-tool-shell button{font-size:9px;padding:8px 9px}
+        #hw-private-tool-shell .hw-sep{flex:0 0 1px}
+        #hw-count-popover{top:auto;right:10px;left:10px;bottom:14px;width:auto}
+      }
     `;
     document.head.appendChild(style);
   }
@@ -57,12 +63,12 @@
   function markWritingTargets() {
     if (current === 'notes') {
       ['#quick-body','#note-body'].forEach((s) => { const el = $(s); if (el) el.dataset.hwWriting = 'input'; });
-      ['.reader-copy','.card p','.library-item .body p'].forEach((s) => $$(s).forEach((el) => el.dataset.hwWriting = 'read'));
+      $$('.reader-copy').forEach((el) => el.dataset.hwWriting = 'read');
     } else if (current === 'clips') {
       const body = $('#clip-body'); if (body) body.dataset.hwWriting = 'input';
-      ['.clip h3','.clip p','.random-card h3','.random-card p'].forEach((s) => $$(s).forEach((el) => el.dataset.hwWriting = 'read'));
+      ['.random-card h3','.random-card p'].forEach((s) => $$(s).forEach((el) => el.dataset.hwWriting = 'read'));
     } else {
-      ['.card h2','.copy'].forEach((s) => $$(s).forEach((el) => el.dataset.hwWriting = 'read'));
+      $$('.card .copy').forEach((el) => el.dataset.hwWriting = 'read');
     }
   }
 
