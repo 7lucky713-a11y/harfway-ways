@@ -21,6 +21,7 @@
   let mobileCounted = false;
   let desktopCounted = false;
   let desktopAdOpen = false;
+  let desktopAdAnchor = null;
 
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -133,10 +134,57 @@
     </button>`;
   }
 
+  function currentDesktopAdAnchor() {
+    const card = document.querySelector('#shelf .ways-ad-card');
+    const prev = card?.previousElementSibling;
+    const value = Number(prev?.dataset?.i);
+    return Number.isInteger(value) ? value : null;
+  }
+
+  function currentEditorialIndex() {
+    const card = document.querySelector('#shelf .game.on:not(.ways-ad-card)');
+    const value = Number(card?.dataset?.i);
+    return Number.isInteger(value) ? value : null;
+  }
+
   function clearDesktopAdMedia() {
     document.querySelector('.ways-ad-stage-media')?.remove();
     document.querySelector('.ways-ad-preview-note')?.remove();
     desktopAdOpen = false;
+    desktopAdAnchor = null;
+  }
+
+  function openEditorialIndex(index) {
+    const card = document.querySelector(`#shelf .game:not(.ways-ad-card)[data-i="${index}"]`);
+    if (!card) return false;
+    clearDesktopAdMedia();
+    card.click();
+    return true;
+  }
+
+  function handleDesktopSequenceNav(e) {
+    const button = e.target.closest?.('#prev,#next');
+    if (!button || innerWidth < 900) return;
+    const anchor = desktopAdOpen ? desktopAdAnchor : currentDesktopAdAnchor();
+    if (anchor == null) return;
+
+    if (desktopAdOpen) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      const target = button.id === 'next' ? anchor + 1 : anchor;
+      if (!openEditorialIndex(target)) clearDesktopAdMedia();
+      return;
+    }
+
+    const current = currentEditorialIndex();
+    if (current == null) return;
+    const entersAd = (button.id === 'next' && current === anchor)
+      || (button.id === 'prev' && current === anchor + 1);
+    if (!entersAd) return;
+
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    openDesktopAd();
   }
 
   function observeDesktopImpression(card) {
@@ -172,7 +220,9 @@
     const frame = document.querySelector('.video-frame');
     const v = document.querySelector('#mainVideo');
     if (!frame || !v) return;
+    const anchor = currentDesktopAdAnchor();
     clearDesktopAdMedia();
+    desktopAdAnchor = anchor;
     desktopAdOpen = true;
     document.querySelectorAll('#shelf .game').forEach((x) => x.classList.toggle('on', x.matches('.ways-ad-card')));
     document.querySelector('#stageLabel') && (document.querySelector('#stageLabel').textContent = 'PR / SPONSORED');
@@ -327,6 +377,7 @@
       injectMobile();
     });
     mo.observe(root, { childList: true, subtree: true });
+    document.addEventListener('click', handleDesktopSequenceNav, true);
     document.addEventListener('click', cleanupWhenEditorialReturns, true);
     document.addEventListener('click', async (e) => {
       if (e.target.closest?.('.ways-ad-store')) {
