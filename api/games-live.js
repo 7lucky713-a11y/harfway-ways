@@ -2,6 +2,7 @@ import staticGamesHandler from './games.js';
 
 const EDITOR_URL = process.env.WAYS_EDITOR_URL || 'https://harfway-playback-editor.vercel.app';
 const CORE_API_URL = process.env.HARFWAY_CORE_API_URL || 'https://harfway-playback.vercel.app/api/core/games';
+const TYPE_MARKER_PREFIX = '__ways_type:';
 
 function fallbackPayload() {
   let statusCode = 200;
@@ -26,6 +27,21 @@ function shuffleEntries(entries) {
   return shuffled;
 }
 
+function normalizeType(raw) {
+  return String(raw || '').toLowerCase() === 'tip' ? 'tip' : 'discover';
+}
+
+function splitTagsAndType(game) {
+  const tags = Array.isArray(game?.tags) ? game.tags.map(v => String(v || '').trim()).filter(Boolean) : [];
+  const marker = tags.find(tag => tag.toLowerCase().startsWith(TYPE_MARKER_PREFIX));
+  const markerType = marker ? marker.slice(TYPE_MARKER_PREFIX.length) : '';
+  const contentType = normalizeType(game?.contentType ?? game?.content_type ?? markerType);
+  return {
+    contentType,
+    tags: tags.filter(tag => !tag.toLowerCase().startsWith(TYPE_MARKER_PREFIX))
+  };
+}
+
 function normalizeGame(game, index) {
   const sortRaw = game?.sortOrder ?? game?.sort_order;
   const sortOrder = Number.isFinite(Number(sortRaw)) ? Number(sortRaw) : index;
@@ -34,12 +50,14 @@ function normalizeGame(game, index) {
   const duration = Number(game?.videoDuration ?? game?.video_duration ?? 0) || 0;
   const thumbnailUrl = game?.thumbnailUrl || game?.thumbnail || game?.thumbnail_url || '';
   const fastStartRaw = game?.fastStart ?? game?.fast_start;
+  const typed = splitTagsAndType(game);
   return {
     id: String(game?.id || `game-${index}`),
     title: String(game?.title || ''),
     description: String(game?.description || ''),
     video: String(game?.video || game?.video_url || ''),
-    tags: Array.isArray(game?.tags) ? game.tags.map(v => String(v || '').trim()).filter(Boolean) : [],
+    tags: typed.tags,
+    contentType: typed.contentType,
     articleUrl: String(game?.articleUrl || game?.article_url || ''),
     storeUrl: String(game?.storeUrl || game?.store_url || ''),
     category: game?.category === '通常' ? '' : String(game?.category || ''),
@@ -168,7 +186,8 @@ export default async function handler(req, res) {
     console.warn('[ways-games-live] editor unavailable; using Git fallback:', error?.message || error);
     try {
       const fallback = fallbackPayload();
-      return res.status(200).json({ ...fallback, entries: shuffleEntries(fallback.entries), source: 'playback-editor-fallback', stale: true, core: { ok: false, skipped: true } });
+      const normalizedFallback = fallback.entries.map(normalizeGame);
+      return res.status(200).json({ ...fallback, entries: shuffleEntries(normalizedFallback), source: 'playback-editor-fallback', stale: true, core: { ok: false, skipped: true } });
     } catch (fallbackError) {
       console.error('[ways-games-live] fallback failed:', fallbackError?.message || fallbackError);
       return res.status(503).json({ ok: false, error: 'games_unavailable' });
