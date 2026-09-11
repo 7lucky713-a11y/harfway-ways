@@ -1,4 +1,5 @@
 const UPSTREAM = process.env.PLAYBACK_EDITOR_UPSTREAM || 'https://harfway-playback-editor.vercel.app';
+const TYPE_MARKER_PREFIX = '__ways_type:';
 
 const PATCH_STYLE = `
 <style id="ways-content-type-style">
@@ -16,11 +17,24 @@ const PATCH_STYLE = `
 const PATCH_SCRIPT = `
 <script id="ways-content-type-script">
 (()=>{
+  const PREFIX='${TYPE_MARKER_PREFIX}';
   const normalize=v=>String(v||'').toLowerCase()==='tip'?'tip':'discover';
   const current=()=>window.__peCur?.()||null;
   const state=()=>window.__peState?.()||{games:[]};
+  const publicTags=g=>(Array.isArray(g?.tags)?g.tags:[]).filter(t=>!String(t||'').toLowerCase().startsWith(PREFIX));
+  function kindOf(g){
+    const marker=(Array.isArray(g?.tags)?g.tags:[]).find(t=>String(t||'').toLowerCase().startsWith(PREFIX));
+    const markerKind=marker?String(marker).slice(PREFIX.length):'';
+    return normalize(g?.contentType||g?.content_type||markerKind);
+  }
+  function setMarker(g,kind){
+    const tags=publicTags(g);
+    if(normalize(kind)==='tip')tags.push(PREFIX+'tip');
+    g.tags=tags;
+    g.contentType=normalize(kind);
+  }
   function updateButtons(box,g){
-    const kind=normalize(g?.contentType);
+    const kind=kindOf(g);
     box.querySelectorAll('[data-ways-kind]').forEach(btn=>btn.classList.toggle('on',btn.dataset.waysKind===kind));
   }
   function markDirty(){
@@ -29,7 +43,7 @@ const PATCH_SCRIPT = `
   }
   function setKind(kind){
     const g=current(); if(!g)return;
-    g.contentType=normalize(kind);
+    setMarker(g,kind);
     markDirty();
     queueMicrotask(injectEditor);
     setTimeout(()=>{injectEditor();refreshLive();refreshListTypes();},0);
@@ -46,19 +60,24 @@ const PATCH_SCRIPT = `
     const description=editor.querySelector('[data-k="description"]')?.closest('.field'); if(!description)return;
     let box=editor.querySelector('.ways-destination');
     if(!box){box=makeBox();description.insertAdjacentElement('afterend',box)}
+    const tagInput=editor.querySelector('[data-k="tags"]');
+    if(tagInput){
+      const visible=publicTags(g).join(', ');
+      if(tagInput.value!==visible)tagInput.value=visible;
+    }
     updateButtons(box,g);
   }
   function refreshLive(){
     const g=current(); const label=document.querySelector('#live .label'); if(!g||!label)return;
     const status=g.status==='published'?'PUBLISHED':'DRAFT PREVIEW';
-    label.textContent=(g.sponsored?'SPONSORED · ':'')+normalize(g.contentType).toUpperCase()+' · '+status;
+    label.textContent=(g.sponsored?'SPONSORED · ':'')+kindOf(g).toUpperCase()+' · '+status;
   }
   function refreshListTypes(){
     const games=Array.isArray(state()?.games)?state().games:[];
     document.querySelectorAll('#list [data-id]').forEach(btn=>{
       const g=games.find(x=>String(x.id)===String(btn.dataset.id)); const small=btn.querySelector('small'); if(!g||!small)return;
       const category=String(g.category||'ジャンル未設定');
-      small.textContent=category+' / '+normalize(g.contentType).toUpperCase();
+      small.textContent=category+' / '+kindOf(g).toUpperCase();
     });
   }
   function refreshAll(){injectEditor();refreshLive();refreshListTypes()}
@@ -74,8 +93,10 @@ function patchEditorHtml(source) {
   const apiConst = "const A='/api/proxy?target=',K='hw-playback-editor-admin-key';";
   const curFn = "function cur(){return S.games.find(x=>x.id===sel)}";
   const normTail = "g.sponsorName=g.sponsorName||g.sponsor_name||'';return g}";
+  const tagInputExpr = "g.tags.join(', ')";
+  const tagEventExpr = "g[e.dataset.k]=e.dataset.k==='tags'?e.value.split(',').map(x=>x.trim()).filter(Boolean):e.value;";
 
-  if (!html.includes(apiConst) || !html.includes(curFn) || !html.includes(normTail)) {
+  if (!html.includes(apiConst) || !html.includes(curFn) || !html.includes(normTail) || !html.includes(tagInputExpr) || !html.includes(tagEventExpr)) {
     throw new Error('upstream_editor_shape_changed');
   }
 
@@ -83,7 +104,10 @@ function patchEditorHtml(source) {
   html = html.replace("fetch('/api/genre'", "fetch('/api/playback-editor-genre'");
   html = html.replace("fetch('/api/process-video'", "fetch('/api/playback-editor-process-video'");
   html = html.replace(curFn, `${curFn}window.__peCur=cur;window.__peState=()=>S;`);
-  html = html.replace(normTail, "g.sponsorName=g.sponsorName||g.sponsor_name||'';g.contentType=String(g.contentType||g.content_type||'').toLowerCase()==='tip'?'tip':'discover';return g}");
+  html = html.replace(normTail, "g.sponsorName=g.sponsorName||g.sponsor_name||'';{const mt=(g.tags||[]).find(t=>String(t||'').toLowerCase().startsWith('__ways_type:'));const mk=mt?String(mt).slice('__ways_type:'.length):'';g.contentType=String(g.contentType||g.content_type||mk||'').toLowerCase()==='tip'?'tip':'discover'}return g}");
+  html = html.replace(tagInputExpr, "g.tags.filter(t=>!String(t||'').toLowerCase().startsWith('__ways_type:')).join(', ')");
+  html = html.replace(tagEventExpr, "g[e.dataset.k]=e.dataset.k==='tags'?[...e.value.split(',').map(x=>x.trim()).filter(Boolean),...(g.tags||[]).filter(x=>String(x||'').toLowerCase().startsWith('__ways_type:'))]:e.value;");
+  html = html.replace("g.tags.slice(0,4)", "g.tags.filter(t=>!String(t||'').toLowerCase().startsWith('__ways_type:')).slice(0,4)");
   html = html.replace("sponsored:false,sponsorName:''});sel=id;", "sponsored:false,sponsorName:'',contentType:'discover'});sel=id;");
   html = html.replace('</head>', `${PATCH_STYLE}</head>`);
   html = html.replace('</body>', `${PATCH_SCRIPT}</body>`);
