@@ -5,16 +5,18 @@
     adminKey: sessionStorage.getItem('harfway_game_notes_key') || '', editing: null,
     draft: { facets: {}, media: [] }, originalMedia: [], uploadedThisSession: [], mediaUrls: new Map()
   };
+  const LEGACY_FACET_IDS = new Set(['tags', 'characters', 'themes']);
   const $ = (s, root = document) => root.querySelector(s);
   const $$ = (s, root = document) => [...root.querySelectorAll(s)];
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const gameById = (id) => state.games.find(x => x.id === id);
   const typeById = (id) => state.types.find(x => x.id === id);
   const facetById = (id) => state.facets.find(x => x.id === id);
+  const visibleFacets = () => state.facets.filter(f => !LEGACY_FACET_IDS.has(f.id));
   const fmt = (v) => { try { return new Intl.DateTimeFormat('ja-JP', { month:'2-digit', day:'2-digit' }).format(new Date(v)); } catch { return '--'; } };
   const toast = (message, bad = false) => { const el = $('#toast'); el.textContent = message; el.style.background = bad ? '#d58d8d' : ''; el.classList.add('on'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('on'), 1800); };
   const authHeaders = (extra = {}) => ({ ...extra, ...(state.adminKey ? { 'x-admin-key': state.adminKey } : {}) });
-  const noteFacetValues = (note) => Object.values(note?.facets || {}).flat().filter(Boolean);
+  const noteFacetValues = (note) => visibleFacets().flatMap(f => note?.facets?.[f.id] || []).filter(Boolean);
 
   async function api(path, options = {}) {
     const headers = authHeaders(options.body && !(options.body instanceof Blob) ? { 'content-type': 'application/json' } : {});
@@ -37,7 +39,8 @@
       return load();
     }
     if (!state.gameId || !gameById(state.gameId)) state.gameId = state.games[0]?.id || '';
-    for (const key of Object.keys(state.filters.facets)) if (!facetById(key)) delete state.filters.facets[key];
+    const visible = new Set(visibleFacets().map(f => f.id));
+    for (const key of Object.keys(state.filters.facets)) if (!visible.has(key)) delete state.filters.facets[key];
     renderAll(); hideLock();
   }
 
@@ -100,7 +103,7 @@
     fillSelect($('#filter-type'), state.types, state.filters.typeId, 'すべての種類');
     if ($('#filter-status')) $('#filter-status').value = state.filters.status;
     const root = $('#facet-filters');
-    root.innerHTML = state.facets.map(f => {
+    root.innerHTML = visibleFacets().map(f => {
       const selected = state.filters.facets[f.id] || [];
       const values = facetValueCounts(f.id);
       return `<div class="facet-filter-group"><b>${esc(f.name)}</b><div class="facet-filter-values">${values.length ? values.map(([v,n])=>`<button type="button" class="facet-filter-chip ${selected.includes(v)?'on':''}" data-filter-facet="${esc(f.id)}" data-filter-value="${esc(v)}">${esc(v)} <span>${n}</span></button>`).join('') : '<small>まだ値がありません</small>'}</div></div>`;
@@ -130,7 +133,7 @@
     return items.slice(0,30).map(([v,n]) => `<div class="index-row" data-index-facet="${esc(facet.id)}" data-index-value="${esc(v)}"><b>${esc(v)}</b><small>${n} notes</small><div class="bar"><i style="width:${Math.max(8,n/max*100)}%"></i></div></div>`).join('') || '<div class="empty">まだありません。</div>';
   }
   function renderIndex() {
-    $('#facet-index').innerHTML = state.facets.map(f => `<div class="panel"><h2>${esc(f.name)}</h2><div>${indexRows(f, facetValueCounts(f.id))}</div></div>`).join('') || '<div class="empty">EDITORでファセットを追加してください。</div>';
+    $('#facet-index').innerHTML = visibleFacets().map(f => `<div class="panel"><h2>${esc(f.name)}</h2><div>${indexRows(f, facetValueCounts(f.id))}</div></div>`).join('') || '<div class="empty">EDITORでファセットを追加してください。</div>';
   }
 
   function facetUsage(id) { return state.notes.filter(n => (n.facets?.[id] || []).length).length; }
@@ -138,14 +141,14 @@
     const usageGame = id => state.notes.filter(n=>n.gameId===id).length, usageType = id => state.notes.filter(n=>n.typeId===id).length;
     $('#editor-games').innerHTML = state.games.map(g=>`<div class="dict-item"><b>${esc(g.name)}</b><small>${usageGame(g.id)} notes</small><button data-delete-dict="game" data-id="${esc(g.id)}">削除</button></div>`).join('') || '<div class="empty">ゲームを追加してください。</div>';
     $('#editor-types').innerHTML = state.types.map(t=>`<div class="dict-item"><b>${esc(t.name)}</b><small>${usageType(t.id)} notes</small><button data-delete-dict="type" data-id="${esc(t.id)}">削除</button></div>`).join('');
-    $('#editor-facets').innerHTML = state.facets.map(f=>`<div class="facet-dict-item"><input value="${esc(f.name)}" data-facet-name="${esc(f.id)}" aria-label="ファセット名"><small>${facetUsage(f.id)} notes</small><button class="ghost" data-save-facet="${esc(f.id)}">保存</button><button class="facet-delete" data-delete-dict="facet" data-id="${esc(f.id)}">削除</button></div>`).join('') || '<div class="empty">分類軸を追加してください。</div>';
+    $('#editor-facets').innerHTML = visibleFacets().map(f=>`<div class="facet-dict-item"><input value="${esc(f.name)}" data-facet-name="${esc(f.id)}" aria-label="ファセット名"><small>${facetUsage(f.id)} notes</small><button class="ghost" data-save-facet="${esc(f.id)}">保存</button><button class="facet-delete" data-delete-dict="facet" data-id="${esc(f.id)}">削除</button></div>`).join('') || '<div class="empty">分類軸を追加してください。</div>';
   }
   function renderAll() { renderCounts(); renderInbox(); renderLibrary(); renderGame(); renderIndex(); renderEditor(); }
   function setView(name) { state.view = name; $$('.view').forEach(v => v.classList.toggle('show', v.id === `view-${name}`)); $$('.nav').forEach(v=>v.classList.toggle('on',v.dataset.view===name)); if(name==='library')renderLibrary(); if(name==='game')renderGame(); if(name==='index')renderIndex(); if(name==='editor')renderEditor(); }
 
   function emptyFacetDraft(noteFacets = {}) {
     const facets = {};
-    state.facets.forEach(f => facets[f.id] = [...(noteFacets[f.id] || [])]);
+    for (const [id, values] of Object.entries(noteFacets || {})) facets[id] = [...(values || [])];
     return facets;
   }
   function resetDraft() {
@@ -163,8 +166,24 @@
   async function deleteMediaKey(key) { try { await api('/api/game-notes-media',{method:'DELETE',body:JSON.stringify({key})}); } catch {} }
   function closeNote(cleanup = true) { $('#note-overlay').classList.remove('on'); $('#note-overlay').setAttribute('aria-hidden','true'); if(cleanup && state.uploadedThisSession.length){ const keys=[...state.uploadedThisSession]; state.uploadedThisSession=[]; keys.forEach(deleteMediaKey); } }
   function renderDraftFields() {
-    $('#note-facets').innerHTML = state.facets.map(f => `<div class="full multi-field facet-field" data-facet-id="${esc(f.id)}"><b>${esc(f.name)}</b><div class="multi-input"><input placeholder="1件ずつ入力" /><button type="button" data-add-facet-token="${esc(f.id)}">決定</button></div><div class="tokens">${(state.draft.facets[f.id]||[]).map((v,i)=>`<span class="token">${esc(v)}<button type="button" data-remove-facet-token="${esc(f.id)}" data-index="${i}">×</button></span>`).join('')}</div></div>`).join('') || '<div class="empty">分類軸はEDITORから追加できます。</div>';
+    const facets = visibleFacets();
+    const selected = facets.filter(f => Object.prototype.hasOwnProperty.call(state.draft.facets, f.id));
+    const available = facets.filter(f => !Object.prototype.hasOwnProperty.call(state.draft.facets, f.id));
+    const picker = facets.length
+      ? `<div class="full multi-field" style="padding:14px;border:1px solid var(--line);border-radius:10px;background:#151a17"><b>ファセット</b><span class="help">必要な分類軸だけ選んで追加します。</span><div class="multi-input"><select id="note-facet-picker" ${available.length?'':'disabled'}><option value="">${available.length?'追加するファセットを選択':'追加できるファセットはありません'}</option>${available.map(f=>`<option value="${esc(f.id)}">${esc(f.name)}</option>`).join('')}</select><button type="button" data-attach-facet ${available.length?'':'disabled'}>＋ 追加</button></div></div>`
+      : '<div class="empty">ファセットはEDITORから自由に追加できます。</div>';
+    const fields = selected.map(f => `<div class="full multi-field facet-field" data-facet-id="${esc(f.id)}"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><b>${esc(f.name)}</b><button type="button" class="ghost" data-remove-facet-field="${esc(f.id)}" style="padding:6px 9px;font-size:10px">外す</button></div><div class="multi-input"><input placeholder="1件ずつ入力" /><button type="button" data-add-facet-token="${esc(f.id)}">決定</button></div><div class="tokens">${(state.draft.facets[f.id]||[]).map((v,i)=>`<span class="token">${esc(v)}<button type="button" data-remove-facet-token="${esc(f.id)}" data-index="${i}">×</button></span>`).join('')}</div></div>`).join('');
+    $('#note-facets').innerHTML = picker + fields;
     renderMediaList();
+  }
+  function attachFacetFromPicker() {
+    const select = $('#note-facet-picker');
+    const id = select?.value || '';
+    if (!id || !visibleFacets().some(f => f.id === id)) return;
+    state.draft.facets[id] ||= [];
+    renderDraftFields();
+    const input = $(`[data-facet-id="${CSS.escape(id)}"] input`, $('#note-facets'));
+    input?.focus();
   }
   function addFacetToken(field) {
     const input = $('input', field); const value = input?.value.trim(); if(!value)return;
@@ -214,7 +233,12 @@
   $('#nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b)setView(b.dataset.view)});
   $('#open-note').addEventListener('click',()=>openNote()); $('#quick-full').addEventListener('click',()=>openNote(null,$('#quick-game').value)); $('#quick-save').addEventListener('click',()=>saveQuick().catch(e=>toast(e.message,true))); $('#game-add').addEventListener('click',()=>openNote(null,state.gameId));
   $('#note-form').addEventListener('submit',saveNote); $('#delete-note').addEventListener('click',()=>deleteNote().catch(e=>toast(e.message,true))); $$('[data-close="note"]').forEach(b=>b.addEventListener('click',closeNote)); $('#note-overlay').addEventListener('click',e=>{if(e.target.id==='note-overlay')closeNote()});
-  $('#note-facets').addEventListener('click',e=>{const add=e.target.closest('[data-add-facet-token]');if(add){const field=add.closest('[data-facet-id]');addFacetToken(field);return}const rem=e.target.closest('[data-remove-facet-token]');if(rem){const list=state.draft.facets[rem.dataset.removeFacetToken]||[];list.splice(Number(rem.dataset.index),1);renderDraftFields();}});
+  $('#note-facets').addEventListener('click',e=>{
+    const attach=e.target.closest('[data-attach-facet]'); if(attach){attachFacetFromPicker();return}
+    const drop=e.target.closest('[data-remove-facet-field]'); if(drop){delete state.draft.facets[drop.dataset.removeFacetField];renderDraftFields();return}
+    const add=e.target.closest('[data-add-facet-token]'); if(add){const field=add.closest('[data-facet-id]');addFacetToken(field);return}
+    const rem=e.target.closest('[data-remove-facet-token]'); if(rem){const list=state.draft.facets[rem.dataset.removeFacetToken]||[];list.splice(Number(rem.dataset.index),1);renderDraftFields();}
+  });
   $('#note-facets').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('input')){e.preventDefault();addFacetToken(e.target.closest('[data-facet-id]'));}});
   $('#note-form').addEventListener('click',e=>{const m=e.target.closest('[data-remove-media]');if(m){const item=state.draft.media.splice(Number(m.dataset.removeMedia),1)[0];if(item&&state.uploadedThisSession.includes(item.key)){state.uploadedThisSession=state.uploadedThisSession.filter(k=>k!==item.key);deleteMediaKey(item.key)}renderDraftFields()}});
   $('#note-media').addEventListener('change',e=>handleMediaFiles(e.target.files));
@@ -224,7 +248,7 @@
   $('#filter-game').addEventListener('change',e=>{state.filters.gameId=e.target.value;renderLibrary()}); $('#filter-type').addEventListener('change',e=>{state.filters.typeId=e.target.value;renderLibrary()}); $('#filter-status').addEventListener('change',e=>{state.filters.status=e.target.value;renderLibrary()}); $('#clear-filters').addEventListener('click',clearFilters);
   $('#facet-filters').addEventListener('click',e=>{const b=e.target.closest('[data-filter-facet]');if(!b)return;const id=b.dataset.filterFacet,value=b.dataset.filterValue;const list=state.filters.facets[id]||[];state.filters.facets[id]=list.includes(value)?list.filter(v=>v!==value):[...list,value];renderLibrary()});
   $('#candidate-filter').addEventListener('click',()=>{clearFilters();state.filters.status='candidate';setView('library');renderLibrary()});
-  $('#dig').addEventListener('click',()=>{if(!state.notes.length)return;const n=state.notes[Math.floor(Math.random()*state.notes.length)];const pairs=Object.entries(n.facets||{}).flatMap(([id,values])=>(values||[]).map(v=>[id,v]));if(pairs.length){const [id,v]=pairs[Math.floor(Math.random()*pairs.length)];clearFilters();state.filters.facets[id]=[v];setView('library');renderLibrary();toast(`「${v}」を掘り返しました`)}else{state.query=gameById(n.gameId)?.name||'';$('#search').value=state.query;setView('library');renderLibrary()}});
+  $('#dig').addEventListener('click',()=>{if(!state.notes.length)return;const n=state.notes[Math.floor(Math.random()*state.notes.length)];const pairs=visibleFacets().flatMap(f=>(n.facets?.[f.id]||[]).map(v=>[f.id,v]));if(pairs.length){const [id,v]=pairs[Math.floor(Math.random()*pairs.length)];clearFilters();state.filters.facets[id]=[v];setView('library');renderLibrary();toast(`「${v}」を掘り返しました`)}else{state.query=gameById(n.gameId)?.name||'';$('#search').value=state.query;setView('library');renderLibrary()}});
   $('#facet-index').addEventListener('click',e=>{const b=e.target.closest('[data-index-facet]');if(!b)return;clearFilters();state.filters.facets[b.dataset.indexFacet]=[b.dataset.indexValue];setView('library');renderLibrary()});
   $('#game-form').addEventListener('submit',async e=>{e.preventDefault();const input=$('#game-name'),name=input.value.trim();if(!name)return;try{await addDictionary('game',name);input.value=''}catch(err){toast(err.message==='duplicate_dictionary_value'?'同名ゲームは登録済みです':err.message,true)}});
   $('#type-form').addEventListener('submit',async e=>{e.preventDefault();const input=$('#type-name'),name=input.value.trim();if(!name)return;try{await addDictionary('type',name);input.value=''}catch(err){toast(err.message==='duplicate_dictionary_value'?'同名の種類は登録済みです':err.message,true)}});
