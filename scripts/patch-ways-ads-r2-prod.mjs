@@ -39,6 +39,8 @@ const desktopVideoMuteBefore = `      v.src = ad.mediaUrl;
 const desktopVideoMuteAfter = `      v.src = ad.mediaUrl;
       v.muted = preserveMuted;
       v.loop = true;`;
+const desktopImageContain = '.ways-ad-stage-media{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#050505;z-index:2}';
+const desktopImageCover = '.ways-ad-stage-media{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#050505;z-index:2}';
 
 const mobileBefore = `    const card = feed.querySelector('.ways-ad-mobile');
     card?.querySelector('.ways-ad-mobile-store')?.addEventListener('click', async () => {
@@ -80,8 +82,13 @@ else if (!source.includes(desktopAudioStateAnchoredAfter) && !source.includes(de
 if (source.includes(desktopVideoMuteBefore)) source = source.replace(desktopVideoMuteBefore, desktopVideoMuteAfter);
 else if (!source.includes(desktopVideoMuteAfter)) throw new Error('[ways-ads-r2] desktop video mute block not found');
 
+// Image creatives should occupy the exact same center-stage frame as videos.
+// Use cover so non-16:9 sponsor images do not appear smaller with letterboxing.
+if (source.includes(desktopImageContain)) source = source.replace(desktopImageContain, desktopImageCover);
+else if (!source.includes(desktopImageCover)) throw new Error('[ways-ads-r2] desktop image fit rule not found');
+
 if (source.includes(mobileBefore)) source = source.replace(mobileBefore, mobileAfter);
 else if (!source.includes(mobileAfter)) throw new Error('[ways-ads-r2] mobile click block not found');
 
 fs.writeFileSync(file, source);
-console.log('[ways-ads-r2] fair-v2 serve + desktop stage preview + WAYS sound inheritance + mobile direct sponsor link applied');
+console.log('[ways-ads-r2] fair-v2 serve + desktop stage preview + WAYS sound inheritance + desktop image cover + mobile direct sponsor link applied');
