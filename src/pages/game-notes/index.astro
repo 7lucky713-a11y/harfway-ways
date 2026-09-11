@@ -11,56 +11,18 @@ const title = 'PRIVATE GAME NOTEBOOK';
   <title>{title}</title>
   <link rel="stylesheet" href="/game-notes/style.css" />
   <style is:global>
-    /* Readability pass: input surfaces are intentionally much larger than archive/list UI. */
     .capture>label{font-size:15px!important;line-height:1.45!important;padding:18px!important}
     .capture select{font-size:17px!important;line-height:1.45!important;margin-top:10px!important}
-    .capture-body{padding:18px 20px!important}
-    .capture textarea{height:112px!important;font-size:22px!important;line-height:1.6!important}
-    .capture-actions{padding-top:13px!important;gap:10px!important}
-    .capture-actions .primary,.capture-actions .ghost{font-size:15px!important;padding:12px 16px!important}
-    .dialog{width:min(920px,96vw)!important}
-    .dialog-head,.dialog-foot{padding:20px 24px!important}
-    .dialog-head small{font-size:13px!important}
-    .dialog-head h2{font-size:30px!important;margin-top:6px!important}
-    .form-grid{gap:17px!important;padding:22px 24px!important}
-    .form-grid label,.multi-field>b{font-size:16px!important;line-height:1.45!important}
-    .form-grid label span,.help{font-size:13px!important;line-height:1.55!important}
-    .form-grid input,.form-grid select,.form-grid textarea,.multi-input input{font-size:18px!important;padding:14px 15px!important;border-radius:10px!important}
-    .form-grid textarea{min-height:210px!important;line-height:1.7!important}
-    .multi-input{gap:9px!important}
-    .multi-input button{font-size:15px!important;padding:12px 16px!important}
-    .tokens{gap:8px!important}
-    .token{font-size:14px!important;padding:7px 10px!important}
-    .media-row b{font-size:14px!important}.media-row small{font-size:11px!important}
-    .dialog-foot .primary,.dialog-foot .ghost,.dialog-foot .danger{font-size:15px!important;padding:12px 16px!important}
+    .capture-body{padding:18px 20px!important}.capture textarea{height:112px!important;font-size:22px!important;line-height:1.6!important}.capture-actions{padding-top:13px!important;gap:10px!important}.capture-actions .primary,.capture-actions .ghost{font-size:15px!important;padding:12px 16px!important}
+    .dialog{width:min(920px,96vw)!important}.dialog-head,.dialog-foot{padding:20px 24px!important}.dialog-head small{font-size:13px!important}.dialog-head h2{font-size:30px!important;margin-top:6px!important}.form-grid{gap:17px!important;padding:22px 24px!important}.form-grid label,.multi-field>b{font-size:16px!important;line-height:1.45!important}.form-grid label span,.help{font-size:13px!important;line-height:1.55!important}.form-grid input,.form-grid select,.form-grid textarea,.multi-input input{font-size:18px!important;padding:14px 15px!important;border-radius:10px!important}.form-grid textarea{min-height:210px!important;line-height:1.7!important}.multi-input{gap:9px!important}.multi-input button{font-size:15px!important;padding:12px 16px!important}.tokens{gap:8px!important}.token{font-size:14px!important;padding:7px 10px!important}.media-row b{font-size:14px!important}.media-row small{font-size:11px!important}.dialog-foot .primary,.dialog-foot .ghost,.dialog-foot .danger{font-size:15px!important;padding:12px 16px!important}
 
-    /* Reader view: archive cards open here first; editing is a separate action. */
-    .reader-overlay{position:fixed;inset:0;z-index:45;background:#0d110fed;backdrop-filter:blur(12px);display:none;overflow:auto;padding:28px 18px 70px}
-    .reader-overlay.on{display:block}
-    .reader-shell{width:min(1040px,100%);margin:0 auto}
-    .reader-topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:18px}
-    .reader-topbar>button{font-size:14px;padding:10px 14px}
-    .reader-actions{display:flex;gap:8px}
-    .reader-article{background:#171d19;border:1px solid var(--line2);border-radius:18px;overflow:hidden;box-shadow:0 20px 80px #0005}
-    .reader-hero{padding:46px clamp(24px,6vw,72px) 34px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#1d251f,#171d19)}
-    .reader-eyebrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:17px}
-    .reader-pill{display:inline-flex;align-items:center;border:1px solid #536357;border-radius:999px;padding:6px 10px;color:#b8cbb9;font:800 11px ui-monospace,monospace;letter-spacing:.06em}
-    .reader-pill.status{border-color:#7e8c57;color:var(--accent2)}
-    .reader-title{font-size:clamp(36px,6vw,64px);line-height:1.08;letter-spacing:-.045em;margin:0 0 18px;max-width:18ch}
-    .reader-meta{display:flex;gap:18px;flex-wrap:wrap;color:var(--muted);font-size:13px}
-    .reader-body{padding:38px clamp(24px,6vw,72px) 54px}
-    .reader-copy{font-size:20px;line-height:1.95;white-space:pre-wrap;color:#d8e0d9;max-width:38em;margin:0 0 38px}
-    .reader-media{display:grid;gap:18px;margin:0 0 42px}
-    .reader-media-item{border:1px solid var(--line);border-radius:14px;background:#0d110f;overflow:hidden}
-    .reader-media-item img,.reader-media-item video{display:block;width:100%;max-height:72vh;object-fit:contain;background:#0a0d0b}
-    .reader-media-item figcaption{padding:10px 13px;color:#7f8d82;font-size:11px;border-top:1px solid var(--line)}
-    .reader-taxonomy{display:grid;gap:18px;border-top:1px solid var(--line);padding-top:26px}
-    .reader-tax-row{display:grid;grid-template-columns:130px 1fr;gap:16px;align-items:start}
-    .reader-tax-row>b{font:850 11px ui-monospace,monospace;color:#7d8a80;letter-spacing:.08em;padding-top:6px}
-    .reader-tax-row .tag{font-size:11px;padding:6px 9px}
-    .reader-empty{padding:34px;border:1px dashed var(--line2);border-radius:12px;color:var(--muted);text-align:center;font-size:14px}
-    .reader-loading{padding:70px 20px;text-align:center;color:var(--muted);font-size:14px}
-    @media(max-width:700px){.capture textarea{font-size:19px!important}.form-grid label,.multi-field>b{font-size:15px!important}.form-grid input,.form-grid select,.form-grid textarea,.multi-input input{font-size:17px!important}.reader-overlay{padding:12px 8px 50px}.reader-topbar{position:sticky;top:0;z-index:3;background:#0d110ff2;padding:8px 0}.reader-hero{padding:30px 20px 25px}.reader-title{font-size:34px}.reader-body{padding:28px 20px 40px}.reader-copy{font-size:18px;line-height:1.9}.reader-tax-row{grid-template-columns:1fr;gap:7px}}
+    .filter-panel{border:1px solid var(--line2);background:var(--panel);border-radius:13px;padding:16px;margin-bottom:18px}.filter-top{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:10px;align-items:end}.filter-control{display:grid;gap:6px}.filter-control>b,.facet-filter-group>b{font:850 10px ui-monospace,monospace;color:#91a095;letter-spacing:.06em}.filter-control select{width:100%;border:1px solid var(--line);background:#121714;border-radius:8px;padding:10px;font-size:13px}.filter-clear{display:flex;align-items:center;gap:8px}.filter-clear small{color:var(--muted);font-size:11px;white-space:nowrap}.facet-filters{display:grid;gap:12px;border-top:1px solid var(--line);margin-top:14px;padding-top:14px}.facet-filter-group{display:grid;grid-template-columns:140px 1fr;gap:12px;align-items:start}.facet-filter-values{display:flex;gap:6px;flex-wrap:wrap}.facet-filter-values>small{color:#68746b;font-size:11px;padding-top:5px}.facet-filter-chip{border:1px solid var(--line);background:#151a17;color:#9aa79d;border-radius:999px;padding:6px 9px;font-size:11px;font-weight:750}.facet-filter-chip span{opacity:.65;margin-left:3px}.facet-filter-chip.on{background:var(--accent);border-color:var(--accent);color:#111610}.filter-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.filter-heading h2{margin:0}.filter-heading small{color:var(--muted);font-size:11px}.filter-badge{display:inline-grid;place-items:center;min-width:20px;height:20px;border-radius:99px;background:var(--accent);color:#111610;font-size:10px;font-weight:900;margin-left:5px}
+
+    .editor-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}.facet-dict-item{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:7px;align-items:center;padding:8px 9px;background:#151a17;border:1px solid var(--line);border-radius:8px}.facet-dict-item input{width:100%;min-width:0;border:1px solid var(--line);background:#101411;border-radius:7px;padding:8px;color:var(--text);font-size:12px}.facet-dict-item small{font:700 8px ui-monospace,monospace;color:#6f796f;white-space:nowrap}.facet-dict-item .ghost{padding:7px 9px;font-size:10px}.facet-delete{border:0;background:transparent;color:#aa7474;font-size:10px;font-weight:900}.facet-entry-list{display:grid;gap:15px}.facet-field{padding:14px;border:1px solid var(--line);border-radius:10px;background:#151a17}
+
+    .reader-overlay{position:fixed;inset:0;z-index:45;background:#0d110fed;backdrop-filter:blur(12px);display:none;overflow:auto;padding:28px 18px 70px}.reader-overlay.on{display:block}.reader-shell{width:min(1040px,100%);margin:0 auto}.reader-topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:18px}.reader-topbar>button{font-size:14px;padding:10px 14px}.reader-actions{display:flex;gap:8px}.reader-article{background:#171d19;border:1px solid var(--line2);border-radius:18px;overflow:hidden;box-shadow:0 20px 80px #0005}.reader-hero{padding:46px clamp(24px,6vw,72px) 34px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#1d251f,#171d19)}.reader-eyebrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:17px}.reader-pill{display:inline-flex;align-items:center;border:1px solid #536357;border-radius:999px;padding:6px 10px;color:#b8cbb9;font:800 11px ui-monospace,monospace;letter-spacing:.06em}.reader-pill.status{border-color:#7e8c57;color:var(--accent2)}.reader-title{font-size:clamp(36px,6vw,64px);line-height:1.08;letter-spacing:-.045em;margin:0 0 18px;max-width:18ch}.reader-meta{display:flex;gap:18px;flex-wrap:wrap;color:var(--muted);font-size:13px}.reader-body{padding:38px clamp(24px,6vw,72px) 54px}.reader-copy{font-size:20px;line-height:1.95;white-space:pre-wrap;color:#d8e0d9;max-width:38em;margin:0 0 38px}.reader-media{display:grid;gap:18px;margin:0 0 42px}.reader-media-item{border:1px solid var(--line);border-radius:14px;background:#0d110f;overflow:hidden}.reader-media-item img,.reader-media-item video{display:block;width:100%;max-height:72vh;object-fit:contain;background:#0a0d0b}.reader-media-item figcaption{padding:10px 13px;color:#7f8d82;font-size:11px;border-top:1px solid var(--line)}.reader-taxonomy{display:grid;gap:18px;border-top:1px solid var(--line);padding-top:26px}.reader-tax-row{display:grid;grid-template-columns:160px 1fr;gap:16px;align-items:start}.reader-tax-row>b{font:850 11px ui-monospace,monospace;color:#7d8a80;letter-spacing:.05em;padding-top:6px}.reader-tax-row .tag{font-size:11px;padding:6px 9px}.reader-empty{padding:34px;border:1px dashed var(--line2);border-radius:12px;color:var(--muted);text-align:center;font-size:14px}.reader-loading{padding:70px 20px;text-align:center;color:var(--muted);font-size:14px}
+    @media(max-width:1000px){.editor-grid{grid-template-columns:1fr 1fr!important}.editor-grid .panel:last-child{grid-column:1/-1}}
+    @media(max-width:700px){.capture textarea{font-size:19px!important}.form-grid label,.multi-field>b{font-size:15px!important}.form-grid input,.form-grid select,.form-grid textarea,.multi-input input{font-size:17px!important}.filter-top{grid-template-columns:1fr}.facet-filter-group{grid-template-columns:1fr;gap:7px}.editor-grid{grid-template-columns:1fr!important}.editor-grid .panel:last-child{grid-column:auto}.facet-dict-item{grid-template-columns:1fr auto auto}.facet-dict-item small{grid-column:1/-1;grid-row:2}.reader-overlay{padding:12px 8px 50px}.reader-topbar{position:sticky;top:0;z-index:3;background:#0d110ff2;padding:8px 0}.reader-hero{padding:30px 20px 25px}.reader-title{font-size:34px}.reader-body{padding:28px 20px 40px}.reader-copy{font-size:18px;line-height:1.9}.reader-tax-row{grid-template-columns:1fr;gap:7px}}
   </style>
 </head>
 <body>
@@ -80,7 +42,7 @@ const title = 'PRIVATE GAME NOTEBOOK';
 
   <main class="main">
     <header class="top">
-      <div class="search">⌕ <input id="search" placeholder="ゲーム、タグ、キャラ、言葉から探す" /><kbd>⌘ K</kbd></div>
+      <div class="search">⌕ <input id="search" placeholder="ゲーム、本文、ファセット値から探す" /><kbd>⌘ K</kbd></div>
       <button class="ghost" id="dig">↻ 掘り返す</button>
       <button class="ghost" id="candidate-filter">出力候補 <i id="candidate-count">0</i></button>
     </header>
@@ -92,66 +54,56 @@ const title = 'PRIVATE GAME NOTEBOOK';
         <label>TYPE<select id="quick-type"></select></label>
         <div class="capture-body"><textarea id="quick-body" placeholder="何か引っかかった？ 一言だけでも残す。"></textarea><div class="capture-actions"><button class="ghost" id="quick-full">詳しく入力</button><button class="primary" id="quick-save">保存</button></div></div>
       </div>
-      <h2>最近の断片</h2>
-      <div class="cards" id="inbox-cards"></div>
+      <h2>最近の断片</h2><div class="cards" id="inbox-cards"></div>
     </section>
 
     <section class="view" id="view-library">
-      <div class="head"><div><small>ALL FRAGMENTS</small><h1>LIBRARY</h1><p>文章・画像・動画を横断して、自分がゲームから拾ったものを探す。</p></div></div>
-      <div class="chips" id="type-filters"></div>
+      <div class="head"><div><small>ALL FRAGMENTS</small><h1>LIBRARY</h1><p>全文検索とファセットを組み合わせて、自分の記録を絞り込む。</p></div></div>
+      <div class="filter-panel">
+        <div class="filter-heading"><h2>絞り込み <span class="filter-badge" id="filter-active-count">0</span></h2><small id="filter-result-count">0件</small></div>
+        <div class="filter-top">
+          <label class="filter-control"><b>GAME</b><select id="filter-game"></select></label>
+          <label class="filter-control"><b>TYPE</b><select id="filter-type"></select></label>
+          <label class="filter-control"><b>活用状態</b><select id="filter-status"><option value="all">すべて</option><option value="private">ストック</option><option value="candidate">出力候補</option><option value="exported">使用済み</option></select></label>
+          <div class="filter-clear"><button class="ghost" id="clear-filters" type="button">条件をクリア</button></div>
+        </div>
+        <div class="facet-filters" id="facet-filters"></div>
+      </div>
       <div class="library" id="library-list"></div>
     </section>
 
     <section class="view" id="view-game">
-      <div class="game-layout">
-        <div class="game-list" id="game-list"></div>
-        <div class="game-panel"><div class="game-head"><div><small>GAME NOTEBOOK</small><h1 id="game-title">ゲームを選択</h1><p id="game-meta"></p></div><button class="primary" id="game-add">＋ このゲームに追加</button></div><div class="stats" id="game-stats"></div><div id="game-notes"></div></div>
-      </div>
+      <div class="game-layout"><div class="game-list" id="game-list"></div><div class="game-panel"><div class="game-head"><div><small>GAME NOTEBOOK</small><h1 id="game-title">ゲームを選択</h1><p id="game-meta"></p></div><button class="primary" id="game-add">＋ このゲームに追加</button></div><div class="stats" id="game-stats"></div><div id="game-notes"></div></div></div>
     </section>
 
     <section class="view" id="view-index">
-      <div class="head"><div><small>YOUR PERSONAL INDEX</small><h1>INDEX</h1><p>ゲーム名ではなく、「自分が何に反応したか」から記録を掘る。</p></div></div>
-      <div class="index-grid"><div class="panel"><h2>タグ</h2><div id="index-tags"></div></div><div class="panel"><h2>キャラクター / 人物</h2><div id="index-characters"></div></div><div class="panel full"><h2>キーワード / テーマ</h2><div class="cloud" id="index-themes"></div></div></div>
+      <div class="head"><div><small>YOUR PERSONAL INDEX</small><h1>INDEX</h1><p>自分で作った分類軸ごとに、記録を横断して掘り返す。</p></div></div>
+      <div class="index-grid" id="facet-index"></div>
     </section>
 
     <section class="view" id="view-editor">
-      <div class="head"><div><small>YOUR DICTIONARY</small><h1>EDITOR</h1><p>ゲームと種類はここで増やす。使われている項目は誤削除できない。</p></div></div>
+      <div class="head"><div><small>YOUR DICTIONARY</small><h1>EDITOR</h1><p>ゲーム、種類、ファセットを自分用に育てる。使われている項目は誤削除できない。</p></div></div>
       <div class="editor-grid">
         <div class="panel"><h2>GAMES</h2><form class="dict-add" id="game-form"><input id="game-name" placeholder="ゲーム名" required /><button class="primary">追加</button></form><div class="dict-list" id="editor-games"></div></div>
         <div class="panel"><h2>TYPES</h2><form class="dict-add" id="type-form"><input id="type-name" placeholder="例：演出メモ" required /><button class="primary">追加</button></form><div class="dict-list" id="editor-types"></div></div>
+        <div class="panel"><h2>FACETS</h2><p style="font-size:11px;color:var(--muted);line-height:1.7">「場所」「感情」「システム」など、分類軸そのものを自由に追加・改名できます。</p><form class="dict-add" id="facet-form"><input id="facet-name" placeholder="例：場所" required /><button class="primary">追加</button></form><div class="dict-list" id="editor-facets"></div></div>
       </div>
     </section>
   </main>
 </div>
 
-<div class="reader-overlay" id="reader-overlay" aria-hidden="true">
-  <div class="reader-shell">
-    <div class="reader-topbar">
-      <button class="ghost" id="reader-close">← 一覧へ戻る</button>
-      <div class="reader-actions"><button class="primary" id="reader-edit">編集する</button></div>
-    </div>
-    <article class="reader-article" id="reader-article"><div class="reader-loading">読み込み中…</div></article>
-  </div>
-</div>
+<div class="reader-overlay" id="reader-overlay" aria-hidden="true"><div class="reader-shell"><div class="reader-topbar"><button class="ghost" id="reader-close">← 一覧へ戻る</button><div class="reader-actions"><button class="primary" id="reader-edit">編集する</button></div></div><article class="reader-article" id="reader-article"><div class="reader-loading">読み込み中…</div></article></div></div>
 
 <div class="overlay" id="note-overlay" aria-hidden="true"><div class="dialog">
   <div class="dialog-head"><div><small>PRIVATE NOTE</small><h2 id="note-dialog-title">断片を追加</h2></div><button class="icon" data-close="note">×</button></div>
-  <form id="note-form">
-    <input type="hidden" id="note-id" />
-    <div class="form-grid">
-      <label>ゲーム<select id="note-game" required></select></label>
-      <label>種類<select id="note-type" required></select></label>
-      <label class="full">タイトル <span>任意</span><input id="note-title" placeholder="空欄なら本文から自動生成" /></label>
-      <label class="full">メモ<textarea id="note-body" required placeholder="整っていなくてOK。あとで検索できれば十分。"></textarea></label>
-      <div class="full multi-field" data-multi="tags"><b>タグ</b><div class="multi-input"><input placeholder="1件ずつ入力" /><button type="button">決定</button></div><div class="tokens"></div></div>
-      <div class="full multi-field" data-multi="characters"><b>キャラ / 人物</b><div class="multi-input"><input placeholder="1件ずつ入力" /><button type="button">決定</button></div><div class="tokens"></div></div>
-      <div class="full multi-field" data-multi="themes"><b>キーワード / テーマ</b><div class="multi-input"><input placeholder="1件ずつ入力" /><button type="button">決定</button></div><div class="tokens"></div></div>
-      <label class="full">画像 / 動画<input id="note-media" type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm" /><span class="help">画像8MB / 動画20MBまで。複数選択可。保存時にR2へ送ります。</span></label>
-      <div class="full media-list" id="note-media-list"></div>
-      <label>活用状態<select id="note-status"><option value="private">ストック（自分用）</option><option value="candidate">出力候補</option><option value="exported">使用済み</option></select><span class="help">ここを変えても公開はされません。素材を整理するための目印です。</span></label>
-    </div>
-    <div class="dialog-foot"><button type="button" class="danger hidden" id="delete-note">削除</button><div class="spacer"></div><button type="button" class="ghost" data-close="note">キャンセル</button><button class="primary" id="save-note">保存する</button></div>
-  </form>
+  <form id="note-form"><input type="hidden" id="note-id" /><div class="form-grid">
+    <label>ゲーム<select id="note-game" required></select></label><label>種類<select id="note-type" required></select></label>
+    <label class="full">タイトル <span>任意</span><input id="note-title" placeholder="空欄なら本文から自動生成" /></label>
+    <label class="full">メモ<textarea id="note-body" required placeholder="整っていなくてOK。あとで検索できれば十分。"></textarea></label>
+    <div class="full facet-entry-list" id="note-facets"></div>
+    <label class="full">画像 / 動画<input id="note-media" type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm" /><span class="help">画像8MB / 動画20MBまで。複数選択可。保存時にR2へ送ります。</span></label><div class="full media-list" id="note-media-list"></div>
+    <label>活用状態<select id="note-status"><option value="private">ストック（自分用）</option><option value="candidate">出力候補</option><option value="exported">使用済み</option></select><span class="help">ここを変えても公開はされません。素材を整理するための目印です。</span></label>
+  </div><div class="dialog-foot"><button type="button" class="danger hidden" id="delete-note">削除</button><div class="spacer"></div><button type="button" class="ghost" data-close="note">キャンセル</button><button class="primary" id="save-note">保存する</button></div></form>
 </div></div>
 
 <div class="overlay locked" id="lock-overlay"><div class="lock-card"><div class="brand lock-brand"><b>GN</b><span>PRIVATE GAME NOTEBOOK<small>HARF-WAY PRIVATE INPUT</small></span></div><h1>UNLOCK</h1><p>このワークスペースの本文とメディアは管理キー認証後に読み込みます。</p><form id="unlock-form"><input id="admin-key" type="password" autocomplete="current-password" placeholder="HARF-WAY 管理キー" /><button class="primary">開く</button></form><small id="lock-message">Previewでは認証なしで検証できます。</small></div></div>
@@ -159,65 +111,19 @@ const title = 'PRIVATE GAME NOTEBOOK';
 <script is:inline src="/game-notes/runtime.js"></script>
 <script is:inline>
 (() => {
-  const overlay = document.getElementById('reader-overlay');
-  const article = document.getElementById('reader-article');
-  const editButton = document.getElementById('reader-edit');
-  let currentId = '';
-  let bypassReader = false;
-  let cache = null;
-  let objectUrls = [];
-  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const key = () => sessionStorage.getItem('harfway_game_notes_key') || '';
-  const headers = () => key() ? { 'x-admin-key': key() } : {};
-  const statusLabel = (v) => v === 'candidate' ? '出力候補' : v === 'exported' ? '使用済み' : 'ストック';
-  const fmt = (v) => { try { return new Intl.DateTimeFormat('ja-JP', { year:'numeric', month:'long', day:'numeric' }).format(new Date(v)); } catch { return ''; } };
-  const chips = (items=[]) => items.map(v => `<span class="tag accent">${esc(v)}</span>`).join('') || '<span style="color:#657269">—</span>';
-
-  async function loadData(force=false){
-    if(cache && !force) return cache;
-    const r = await fetch('/api/game-notes', { headers: headers(), cache:'no-store' });
-    if(!r.ok) throw new Error('note_load_failed');
-    cache = await r.json();
-    return cache;
-  }
-  async function mediaUrl(item){
-    const r = await fetch(`/api/game-notes-media?action=file&key=${encodeURIComponent(item.key)}`, { headers: headers(), cache:'no-store' });
-    if(!r.ok) return '';
-    const u = URL.createObjectURL(await r.blob()); objectUrls.push(u); return u;
-  }
-  function cleanup(){ objectUrls.forEach(URL.revokeObjectURL); objectUrls=[]; }
-  function closeReader(){ cleanup(); overlay.classList.remove('on'); overlay.setAttribute('aria-hidden','true'); document.body.style.overflow=''; currentId=''; }
-  async function openReader(id){
-    currentId=id; cleanup(); overlay.classList.add('on'); overlay.setAttribute('aria-hidden','false'); document.body.style.overflow='hidden'; article.innerHTML='<div class="reader-loading">読み込み中…</div>'; overlay.scrollTop=0;
-    try{
-      const data=await loadData(true); const n=(data.notes||[]).find(x=>String(x.id)===String(id));
-      if(!n){article.innerHTML='<div class="reader-empty">ノートが見つかりません。</div>';return}
-      const game=(data.games||[]).find(x=>x.id===n.gameId)?.name||'未登録ゲーム';
-      const type=(data.types||[]).find(x=>x.id===n.typeId)?.name||'未分類';
-      const media=(n.media||[]);
-      article.innerHTML=`<header class="reader-hero"><div class="reader-eyebrow"><span class="reader-pill">${esc(type)}</span><span class="reader-pill status">${esc(statusLabel(n.outputStatus))}</span></div><h1 class="reader-title">${esc(n.title||'無題')}</h1><div class="reader-meta"><span>${esc(game)}</span><span>${esc(fmt(n.updatedAt||n.createdAt))}</span><span>PRIVATE NOTE</span></div></header><div class="reader-body"><div class="reader-copy">${esc(n.body||'')}</div>${media.length?'<div class="reader-media" id="reader-media"></div>':''}<div class="reader-taxonomy"><div class="reader-tax-row"><b>TAGS</b><div class="tags">${chips(n.tags)}</div></div><div class="reader-tax-row"><b>CHARACTERS</b><div class="tags">${chips(n.characters)}</div></div><div class="reader-tax-row"><b>THEMES</b><div class="tags">${chips(n.themes)}</div></div></div></div>`;
-      if(media.length){
-        const root=document.getElementById('reader-media');
-        for(const [i,m] of media.entries()){
-          const fig=document.createElement('figure'); fig.className='reader-media-item'; fig.innerHTML=`<div class="reader-loading" style="padding:28px">MEDIA ${i+1} を読み込み中…</div><figcaption>${esc(m.name||m.key?.split('/').pop()||`media ${i+1}`)}</figcaption>`; root.appendChild(fig);
-          const u=await mediaUrl(m); if(!u){fig.firstElementChild.outerHTML='<div class="reader-empty">メディアを読み込めませんでした。</div>';continue}
-          const node=document.createElement(m.kind==='video'?'video':'img'); node.src=u; if(m.kind==='video'){node.controls=true;node.playsInline=true;node.preload='metadata'} else {node.alt=n.title||'';node.loading='eager'} fig.firstElementChild.replaceWith(node);
-        }
-      }
-    }catch{article.innerHTML='<div class="reader-empty">ノートを読み込めませんでした。管理キーを確認してください。</div>'}
-  }
-
-  document.addEventListener('click', (e) => {
-    const target=e.target.closest('[data-note]'); if(!target) return;
-    if(bypassReader){bypassReader=false;return}
-    e.preventDefault(); e.stopImmediatePropagation(); openReader(target.dataset.note);
-  }, true);
-  document.getElementById('reader-close').addEventListener('click', closeReader);
-  overlay.addEventListener('click', e => { if(e.target===overlay) closeReader(); });
-  editButton.addEventListener('click', () => {
-    const id=currentId; if(!id)return; closeReader(); const target=[...document.querySelectorAll('[data-note]')].find(x=>String(x.dataset.note)===String(id)); if(target){bypassReader=true;target.click()}
-  });
-  document.addEventListener('keydown', e => { if(e.key==='Escape' && overlay.classList.contains('on')){e.stopImmediatePropagation();closeReader()} }, true);
+  const overlay=document.getElementById('reader-overlay'),article=document.getElementById('reader-article'),editButton=document.getElementById('reader-edit');
+  let currentId='',bypassReader=false,cache=null,objectUrls=[];
+  const esc=(v)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const key=()=>sessionStorage.getItem('harfway_game_notes_key')||''; const headers=()=>key()?{'x-admin-key':key()}:{};
+  const statusLabel=(v)=>v==='candidate'?'出力候補':v==='exported'?'使用済み':'ストック';
+  const fmt=(v)=>{try{return new Intl.DateTimeFormat('ja-JP',{year:'numeric',month:'long',day:'numeric'}).format(new Date(v))}catch{return''}};
+  const chips=(items=[])=>items.map(v=>`<span class="tag accent">${esc(v)}</span>`).join('')||'<span style="color:#657269">—</span>';
+  async function loadData(force=false){if(cache&&!force)return cache;const r=await fetch('/api/game-notes',{headers:headers(),cache:'no-store'});if(!r.ok)throw new Error('note_load_failed');cache=await r.json();return cache}
+  async function mediaUrl(item){const r=await fetch(`/api/game-notes-media?action=file&key=${encodeURIComponent(item.key)}`,{headers:headers(),cache:'no-store'});if(!r.ok)return'';const u=URL.createObjectURL(await r.blob());objectUrls.push(u);return u}
+  function cleanup(){objectUrls.forEach(URL.revokeObjectURL);objectUrls=[]} function closeReader(){cleanup();overlay.classList.remove('on');overlay.setAttribute('aria-hidden','true');document.body.style.overflow='';currentId=''}
+  async function openReader(id){currentId=id;cleanup();overlay.classList.add('on');overlay.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';article.innerHTML='<div class="reader-loading">読み込み中…</div>';overlay.scrollTop=0;try{const data=await loadData(true),n=(data.notes||[]).find(x=>String(x.id)===String(id));if(!n){article.innerHTML='<div class="reader-empty">ノートが見つかりません。</div>';return}const game=(data.games||[]).find(x=>x.id===n.gameId)?.name||'未登録ゲーム',type=(data.types||[]).find(x=>x.id===n.typeId)?.name||'未分類',media=n.media||[],facets=data.facets||[];const taxonomy=facets.map(f=>`<div class="reader-tax-row"><b>${esc(f.name)}</b><div class="tags">${chips(n.facets?.[f.id]||[])}</div></div>`).join('');article.innerHTML=`<header class="reader-hero"><div class="reader-eyebrow"><span class="reader-pill">${esc(type)}</span><span class="reader-pill status">${esc(statusLabel(n.outputStatus))}</span></div><h1 class="reader-title">${esc(n.title||'無題')}</h1><div class="reader-meta"><span>${esc(game)}</span><span>${esc(fmt(n.updatedAt||n.createdAt))}</span><span>PRIVATE NOTE</span></div></header><div class="reader-body"><div class="reader-copy">${esc(n.body||'')}</div>${media.length?'<div class="reader-media" id="reader-media"></div>':''}${taxonomy?`<div class="reader-taxonomy">${taxonomy}</div>`:''}</div>`;if(media.length){const root=document.getElementById('reader-media');for(const [i,m] of media.entries()){const fig=document.createElement('figure');fig.className='reader-media-item';fig.innerHTML=`<div class="reader-loading" style="padding:28px">MEDIA ${i+1} を読み込み中…</div><figcaption>${esc(m.name||m.key?.split('/').pop()||`media ${i+1}`)}</figcaption>`;root.appendChild(fig);const u=await mediaUrl(m);if(!u){fig.firstElementChild.outerHTML='<div class="reader-empty">メディアを読み込めませんでした。</div>';continue}const node=document.createElement(m.kind==='video'?'video':'img');node.src=u;if(m.kind==='video'){node.controls=true;node.playsInline=true;node.preload='metadata'}else{node.alt=n.title||'';node.loading='eager'}fig.firstElementChild.replaceWith(node)}}}catch{article.innerHTML='<div class="reader-empty">ノートを読み込めませんでした。管理キーを確認してください。</div>'}}
+  document.addEventListener('click',e=>{const target=e.target.closest('[data-note]');if(!target)return;if(bypassReader){bypassReader=false;return}e.preventDefault();e.stopImmediatePropagation();openReader(target.dataset.note)},true);
+  document.getElementById('reader-close').addEventListener('click',closeReader);overlay.addEventListener('click',e=>{if(e.target===overlay)closeReader()});editButton.addEventListener('click',()=>{const id=currentId;if(!id)return;closeReader();const target=[...document.querySelectorAll('[data-note]')].find(x=>String(x.dataset.note)===String(id));if(target){bypassReader=true;target.click()}});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&overlay.classList.contains('on')){e.stopImmediatePropagation();closeReader()}},true);
 })();
 </script>
 </body>
