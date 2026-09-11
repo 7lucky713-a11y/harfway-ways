@@ -3,6 +3,7 @@ import staticGamesHandler from './games.js';
 const EDITOR_URL = process.env.WAYS_EDITOR_URL || 'https://harfway-playback-editor.vercel.app';
 const CORE_API_URL = process.env.HARFWAY_CORE_API_URL || 'https://harfway-playback.vercel.app/api/core/games';
 const TYPE_MARKER_PREFIX = '__ways_type:';
+const LABEL_MARKER_PREFIX = '__ways_label:';
 
 function fallbackPayload() {
   let statusCode = 200;
@@ -38,7 +39,10 @@ function splitTagsAndType(game) {
   const contentType = normalizeType(game?.contentType ?? game?.content_type ?? markerType);
   return {
     contentType,
-    tags: tags.filter(tag => !tag.toLowerCase().startsWith(TYPE_MARKER_PREFIX))
+    tags: tags.filter(tag => {
+      const lower = tag.toLowerCase();
+      return !lower.startsWith(TYPE_MARKER_PREFIX) && !lower.startsWith(LABEL_MARKER_PREFIX);
+    })
   };
 }
 
