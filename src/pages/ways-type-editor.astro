@@ -1,0 +1,109 @@
+---
+const title = 'WAYS / DISCOVER・TIP Preview Editor';
+---
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>{title}</title>
+    <style>
+      :root{color-scheme:dark;--bg:#090909;--panel:#111214;--line:#292b30;--text:#f5f5ef;--muted:#8f939b;--accent:#efff35;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
+      *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text)}button,input,a{font:inherit}.shell{max-width:1180px;margin:0 auto;padding:30px 24px 54px}.top{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;padding-bottom:18px;border-bottom:1px solid var(--line)}.eyebrow{font-size:10px;letter-spacing:.16em;color:var(--accent);font-weight:900}.top h1{margin:6px 0 5px;font-size:clamp(30px,5vw,56px);line-height:.95;letter-spacing:-.055em}.top p{margin:0;color:var(--muted);font-size:12px;line-height:1.7}.preview-only{border:1px solid #5e6528;color:var(--accent);padding:7px 9px;border-radius:999px;font-size:10px;font-weight:900;white-space:nowrap}.tools{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;margin:20px 0}.tools input{width:100%;border:1px solid var(--line);background:#0e0f11;color:#fff;border-radius:10px;padding:11px 12px}.btn{border:1px solid var(--line);background:#141519;color:#fff;border-radius:10px;padding:10px 12px;text-decoration:none;font-weight:850;cursor:pointer}.btn.primary{background:var(--accent);border-color:var(--accent);color:#111}.status{min-height:20px;color:var(--muted);font-size:11px;margin:6px 0 12px}.list{display:grid;gap:8px}.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;border:1px solid var(--line);background:var(--panel);padding:13px 14px;border-radius:12px}.game-title{font-weight:900;font-size:14px}.game-meta{margin-top:4px;color:var(--muted);font-size:10px}.types{display:flex;gap:7px}.type{border:1px solid #393c42;background:#0c0d0f;color:#a8acb4;border-radius:999px;padding:8px 11px;font-size:10px;font-weight:900;cursor:pointer}.type.on{background:var(--accent);border-color:var(--accent);color:#111}.empty{padding:40px 16px;border:1px dashed var(--line);color:var(--muted);text-align:center}.footer-note{margin-top:24px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:11px;line-height:1.8}.footer-note b{color:#ddd}@media(max-width:700px){.shell{padding:18px 14px 42px}.top{display:block}.preview-only{display:inline-block;margin-top:12px}.tools{grid-template-columns:1fr 1fr}.tools input{grid-column:1/-1}.row{grid-template-columns:1fr}.types{justify-content:flex-start}.type{flex:1}.game-title{font-size:15px}}
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="top">
+        <div>
+          <div class="eyebrow">HARF-WAY / WAYS CONTENT TYPE</div>
+          <h1>DISCOVER / TIP</h1>
+          <p>動画そのものは同じWAYSで管理し、表示する棚だけを分けるPreviewです。</p>
+        </div>
+        <span class="preview-only">PREVIEW ONLY</span>
+      </header>
+
+      <section class="tools">
+        <input id="search" type="search" placeholder="作品名で検索" autocomplete="off" />
+        <a class="btn primary" id="openWays" href="/?view=discover">WAYSで確認 ↗</a>
+        <button class="btn" id="reset" type="button">分類をリセット</button>
+      </section>
+      <div id="status" class="status">WAYSデータを読み込み中…</div>
+      <section id="list" class="list"></section>
+
+      <div class="footer-note">
+        <b>このPreviewではProductionデータを書き換えません。</b><br />
+        選択した分類はこのブラウザのLocal Storageだけに保存され、同じPreviewのWAYS画面へ反映されます。本番OK後に、この選択欄を実エディターの保存値 <code>contentType</code> へ接続する想定です。
+      </div>
+    </main>
+
+    <script is:inline>
+      (() => {
+        const KEY = 'ways_content_type_preview_v1';
+        const $ = (q) => document.querySelector(q);
+        const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        let games = [];
+        let overrides = readOverrides();
+
+        function readOverrides(){
+          try {
+            const value = JSON.parse(localStorage.getItem(KEY) || '{}');
+            return value && typeof value === 'object' ? value : {};
+          } catch { return {}; }
+        }
+        function saveOverrides(){
+          localStorage.setItem(KEY, JSON.stringify(overrides));
+        }
+        function kindOf(game){
+          const raw = String(overrides[game.id] || game.contentType || game.content_type || 'discover').toLowerCase();
+          return raw === 'tip' ? 'tip' : 'discover';
+        }
+        function setKind(id, kind){
+          overrides[id] = kind === 'tip' ? 'tip' : 'discover';
+          saveOverrides();
+          render();
+          $('#status').textContent = 'Preview分類を保存しました。WAYS側で表示を確認できます。';
+          $('#openWays').href = '/?view=' + encodeURIComponent(kind);
+        }
+        function render(){
+          const q = $('#search').value.trim().toLocaleLowerCase('ja-JP');
+          const rows = games.filter((game) => !q || String(game.title || '').toLocaleLowerCase('ja-JP').includes(q));
+          $('#status').textContent = `${rows.length} / ${games.length} 作品を表示 · Preview分類 ${Object.keys(overrides).length}件`;
+          $('#list').innerHTML = rows.length ? rows.map((game) => {
+            const kind = kindOf(game);
+            return `<article class="row" data-id="${esc(game.id)}"><div><div class="game-title">${esc(game.title || '名称未設定')}</div><div class="game-meta">${esc(game.category || 'ジャンル未設定')} · ${esc(game.status || 'published')}</div></div><div class="types"><button class="type ${kind === 'discover' ? 'on' : ''}" data-kind="discover">DISCOVER</button><button class="type ${kind === 'tip' ? 'on' : ''}" data-kind="tip">TIP</button></div></article>`;
+          }).join('') : '<div class="empty">該当する作品がありません。</div>';
+        }
+
+        $('#list').addEventListener('click', (event) => {
+          const button = event.target.closest('[data-kind]');
+          const row = event.target.closest('[data-id]');
+          if (!button || !row) return;
+          setKind(row.dataset.id, button.dataset.kind);
+        });
+        $('#search').addEventListener('input', render);
+        $('#reset').addEventListener('click', () => {
+          overrides = {};
+          localStorage.removeItem(KEY);
+          render();
+          $('#status').textContent = 'Preview分類をリセットしました。すべてDISCOVER扱いです。';
+          $('#openWays').href = '/?view=discover';
+        });
+
+        fetch('/api/games-live', { cache: 'no-store' })
+          .then((response) => response.json())
+          .then((data) => {
+            games = Array.isArray(data?.entries) ? data.entries : [];
+            games.sort((a,b) => String(a.title || '').localeCompare(String(b.title || ''), 'ja'));
+            render();
+          })
+          .catch((error) => {
+            console.error(error);
+            $('#status').textContent = 'WAYSデータを読み込めませんでした。';
+            $('#list').innerHTML = '<div class="empty">読み込みに失敗しました。</div>';
+          });
+      })();
+    </script>
+  </body>
+</html>

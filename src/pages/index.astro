@@ -23,6 +23,10 @@ const source = raw
   .replace(
     "if(tb){e.preventDefault();e.stopPropagation();setTagShelf(tb.dataset.mtag);return}",
     "if(tb){e.preventDefault();e.stopPropagation();if(tb.dataset.mtag===activeTag){resetShelf();return}setTagShelf(tb.dataset.mtag);return}"
+  )
+  .replace(
+    'filtered=items.slice();boot()',
+    "filtered=items.filter(x=>{let o='';try{const m=JSON.parse(localStorage.getItem('ways_content_type_preview_v1')||'{}');o=String(m?.[x.id]||'')}catch{}const k=String(o||x?.contentType||x?.content_type||'discover').toLowerCase();return k!=='tip'});boot()"
   );
 if (/const API\s*=\s*['"]\/api\/games['"]\s*;/.test(source)) {
   throw new Error('Legacy /api/games binding remains in WAYS frontend');
@@ -31,6 +35,61 @@ const baseHead = source.match(/<head>([\s\S]*?)<\/head>/i)?.[1] ?? '';
 const baseBody = source.match(/<body>([\s\S]*?)<\/body>/i)?.[1] ?? source;
 const navStyle = `
 <style>
+.ways-type-pill{
+  border:1px solid #3b3e45;
+  background:transparent;
+  color:#a9adb5;
+  border-radius:999px;
+  padding:7px 10px;
+  font-size:10px;
+  font-weight:900;
+  cursor:pointer;
+}
+.ways-type-pill.active{
+  border-color:var(--accent);
+  background:var(--accent);
+  color:#111;
+}
+.ways-kind-badge{
+  border-color:var(--accent)!important;
+  color:var(--accent);
+  font-weight:950;
+}
+.ways-type-editor-link{
+  border:1px dashed #4b4f57;
+  color:#a9adb5;
+  border-radius:999px;
+  padding:7px 10px;
+  font-size:10px;
+  text-decoration:none;
+}
+.ways-mobile-type{
+  display:none;
+}
+@media (max-width:899px){
+  .ways-mobile-type{
+    position:fixed;
+    z-index:22;
+    left:14px;
+    top:54px;
+    display:flex;
+    gap:6px;
+  }
+  .ways-mobile-type button{
+    border:1px solid #ffffff3d;
+    background:#050505cc;
+    color:#fff;
+    border-radius:999px;
+    padding:7px 9px;
+    font-size:9px;
+    font-weight:900;
+  }
+  .ways-mobile-type button.active{
+    border-color:var(--accent);
+    background:var(--accent);
+    color:#111;
+  }
+}
 @media (min-width:900px){
   .ways-stage-skip{
     position:absolute;
@@ -104,6 +163,164 @@ const navStyle = `
 const navScript = `
 <script>
 (() => {
+  const CONTENT_TYPE_KEY = 'ways_content_type_preview_v1';
+  let activeContentType = new URLSearchParams(location.search).get('view') === 'tip' ? 'tip' : 'discover';
+  let contentTypeOverrides = {};
+  try {
+    const saved = JSON.parse(localStorage.getItem(CONTENT_TYPE_KEY) || '{}');
+    if (saved && typeof saved === 'object') contentTypeOverrides = saved;
+  } catch {}
+
+  const contentTypeOf = (item) => {
+    const raw = String(contentTypeOverrides?.[item?.id] || item?.contentType || item?.content_type || 'discover').toLowerCase();
+    return raw === 'tip' ? 'tip' : 'discover';
+  };
+
+  const originalBoot = typeof boot === 'function' ? boot : null;
+  if (originalBoot) {
+    boot = function(){
+      filtered = items.filter((item) => contentTypeOf(item) === activeContentType);
+      originalBoot();
+      syncContentTypeUI();
+    };
+  }
+
+  const originalRenderShelfContext = typeof renderShelfContext === 'function' ? renderShelfContext : null;
+  if (originalRenderShelfContext) {
+    renderShelfContext = function(){
+      originalRenderShelfContext();
+      const context = document.querySelector('#shelfContext');
+      if (!context) return;
+      context.querySelectorAll('[data-ways-type]').forEach((node) => node.remove());
+      const editor = context.querySelector('.ways-type-editor-link');
+      if (editor) editor.remove();
+      const discover = document.createElement('button');
+      discover.type = 'button';
+      discover.className = 'ways-type-pill' + (activeContentType === 'discover' ? ' active' : '');
+      discover.dataset.waysType = 'discover';
+      discover.textContent = 'DISCOVER';
+      const tip = document.createElement('button');
+      tip.type = 'button';
+      tip.className = 'ways-type-pill' + (activeContentType === 'tip' ? ' active' : '');
+      tip.dataset.waysType = 'tip';
+      tip.textContent = 'TIP';
+      const link = document.createElement('a');
+      link.className = 'ways-type-editor-link';
+      link.href = '/ways-type-editor/';
+      link.textContent = 'TYPE EDITOR ↗';
+      context.prepend(tip);
+      context.prepend(discover);
+      context.append(link);
+      const pill = context.querySelector('.context-pill');
+      if (pill && !activeTag) pill.textContent = activeContentType.toUpperCase() + ' · ' + filtered.length + ' GAMES';
+    };
+  }
+
+  const originalSelect = typeof select === 'function' ? select : null;
+  if (originalSelect) {
+    select = function(i, quiet = false){
+      originalSelect(i, quiet);
+      updateContentBadge();
+    };
+  }
+
+  function updateContentBadge(){
+    const stageTop = document.querySelector('.desktop .stage-top');
+    if (!stageTop) return;
+    let badge = document.querySelector('#waysKindBadge');
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.id = 'waysKindBadge';
+      badge.className = 'badge ways-kind-badge';
+      stageTop.appendChild(badge);
+    }
+    const current = filtered?.[selected];
+    badge.textContent = current ? contentTypeOf(current).toUpperCase() : activeContentType.toUpperCase();
+  }
+
+  function emptyState(){
+    const shelf = document.querySelector('#shelf');
+    const feed = document.querySelector('#mfeed');
+    if (shelf) shelf.innerHTML = '<div style="grid-column:1/-1;color:#777;font-size:12px;padding:22px 0">この棚にはまだ動画がありません。</div>';
+    if (feed) feed.innerHTML = '<div style="height:100dvh;display:grid;place-items:center;color:#777;padding:30px;text-align:center">この棚にはまだ動画がありません。</div>';
+    const title = document.querySelector('#title');
+    const desc = document.querySelector('#desc');
+    const count = document.querySelector('#count');
+    const video = document.querySelector('#mainVideo');
+    if (title) title.textContent = activeContentType === 'tip' ? 'TIPはまだありません' : 'DISCOVERはまだありません';
+    if (desc) desc.textContent = 'TYPE EDITORで動画タイプを切り替えると、この棚に表示されます。';
+    if (count) count.textContent = '00 / 00';
+    if (video) { try { video.pause(); video.removeAttribute('src'); video.load(); } catch {} }
+  }
+
+  function setContentType(type){
+    activeContentType = type === 'tip' ? 'tip' : 'discover';
+    activeTag = '';
+    filtered = items.filter((item) => contentTypeOf(item) === activeContentType);
+    selected = 0;
+    shelfPage = 0;
+    clearWarmers?.();
+    renderShelfContext?.();
+    updateShelfPager?.();
+    resetShelfRender?.();
+    const url = new URL(location.href);
+    url.searchParams.set('view', activeContentType);
+    history.replaceState(null, '', url);
+    syncContentTypeUI();
+    if (!filtered.length) {
+      emptyState();
+      return;
+    }
+    if (innerWidth >= 900) {
+      select(0, true);
+      startShelfAfterMain?.();
+    } else {
+      mobile(true);
+    }
+    document.querySelector('.shelf-wrap')?.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function syncContentTypeUI(){
+    document.querySelectorAll('[data-ways-type]').forEach((button) => {
+      button.classList.toggle('active', button.dataset.waysType === activeContentType);
+    });
+    updateContentBadge();
+  }
+
+  const shelfContext = document.querySelector('#shelfContext');
+  if (shelfContext) {
+    const previousContextClick = shelfContext.onclick;
+    shelfContext.onclick = (event) => {
+      const typeButton = event.target.closest('[data-ways-type]');
+      if (typeButton) {
+        event.preventDefault();
+        setContentType(typeButton.dataset.waysType);
+        return;
+      }
+      previousContextClick?.call(shelfContext, event);
+    };
+  }
+
+  if (!document.querySelector('.ways-mobile-type')) {
+    const mobileType = document.createElement('div');
+    mobileType.className = 'ways-mobile-type';
+    mobileType.innerHTML = '<button type="button" data-ways-type="discover">DISCOVER</button><button type="button" data-ways-type="tip">TIP</button>';
+    mobileType.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-ways-type]');
+      if (button) setContentType(button.dataset.waysType);
+    });
+    document.body.appendChild(mobileType);
+  }
+
+  window.addEventListener('storage', (event) => {
+    if (event.key !== CONTENT_TYPE_KEY) return;
+    try {
+      const saved = JSON.parse(event.newValue || '{}');
+      contentTypeOverrides = saved && typeof saved === 'object' ? saved : {};
+    } catch { contentTypeOverrides = {}; }
+    setContentType(activeContentType);
+  });
+
   const stage = document.querySelector('.desktop .stage');
   if (stage && !stage.querySelector('.ways-stage-skip')) {
     const prev = document.createElement('button');
@@ -194,6 +411,11 @@ const navScript = `
       observer.disconnect();
     }
   }
+
+  requestAnimationFrame(() => {
+    if (items?.length) setContentType(activeContentType);
+    else syncContentTypeUI();
+  });
 })();
 </script>`;
 const head = `${baseHead}${navStyle}`;
@@ -204,4 +426,4 @@ const body = baseBody;
   <head><Fragment set:html={head} /></head>
   <body><Fragment set:html={body} /><script is:inline src="/ga4-service.js"></script><script is:inline src="/ways-analytics.js"></script><script is:inline src="/steam-utm.js"></script><script is:inline src="/ways-deeplink.js"></script><script is:inline src="/ways-ads.js"></script><script is:inline src="/ways-mobile-enhancements.js"></script><script is:inline src="/ways-share.js"></script><Fragment set:html={navScript} /></body>
 </html>
-<!-- WAYS live games API + custom analytics + GA4 bridge + Steam deep links + ads + mobile display enhancements + sharing/embed + stage nav + auto-hide volume -->
+<!-- WAYS live games API + DISCOVER/TIP preview filtering + custom analytics + GA4 bridge + Steam deep links + ads + mobile display enhancements + sharing/embed + stage nav + auto-hide volume -->
