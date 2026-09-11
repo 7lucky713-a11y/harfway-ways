@@ -1,109 +1,61 @@
 ---
-const title = 'WAYS / DISCOVER・TIP Preview Editor';
+const title = 'HARF-WAY PLAYBACK EDITOR / DISCOVER・TIP Preview';
 ---
 <!doctype html>
 <html lang="ja">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="robots" content="noindex,nofollow" />
-    <title>{title}</title>
-    <style>
-      :root{color-scheme:dark;--bg:#090909;--panel:#111214;--line:#292b30;--text:#f5f5ef;--muted:#8f939b;--accent:#efff35;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
-      *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text)}button,input,a{font:inherit}.shell{max-width:1180px;margin:0 auto;padding:30px 24px 54px}.top{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;padding-bottom:18px;border-bottom:1px solid var(--line)}.eyebrow{font-size:10px;letter-spacing:.16em;color:var(--accent);font-weight:900}.top h1{margin:6px 0 5px;font-size:clamp(30px,5vw,56px);line-height:.95;letter-spacing:-.055em}.top p{margin:0;color:var(--muted);font-size:12px;line-height:1.7}.preview-only{border:1px solid #5e6528;color:var(--accent);padding:7px 9px;border-radius:999px;font-size:10px;font-weight:900;white-space:nowrap}.tools{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;margin:20px 0}.tools input{width:100%;border:1px solid var(--line);background:#0e0f11;color:#fff;border-radius:10px;padding:11px 12px}.btn{border:1px solid var(--line);background:#141519;color:#fff;border-radius:10px;padding:10px 12px;text-decoration:none;font-weight:850;cursor:pointer}.btn.primary{background:var(--accent);border-color:var(--accent);color:#111}.status{min-height:20px;color:var(--muted);font-size:11px;margin:6px 0 12px}.list{display:grid;gap:8px}.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;border:1px solid var(--line);background:var(--panel);padding:13px 14px;border-radius:12px}.game-title{font-weight:900;font-size:14px}.game-meta{margin-top:4px;color:var(--muted);font-size:10px}.types{display:flex;gap:7px}.type{border:1px solid #393c42;background:#0c0d0f;color:#a8acb4;border-radius:999px;padding:8px 11px;font-size:10px;font-weight:900;cursor:pointer}.type.on{background:var(--accent);border-color:var(--accent);color:#111}.empty{padding:40px 16px;border:1px dashed var(--line);color:var(--muted);text-align:center}.footer-note{margin-top:24px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:11px;line-height:1.8}.footer-note b{color:#ddd}@media(max-width:700px){.shell{padding:18px 14px 42px}.top{display:block}.preview-only{display:inline-block;margin-top:12px}.tools{grid-template-columns:1fr 1fr}.tools input{grid-column:1/-1}.row{grid-template-columns:1fr}.types{justify-content:flex-start}.type{flex:1}.game-title{font-size:15px}}
-    </style>
-  </head>
-  <body>
-    <main class="shell">
-      <header class="top">
-        <div>
-          <div class="eyebrow">HARF-WAY / WAYS CONTENT TYPE</div>
-          <h1>DISCOVER / TIP</h1>
-          <p>動画そのものは同じWAYSで管理し、表示する棚だけを分けるPreviewです。</p>
-        </div>
-        <span class="preview-only">PREVIEW ONLY</span>
-      </header>
-
-      <section class="tools">
-        <input id="search" type="search" placeholder="作品名で検索" autocomplete="off" />
-        <a class="btn primary" id="openWays" href="/?view=discover">WAYSで確認 ↗</a>
-        <button class="btn" id="reset" type="button">分類をリセット</button>
-      </section>
-      <div id="status" class="status">WAYSデータを読み込み中…</div>
-      <section id="list" class="list"></section>
-
-      <div class="footer-note">
-        <b>このPreviewではProductionデータを書き換えません。</b><br />
-        選択した分類はこのブラウザのLocal Storageだけに保存され、同じPreviewのWAYS画面へ反映されます。本番OK後に、この選択欄を実エディターの保存値 <code>contentType</code> へ接続する想定です。
-      </div>
-    </main>
-
-    <script is:inline>
-      (() => {
-        const KEY = 'ways_content_type_preview_v1';
-        const $ = (q) => document.querySelector(q);
-        const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-        let games = [];
-        let overrides = readOverrides();
-
-        function readOverrides(){
-          try {
-            const value = JSON.parse(localStorage.getItem(KEY) || '{}');
-            return value && typeof value === 'object' ? value : {};
-          } catch { return {}; }
-        }
-        function saveOverrides(){
-          localStorage.setItem(KEY, JSON.stringify(overrides));
-        }
-        function kindOf(game){
-          const raw = String(overrides[game.id] || game.contentType || game.content_type || 'discover').toLowerCase();
-          return raw === 'tip' ? 'tip' : 'discover';
-        }
-        function setKind(id, kind){
-          overrides[id] = kind === 'tip' ? 'tip' : 'discover';
-          saveOverrides();
-          render();
-          $('#status').textContent = 'Preview分類を保存しました。WAYS側で表示を確認できます。';
-          $('#openWays').href = '/?view=' + encodeURIComponent(kind);
-        }
-        function render(){
-          const q = $('#search').value.trim().toLocaleLowerCase('ja-JP');
-          const rows = games.filter((game) => !q || String(game.title || '').toLocaleLowerCase('ja-JP').includes(q));
-          $('#status').textContent = `${rows.length} / ${games.length} 作品を表示 · Preview分類 ${Object.keys(overrides).length}件`;
-          $('#list').innerHTML = rows.length ? rows.map((game) => {
-            const kind = kindOf(game);
-            return `<article class="row" data-id="${esc(game.id)}"><div><div class="game-title">${esc(game.title || '名称未設定')}</div><div class="game-meta">${esc(game.category || 'ジャンル未設定')} · ${esc(game.status || 'published')}</div></div><div class="types"><button class="type ${kind === 'discover' ? 'on' : ''}" data-kind="discover">DISCOVER</button><button class="type ${kind === 'tip' ? 'on' : ''}" data-kind="tip">TIP</button></div></article>`;
-          }).join('') : '<div class="empty">該当する作品がありません。</div>';
-        }
-
-        $('#list').addEventListener('click', (event) => {
-          const button = event.target.closest('[data-kind]');
-          const row = event.target.closest('[data-id]');
-          if (!button || !row) return;
-          setKind(row.dataset.id, button.dataset.kind);
-        });
-        $('#search').addEventListener('input', render);
-        $('#reset').addEventListener('click', () => {
-          overrides = {};
-          localStorage.removeItem(KEY);
-          render();
-          $('#status').textContent = 'Preview分類をリセットしました。すべてDISCOVER扱いです。';
-          $('#openWays').href = '/?view=discover';
-        });
-
-        fetch('/api/games-live', { cache: 'no-store' })
-          .then((response) => response.json())
-          .then((data) => {
-            games = Array.isArray(data?.entries) ? data.entries : [];
-            games.sort((a,b) => String(a.title || '').localeCompare(String(b.title || ''), 'ja'));
-            render();
-          })
-          .catch((error) => {
-            console.error(error);
-            $('#status').textContent = 'WAYSデータを読み込めませんでした。';
-            $('#list').innerHTML = '<div class="empty">読み込みに失敗しました。</div>';
-          });
-      })();
-    </script>
-  </body>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="robots" content="noindex,nofollow" />
+<title>{title}</title>
+<style>
+:root{color-scheme:dark;--a:#efff3d;--bg:#080808;--l:#303036;--m:#92928c;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#f5f5f0}button,input,textarea,select{font:inherit}button{cursor:pointer}.btn{border:1px solid var(--l);background:#19191d;color:#fff;padding:9px 12px;border-radius:9px;font-weight:800}.btn.primary{background:var(--a);color:#111;border-color:transparent}.btn:disabled{opacity:.35;cursor:not-allowed}.top{position:sticky;top:0;z-index:20;display:flex;gap:10px;align-items:center;padding:11px 14px;border-bottom:1px solid #242427;background:#0b0b0ddd;backdrop-filter:blur(10px)}.brand{font-weight:950}.brand b{color:var(--a)}#state{margin-right:auto;color:var(--m);font-size:11px}.layout{display:grid;grid-template-columns:250px minmax(430px,1fr) 380px;min-height:calc(100vh - 54px)}.side{padding:12px;border-right:1px solid #242427;background:#0d0d0f}.sidehead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}.side input{width:100%;padding:8px;border:1px solid var(--l);border-radius:8px;background:#111;color:#fff;margin-bottom:8px}.list{display:grid;gap:6px;max-height:calc(100vh - 150px);overflow:auto}.game{width:100%;text-align:left;padding:9px;border-radius:9px;border:1px solid transparent;background:#141417;color:#ddd}.game.on{border-color:#727256;background:#1b1b16}.game b{display:block;font-size:12px}.game small{color:#777}.edit{padding:22px}.editin{max-width:760px;margin:auto}.edit h1{margin:5px 0 17px;font-size:28px}.stack{display:grid;gap:12px}.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field{display:grid;gap:6px}.field label{font-size:11px;font-weight:800}.field input,.field textarea,.field select{width:100%;padding:10px 11px;border:1px solid var(--l);border-radius:8px;background:#09090b;color:#fff}.field textarea{min-height:92px;resize:vertical}.muted{color:var(--m);font-size:12px;line-height:1.7}.k{font-size:10px;letter-spacing:.16em;color:var(--a);font-weight:900}.destination{padding:12px;border:1px solid #596124;border-radius:12px;background:#15160e}.destination-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:10px}.destination-head strong{font-size:12px}.destination-head small{display:block;color:#a7a77f;font-size:10px;margin-top:3px}.destination-types{display:grid;grid-template-columns:1fr 1fr;gap:8px}.dest{border:1px solid #3b3e42;background:#0b0c0e;color:#b8bbc1;border-radius:10px;padding:12px;text-align:left}.dest b{display:block;font-size:12px}.dest span{display:block;color:#7f838a;font-size:10px;margin-top:4px;line-height:1.4}.dest.on{border-color:var(--a);box-shadow:inset 0 0 0 1px var(--a);background:#171a0e}.dest.on b{color:var(--a)}.preview-note{display:inline-flex;align-items:center;gap:6px;border:1px solid #596124;color:var(--a);border-radius:999px;padding:5px 8px;font-size:9px;font-weight:900;white-space:nowrap}.video{padding:10px;border:1px solid var(--l);border-radius:12px;background:#0d0d0f}.video-box{width:100%;aspect-ratio:16/9;background:#060606;border-radius:8px;overflow:hidden;position:relative;display:grid;place-items:center}.video-box video,.video-box img{width:100%;height:100%;object-fit:contain;background:#000}.video-empty{color:#62656b;font-size:12px}.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.preview{padding:16px;border-left:1px solid #242427;background:#0d0d0f}.phone{height:min(76vh,700px);border:1px solid #333;border-radius:24px;overflow:hidden;position:relative;background:#000}.phone video,.phone img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.shade{position:absolute;inset:0;background:linear-gradient(#0008,#0000 38%,#000 100%)}.ptop{position:absolute;top:0;left:0;right:0;padding:17px;font-size:11px;font-weight:950}.ptop b{color:var(--a)}.meta{position:absolute;left:15px;right:65px;bottom:65px;text-shadow:0 2px 10px #000}.label{font-size:9px;color:var(--a);font-weight:900}.genres{font-size:9px;color:#ddd;margin-top:4px}.title{font-size:27px;line-height:1.02;font-weight:950;margin-top:5px}.desc{font-size:11px;line-height:1.55;margin-top:7px}.tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}.tag{font-size:8px;border:1px solid #ffffff48;border-radius:99px;padding:3px 6px;background:#0007}.store{display:inline-block;margin-top:9px;padding:7px 10px;border-radius:99px;background:var(--a);color:#111;text-decoration:none;font-size:9px;font-weight:900}.preview-foot{margin-top:12px;padding:10px;border:1px solid #2d2f34;border-radius:10px;color:#8d9096;font-size:10px;line-height:1.6}.preview-foot b{color:var(--a)}@media(max-width:1050px){.layout{grid-template-columns:240px 1fr}.preview{display:none}}@media(max-width:700px){.layout{display:block}.side{border-right:0;border-bottom:1px solid #242427}.list{grid-template-columns:1fr 1fr;max-height:240px}.edit{padding:14px}.g2{grid-template-columns:1fr}.top{flex-wrap:wrap}.destination-types{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">HARF-WAY <b>PLAYBACK</b> EDITOR</div>
+  <div id="state">Preview読込中…</div>
+  <span class="preview-note">PREVIEW ONLY / DB書込なし</span>
+  <button class="btn primary" disabled>既存動画を一括最適化</button>
+  <button class="btn" disabled>R2お掃除チェック</button>
+  <a class="btn" id="feedPreview" href="/?view=discover">フィードプレビュー</a>
+  <button id="reload" class="btn">再読込</button>
+  <button class="btn" disabled>ログアウト</button>
+</header>
+<div class="layout">
+  <aside class="side">
+    <div class="sidehead"><b>作品</b><button class="btn primary" disabled>＋追加</button></div>
+    <input id="search" placeholder="作品名で検索" />
+    <div id="list" class="list"></div>
+  </aside>
+  <main class="edit">
+    <div id="editor" class="editin"><p class="muted">作品データを読み込み中…</p></div>
+  </main>
+  <aside class="preview">
+    <div class="k" style="margin-bottom:10px">LIVE PREVIEW</div>
+    <div id="live"></div>
+    <div class="preview-foot"><b>投稿先</b>を切り替えると、右のプレビューと「フィードプレビュー」の表示先が連動します。<br />このPreviewでは分類をブラウザ内だけに保存します。</div>
+  </aside>
+</div>
+<script is:inline>
+(() => {
+  const KEY='ways_content_type_preview_v1';
+  const $=q=>document.querySelector(q);
+  const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+  let games=[],sel=null,overrides=readOverrides();
+  function readOverrides(){try{const v=JSON.parse(localStorage.getItem(KEY)||'{}');return v&&typeof v==='object'?v:{}}catch{return {}}}
+  function saveOverrides(){localStorage.setItem(KEY,JSON.stringify(overrides))}
+  function kindOf(g){const raw=String(overrides[g.id]||g.contentType||g.content_type||'discover').toLowerCase();return raw==='tip'?'tip':'discover'}
+  function cur(){return games.find(x=>x.id===sel)}
+  function list(){const q=$('#search').value.toLowerCase().trim(),a=games.filter(g=>!q||String(g.title||'').toLowerCase().includes(q));$('#list').innerHTML=a.map(g=>`<button class="game ${g.id===sel?'on':''}" data-id="${esc(g.id)}"><b>${g.status==='published'?'●':'○'} ${esc(g.title||'名称未設定')}</b><small>${esc(g.category||'ジャンル未設定')} / ${kindOf(g).toUpperCase()}</small></button>`).join('')||'<p class="muted">該当なし</p>';$('#list').querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>{sel=b.dataset.id;render()})}
+  function field(label,value,type='input'){if(type==='textarea')return `<div class="field"><label>${label}</label><textarea readonly>${esc(value)}</textarea></div>`;return `<div class="field"><label>${label}</label><input value="${esc(value)}" readonly></div>`}
+  function edit(){const g=cur();if(!g){$('#editor').innerHTML='<p class="muted">作品を選択してください。</p>';return}const kind=kindOf(g);$('#editor').innerHTML=`<div class="k">${g.status==='published'?'PUBLISHED':'DRAFT'} / ${esc(g.id)}</div><h1>${esc(g.title||'新しい作品')}</h1><div class="stack"><div class="g2">${field('作品名',g.title)}<div class="field"><label>公開状態</label><select disabled><option>${g.status==='published'?'公開':'下書き'}</option></select></div></div>${field('紹介文',g.description||'','textarea')}<div class="destination"><div class="destination-head"><div><strong>投稿先</strong><small>WAYS内でどの棚に表示するかを選びます。</small></div><span class="preview-note">NEW</span></div><div class="destination-types"><button class="dest ${kind==='discover'?'on':''}" data-kind="discover"><b>DISCOVER</b><span>ゲームを見つけてもらう通常のWAYS</span></button><button class="dest ${kind==='tip'?'on':''}" data-kind="tip"><b>TIP</b><span>攻略・小ネタ・遊び方のヒント</span></button></div></div>${field('ストアURL',g.storeUrl||'')}${field('記事URL',g.articleUrl||'')}<div class="g2">${field('基本ジャンル（自動）',g.category||'')}${field('手動タグ（カンマ区切り）',(g.tags||[]).join(', '))}</div><div class="video"><div class="field"><label>動画URL</label><input value="${esc(g.video||'')}" readonly></div><div class="video-box">${g.video?`<video controls muted playsinline preload="metadata" ${g.thumbnailUrl?`poster="${esc(g.thumbnailUrl)}"`:''} src="${esc(g.video)}"></video>`:'<div class="video-empty">動画未設定</div>'}</div><div class="actions"><button class="btn primary" disabled>＋動画をアップロード</button><button class="btn" disabled>ローカル動画で縦横テスト</button><button class="btn" disabled>R2動画一覧</button></div></div><div class="actions" style="padding-top:12px;border-top:1px solid #2b2b30"><button id="previewSave" class="btn primary">Preview分類を保存</button><button class="btn" disabled>複製</button><button class="btn" disabled>大きくプレビュー</button><button class="btn" disabled>管理DBから削除</button></div></div>`;$('#editor').querySelectorAll('[data-kind]').forEach(b=>b.onclick=()=>{overrides[g.id]=b.dataset.kind==='tip'?'tip':'discover';saveOverrides();$('#feedPreview').href='/?view='+overrides[g.id];render();$('#state').textContent=`Preview保存済み / ${g.title} → ${overrides[g.id].toUpperCase()}`});$('#previewSave').onclick=()=>{$('#state').textContent=`Preview保存済み / ${g.title} → ${kindOf(g).toUpperCase()}`}}
+  function live(){const g=cur();if(!g){$('#live').innerHTML='<p class="muted">作品を選択してください。</p>';return}const kind=kindOf(g),media=g.video?`<video muted playsinline loop autoplay ${g.thumbnailUrl?`poster="${esc(g.thumbnailUrl)}"`:''} src="${esc(g.video)}"></video>`:(g.thumbnailUrl?`<img src="${esc(g.thumbnailUrl)}" alt="">`:'');$('#live').innerHTML=`<div class="phone">${media}<div class="shade"></div><div class="ptop">HARF-WAY <b>PLAYBACK</b></div><div class="meta"><div class="label">${kind.toUpperCase()} · ${g.status==='published'?'PUBLISHED':'DRAFT PREVIEW'}</div>${g.category?`<div class="genres">${esc(g.category)}</div>`:''}<div class="title">${esc(g.title||'Untitled')}</div>${g.description?`<div class="desc">${esc(g.description)}</div>`:''}${(g.tags||[]).length?`<div class="tags">${g.tags.slice(0,4).map(t=>`<span class="tag">#${esc(t)}</span>`).join('')}</div>`:''}${g.storeUrl?`<a class="store" href="${esc(g.storeUrl)}" target="_blank">ストアで見る ↗</a>`:''}</div></div>`}
+  function render(){list();edit();live()}
+  async function load(){try{$('#state').textContent='Preview読込中…';const r=await fetch('/api/games-live',{cache:'no-store'}),j=await r.json();games=Array.isArray(j.entries)?j.entries:[];games.sort((a,b)=>String(a.title||'').localeCompare(String(b.title||''),'ja'));if(!sel||!games.some(g=>g.id===sel))sel=games[0]?.id||null;$('#state').textContent=`Preview / ${games.length}作品 · DB書込なし`;render()}catch(e){console.error(e);$('#state').textContent='読込エラー';$('#editor').innerHTML='<p class="muted">WAYSデータを読み込めませんでした。</p>'}}
+  $('#search').oninput=list;$('#reload').onclick=load;load();
+})();
+</script>
+</body>
 </html>
