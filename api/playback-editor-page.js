@@ -35,7 +35,10 @@ const PATCH_SCRIPT = `
   }
   function updateButtons(box,g){
     const kind=kindOf(g);
-    box.querySelectorAll('[data-ways-kind]').forEach(btn=>btn.classList.toggle('on',btn.dataset.waysKind===kind));
+    box.querySelectorAll('[data-ways-kind]').forEach(btn=>{
+      const shouldBeOn=btn.dataset.waysKind===kind;
+      if(btn.classList.contains('on')!==shouldBeOn)btn.classList.toggle('on',shouldBeOn);
+    });
   }
   function markDirty(){
     const input=document.querySelector('#editor [data-k="description"]');
@@ -70,14 +73,16 @@ const PATCH_SCRIPT = `
   function refreshLive(){
     const g=current(); const label=document.querySelector('#live .label'); if(!g||!label)return;
     const status=g.status==='published'?'PUBLISHED':'DRAFT PREVIEW';
-    label.textContent=(g.sponsored?'SPONSORED · ':'')+kindOf(g).toUpperCase()+' · '+status;
+    const next=(g.sponsored?'SPONSORED · ':'')+kindOf(g).toUpperCase()+' · '+status;
+    if(label.textContent!==next)label.textContent=next;
   }
   function refreshListTypes(){
     const games=Array.isArray(state()?.games)?state().games:[];
     document.querySelectorAll('#list [data-id]').forEach(btn=>{
       const g=games.find(x=>String(x.id)===String(btn.dataset.id)); const small=btn.querySelector('small'); if(!g||!small)return;
       const category=String(g.category||'ジャンル未設定');
-      small.textContent=category+' / '+kindOf(g).toUpperCase();
+      const next=category+' / '+kindOf(g).toUpperCase();
+      if(small.textContent!==next)small.textContent=next;
     });
   }
   function refreshAll(){injectEditor();refreshLive();refreshListTypes()}
