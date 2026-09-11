@@ -107,7 +107,7 @@ function patchEditorHtml(source) {
 
   html = html.replace(apiConst, "const A='/api/playback-editor-proxy?target=',K='hw-playback-editor-admin-key';");
   html = html.replace("fetch('/api/genre'", "fetch('/api/playback-editor-genre'");
-  html = html.replace("fetch('/api/process-video'", "fetch('/api/playback-editor-process-video'");
+  html = html.replaceAll("fetch('/api/process-video'", "fetch('/api/playback-editor-process-video'");
   html = html.replace(curFn, `${curFn}window.__peCur=cur;window.__peState=()=>S;`);
   html = html.replace(normTail, "g.sponsorName=g.sponsorName||g.sponsor_name||'';{const mt=(g.tags||[]).find(t=>String(t||'').toLowerCase().startsWith('__ways_type:'));const mk=mt?String(mt).slice('__ways_type:'.length):'';g.contentType=String(g.contentType||g.content_type||mk||'').toLowerCase()==='tip'?'tip':'discover'}return g}");
   html = html.replace(tagInputExpr, "g.tags.filter(t=>!String(t||'').toLowerCase().startsWith('__ways_type:')).join(', ')");
