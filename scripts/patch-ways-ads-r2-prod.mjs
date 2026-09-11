@@ -26,6 +26,13 @@ const desktopAudioStateBefore = `    if (!frame || !v) return;
 const desktopAudioStateAfter = `    if (!frame || !v) return;
     const preserveMuted = v.muted;
     clearDesktopAdMedia();`;
+const desktopAudioStateAnchoredBefore = `    if (!frame || !v) return;
+    const anchor = currentDesktopAdAnchor();
+    clearDesktopAdMedia();`;
+const desktopAudioStateAnchoredAfter = `    if (!frame || !v) return;
+    const preserveMuted = v.muted;
+    const anchor = currentDesktopAdAnchor();
+    clearDesktopAdMedia();`;
 const desktopVideoMuteBefore = `      v.src = ad.mediaUrl;
       v.muted = true;
       v.loop = true;`;
@@ -64,9 +71,11 @@ if (source.includes(desktopDirect)) source = source.replace(desktopDirect, deskt
 else if (!source.includes(desktopStage)) throw new Error('[ways-ads-r2] desktop stage click block not found');
 
 // Preserve the user's current WAYS sound state when the main stage switches
-// from a normal game video to a promoted video.
-if (source.includes(desktopAudioStateBefore)) source = source.replace(desktopAudioStateBefore, desktopAudioStateAfter);
-else if (!source.includes(desktopAudioStateAfter)) throw new Error('[ways-ads-r2] desktop audio state block not found');
+// from a normal game video to a promoted video. Support both the legacy block
+// and the navigation-aware block that records the ad's shelf anchor.
+if (source.includes(desktopAudioStateAnchoredBefore)) source = source.replace(desktopAudioStateAnchoredBefore, desktopAudioStateAnchoredAfter);
+else if (source.includes(desktopAudioStateBefore)) source = source.replace(desktopAudioStateBefore, desktopAudioStateAfter);
+else if (!source.includes(desktopAudioStateAnchoredAfter) && !source.includes(desktopAudioStateAfter)) throw new Error('[ways-ads-r2] desktop audio state block not found');
 
 if (source.includes(desktopVideoMuteBefore)) source = source.replace(desktopVideoMuteBefore, desktopVideoMuteAfter);
 else if (!source.includes(desktopVideoMuteAfter)) throw new Error('[ways-ads-r2] desktop video mute block not found');
