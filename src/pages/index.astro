@@ -6,6 +6,10 @@ const source = raw
   .replaceAll('https://harfway-playback.vercel.app/api/games', '/api/games-live')
   .replace(/const API\s*=\s*['"]\/api\/games['"]\s*;/g, "const API='/api/games-live';")
   .replace(
+    "let items=[],filtered=[],selected=0,muted=true,userPaused=false,activeTag='',mobileMuted=true,orientationOverride='auto';",
+    "let activeContentType=new URLSearchParams(location.search).get('view')==='tip'?'tip':'discover';let items=[],filtered=[],selected=0,muted=true,userPaused=false,activeTag='',mobileMuted=true,orientationOverride='auto';"
+  )
+  .replace(
     'const SHELF_SIZE=10,MOBILE_INITIAL=2,MOBILE_BATCH=2;',
     "let SHELF_SIZE=10;const MOBILE_INITIAL=2,MOBILE_BATCH=2;window.__WAYS_SET_SHELF_SIZE=(n)=>{const next=Math.max(1,Number(n)||10);if(SHELF_SIZE===next)return;SHELF_SIZE=next;shelfPage=Math.floor(selected/SHELF_SIZE);if(innerWidth>=900&&mainReady)renderShelfPage(true);else{updateShelfPager();renderShelfContext()}};"
   )
@@ -23,7 +27,14 @@ const source = raw
   .replace(
     "if(tb){e.preventDefault();e.stopPropagation();setTagShelf(tb.dataset.mtag);return}",
     "if(tb){e.preventDefault();e.stopPropagation();if(tb.dataset.mtag===activeTag){resetShelf();return}setTagShelf(tb.dataset.mtag);return}"
-  );
+  )
+  .replace(
+    "function setTagShelf(tag,keepId=''){activeTag=String(tag||'').trim();filtered=activeTag?items.filter(x=>tagsOf(x).includes(activeTag)):items.slice();",
+    "function contentTypeOf(x){return String(x?.contentType||x?.content_type||'discover').toLowerCase()==='tip'?'tip':'discover'}function typeItems(){return items.filter(x=>contentTypeOf(x)===activeContentType)}function setTagShelf(tag,keepId=''){activeTag=String(tag||'').trim();const base=typeItems();filtered=activeTag?base.filter(x=>tagsOf(x).includes(activeTag)):base.slice();"
+  )
+  .replaceAll("const list=activeTag?filtered:items", "const list=filtered")
+  .replace("filtered=items.slice();boot()", "filtered=typeItems();boot()")
+  ;
 if (/const API\s*=\s*['"]\/api\/games['"]\s*;/.test(source)) {
   throw new Error('Legacy /api/games binding remains in WAYS frontend');
 }
@@ -31,169 +42,58 @@ const baseHead = source.match(/<head>([\s\S]*?)<\/head>/i)?.[1] ?? '';
 const baseBody = source.match(/<body>([\s\S]*?)<\/body>/i)?.[1] ?? source;
 const navStyle = `
 <style>
+.ways-type-pill{border:1px solid #3b3e45;background:transparent;color:#a9adb5;border-radius:999px;padding:7px 10px;font-size:10px;font-weight:900;cursor:pointer}
+.ways-type-pill.active{border-color:var(--accent);background:var(--accent);color:#111}
+.ways-kind-badge{border-color:var(--accent)!important;color:var(--accent);font-weight:950}
+.ways-mobile-type{display:none}
+@media(max-width:899px){.ways-mobile-type{position:fixed;z-index:22;left:14px;top:54px;display:flex;gap:6px}.ways-mobile-type button{border:1px solid #ffffff3d;background:#050505cc;color:#fff;border-radius:999px;padding:7px 9px;font-size:9px;font-weight:900}.ways-mobile-type button.active{border-color:var(--accent);background:var(--accent);color:#111}}
 @media (min-width:900px){
-  .ways-stage-skip{
-    position:absolute;
-    z-index:8;
-    top:50%;
-    transform:translateY(-50%);
-    width:clamp(58px,7vw,108px);
-    height:clamp(116px,28vh,250px);
-    border:1px solid #2f3238;
-    background:#0b0c0ee8;
-    color:#f5f5ef;
-    display:grid;
-    place-items:center;
-    font-size:clamp(30px,3.2vw,50px);
-    font-weight:900;
-    cursor:pointer;
-    transition:background .16s,border-color .16s,color .16s,transform .16s;
-    backdrop-filter:blur(8px);
-  }
-  .ways-stage-skip:hover{
-    border-color:var(--accent);
-    color:var(--accent);
-    background:#111309f2;
-  }
-  .ways-stage-skip:active{transform:translateY(-50%) scale(.97)}
-  .ways-stage-skip.prev{left:0}
-  .ways-stage-skip.next{right:0}
-  .ways-stage-skip span{transform:translateY(-2px)}
-  .video-frame video{transition:opacity .12s ease}
-  .ways-volume{
-    height:28px;
-    width:88px;
-    display:flex;
-    align-items:center;
-    padding:0 5px;
-    border:0;
-    border-radius:999px;
-    background:#05050566;
-    opacity:.5;
-    overflow:hidden;
-    transition:opacity .22s ease,width .22s ease,padding .22s ease,transform .22s ease,background .22s ease;
-  }
-  .ways-volume:hover,
-  .ways-volume:focus-within{
-    opacity:.9;
-    background:#05050599;
-  }
-  .ways-volume input{
-    width:78px;
-    height:12px;
-    margin:0;
-    accent-color:#d9e62f;
-    cursor:pointer;
-  }
-  .ways-volume.is-hidden{
-    width:0;
-    padding-left:0;
-    padding-right:0;
-    opacity:0;
-    transform:translateX(8px);
-    pointer-events:none;
-    background:transparent;
-  }
+  .ways-stage-skip{position:absolute;z-index:8;top:50%;transform:translateY(-50%);width:clamp(58px,7vw,108px);height:clamp(116px,28vh,250px);border:1px solid #2f3238;background:#0b0c0ee8;color:#f5f5ef;display:grid;place-items:center;font-size:clamp(30px,3.2vw,50px);font-weight:900;cursor:pointer;transition:background .16s,border-color .16s,color .16s,transform .16s;backdrop-filter:blur(8px)}
+  .ways-stage-skip:hover{border-color:var(--accent);color:var(--accent);background:#111309f2}.ways-stage-skip:active{transform:translateY(-50%) scale(.97)}.ways-stage-skip.prev{left:0}.ways-stage-skip.next{right:0}.ways-stage-skip span{transform:translateY(-2px)}
+  .video-frame video{transition:opacity .12s ease}.ways-volume{height:28px;width:88px;display:flex;align-items:center;padding:0 5px;border:0;border-radius:999px;background:#05050566;opacity:.5;overflow:hidden;transition:opacity .22s ease,width .22s ease,padding .22s ease,transform .22s ease,background .22s ease}.ways-volume:hover,.ways-volume:focus-within{opacity:.9;background:#05050599}.ways-volume input{width:78px;height:12px;margin:0;accent-color:#d9e62f;cursor:pointer}.ways-volume.is-hidden{width:0;padding-left:0;padding-right:0;opacity:0;transform:translateX(8px);pointer-events:none;background:transparent}
 }
-@media (min-width:900px) and (max-width:1180px){
-  .ways-stage-skip{width:52px;height:120px;font-size:30px}
-  .ways-volume{width:72px}
-  .ways-volume input{width:62px}
-}
+@media (min-width:900px) and (max-width:1180px){.ways-stage-skip{width:52px;height:120px;font-size:30px}.ways-volume{width:72px}.ways-volume input{width:62px}}
 </style>`;
 const navScript = `
 <script>
 (() => {
+  const syncTypeUI=()=>document.querySelectorAll('[data-ways-type]').forEach(b=>b.classList.toggle('active',b.dataset.waysType===activeContentType));
+  const baseRenderShelfContext=renderShelfContext;
+  renderShelfContext=function(){
+    baseRenderShelfContext();
+    const c=document.querySelector('#shelfContext');if(!c)return;
+    c.querySelectorAll('[data-ways-type]').forEach(n=>n.remove());
+    const d=document.createElement('button');d.type='button';d.className='ways-type-pill'+(activeContentType==='discover'?' active':'');d.dataset.waysType='discover';d.textContent='DISCOVER';
+    const t=document.createElement('button');t.type='button';t.className='ways-type-pill'+(activeContentType==='tip'?' active':'');t.dataset.waysType='tip';t.textContent='TIP';
+    c.prepend(t);c.prepend(d);
+    const pill=c.querySelector('.context-pill');if(pill&&!activeTag)pill.textContent=activeContentType.toUpperCase()+' · '+filtered.length+' GAMES';
+  };
+  function emptyType(){
+    const shelf=document.querySelector('#shelf');if(shelf)shelf.innerHTML='<div style="grid-column:1/-1;color:#777;font-size:12px;padding:22px 0">この棚にはまだ動画がありません。</div>';
+    const feed=document.querySelector('#mfeed');if(feed)feed.innerHTML='<div style="height:100dvh;display:grid;place-items:center;color:#777;padding:30px;text-align:center">この棚にはまだ動画がありません。</div>';
+    const title=document.querySelector('#title');if(title)title.textContent=activeContentType==='tip'?'TIPはまだありません':'DISCOVERはまだありません';
+    const count=document.querySelector('#count');if(count)count.textContent='00 / 00';
+  }
+  function setContentType(type){
+    activeContentType=type==='tip'?'tip':'discover';activeTag='';filtered=typeItems();selected=0;shelfPage=0;clearWarmers();renderShelfContext();updateShelfPager();resetShelfRender();
+    const u=new URL(location.href);u.searchParams.set('view',activeContentType);history.replaceState(null,'',u);syncTypeUI();
+    if(!filtered.length){emptyType();return}
+    if(innerWidth>=900){select(0,true);startShelfAfterMain()}else{mobile(true)}
+    document.querySelector('.shelf-wrap')?.scrollTo({top:0,behavior:'smooth'});
+  }
+  document.querySelector('#shelfContext')?.addEventListener('click',e=>{const b=e.target.closest('[data-ways-type]');if(b){e.preventDefault();setContentType(b.dataset.waysType)}});
+  const mt=document.createElement('div');mt.className='ways-mobile-type';mt.innerHTML='<button type="button" data-ways-type="discover">DISCOVER</button><button type="button" data-ways-type="tip">TIP</button>';mt.addEventListener('click',e=>{const b=e.target.closest('[data-ways-type]');if(b)setContentType(b.dataset.waysType)});document.body.appendChild(mt);
+  const baseSelect=select;select=function(i,quiet=false){baseSelect(i,quiet);const top=document.querySelector('.desktop .stage-top');if(!top)return;let badge=document.querySelector('#waysKindBadge');if(!badge){badge=document.createElement('span');badge.id='waysKindBadge';badge.className='badge ways-kind-badge';top.appendChild(badge)}badge.textContent=contentTypeOf(filtered?.[selected]||{}) .toUpperCase()};
+  syncTypeUI();
+
   const stage = document.querySelector('.desktop .stage');
   if (stage && !stage.querySelector('.ways-stage-skip')) {
-    const prev = document.createElement('button');
-    prev.type = 'button';
-    prev.className = 'ways-stage-skip prev';
-    prev.setAttribute('aria-label', '前の作品へ');
-    prev.innerHTML = '<span>◀</span>';
-    prev.addEventListener('click', () => document.querySelector('#prev')?.click());
-
-    const next = document.createElement('button');
-    next.type = 'button';
-    next.className = 'ways-stage-skip next';
-    next.setAttribute('aria-label', '次の作品へ');
-    next.innerHTML = '<span>▶</span>';
-    next.addEventListener('click', () => document.querySelector('#next')?.click());
-
-    stage.append(prev, next);
+    const prev = document.createElement('button');prev.type='button';prev.className='ways-stage-skip prev';prev.setAttribute('aria-label','前の作品へ');prev.innerHTML='<span>◀</span>';prev.addEventListener('click',()=>document.querySelector('#prev')?.click());
+    const next = document.createElement('button');next.type='button';next.className='ways-stage-skip next';next.setAttribute('aria-label','次の作品へ');next.innerHTML='<span>▶</span>';next.addEventListener('click',()=>document.querySelector('#next')?.click());stage.append(prev,next);
   }
-
-  const controls = document.querySelector('.desktop .stage-controls');
-  const mainVideo = document.querySelector('#mainVideo');
-  const sound = document.querySelector('#sound');
-  if (controls && mainVideo && !document.querySelector('#waysVolume')) {
-    const wrap = document.createElement('label');
-    wrap.className = 'ways-volume';
-    wrap.setAttribute('aria-label', '音量');
-    const slider = document.createElement('input');
-    slider.id = 'waysVolume';
-    slider.type = 'range';
-    slider.min = '0';
-    slider.max = '1';
-    slider.step = '0.05';
-    slider.value = String(mainVideo.volume ?? 1);
-    slider.setAttribute('aria-label', '音量');
-
-    let hideTimer = 0;
-    const revealVolume = () => {
-      clearTimeout(hideTimer);
-      wrap.classList.remove('is-hidden');
-      hideTimer = window.setTimeout(() => {
-        if (!wrap.matches(':hover') && !wrap.matches(':focus-within')) wrap.classList.add('is-hidden');
-      }, 1200);
-    };
-
-    slider.addEventListener('input', () => {
-      revealVolume();
-      const value = Math.max(0, Math.min(1, Number(slider.value)));
-      mainVideo.volume = value;
-      if (value <= 0) {
-        mainVideo.muted = true;
-        muted = true;
-        if (sound) sound.textContent = '🔇';
-      } else if (mainVideo.muted) {
-        mainVideo.muted = false;
-        muted = false;
-        if (sound) sound.textContent = '🔊';
-        mainVideo.play().catch(() => {});
-      }
-    });
-    slider.addEventListener('pointerdown', revealVolume);
-    slider.addEventListener('focus', revealVolume);
-    wrap.addEventListener('mouseenter', revealVolume);
-    wrap.addEventListener('mouseleave', revealVolume);
-    controls.addEventListener('mouseenter', revealVolume);
-    sound?.addEventListener('click', revealVolume);
-
-    mainVideo.addEventListener('volumechange', () => {
-      slider.value = String(mainVideo.volume);
-    });
-    wrap.append(slider);
-    const pause = document.querySelector('#pause');
-    if (pause) controls.insertBefore(wrap, pause);
-    else controls.append(wrap);
-
-    revealVolume();
-  }
-
-  const shelf = document.querySelector('#shelf');
-  if (shelf && window.__WAYS_SET_SHELF_SIZE) {
-    const observer = new MutationObserver(() => {
-      if (!shelf.querySelector('.ways-ad-card')) return;
-      window.__WAYS_SET_SHELF_SIZE(9);
-      observer.disconnect();
-    });
-    observer.observe(shelf, { childList: true });
-    if (shelf.querySelector('.ways-ad-card')) {
-      window.__WAYS_SET_SHELF_SIZE(9);
-      observer.disconnect();
-    }
-  }
+  const controls=document.querySelector('.desktop .stage-controls'),mainVideo=document.querySelector('#mainVideo'),sound=document.querySelector('#sound');
+  if(controls&&mainVideo&&!document.querySelector('#waysVolume')){const wrap=document.createElement('label');wrap.className='ways-volume';wrap.setAttribute('aria-label','音量');const slider=document.createElement('input');slider.id='waysVolume';slider.type='range';slider.min='0';slider.max='1';slider.step='0.05';slider.value=String(mainVideo.volume??1);let timer=0;const reveal=()=>{clearTimeout(timer);wrap.classList.remove('is-hidden');timer=setTimeout(()=>{if(!wrap.matches(':hover')&&!wrap.matches(':focus-within'))wrap.classList.add('is-hidden')},1200)};slider.addEventListener('input',()=>{reveal();const value=Math.max(0,Math.min(1,Number(slider.value)));mainVideo.volume=value;if(value<=0){mainVideo.muted=true;muted=true;if(sound)sound.textContent='🔇'}else if(mainVideo.muted){mainVideo.muted=false;muted=false;if(sound)sound.textContent='🔊';mainVideo.play().catch(()=>{})}});slider.addEventListener('pointerdown',reveal);slider.addEventListener('focus',reveal);wrap.addEventListener('mouseenter',reveal);controls.addEventListener('mouseenter',reveal);sound?.addEventListener('click',reveal);mainVideo.addEventListener('volumechange',()=>slider.value=String(mainVideo.volume));wrap.append(slider);const pause=document.querySelector('#pause');if(pause)controls.insertBefore(wrap,pause);else controls.append(wrap);reveal()}
+  const shelf=document.querySelector('#shelf');if(shelf&&window.__WAYS_SET_SHELF_SIZE){const observer=new MutationObserver(()=>{if(!shelf.querySelector('.ways-ad-card'))return;window.__WAYS_SET_SHELF_SIZE(9);observer.disconnect()});observer.observe(shelf,{childList:true});if(shelf.querySelector('.ways-ad-card')){window.__WAYS_SET_SHELF_SIZE(9);observer.disconnect()}}
 })();
 </script>`;
 const head = `${baseHead}${navStyle}`;
@@ -204,4 +104,4 @@ const body = baseBody;
   <head><Fragment set:html={head} /></head>
   <body><Fragment set:html={body} /><script is:inline src="/ga4-service.js"></script><script is:inline src="/ways-analytics.js"></script><script is:inline src="/steam-utm.js"></script><script is:inline src="/ways-deeplink.js"></script><script is:inline src="/ways-ads.js"></script><script is:inline src="/ways-mobile-enhancements.js"></script><script is:inline src="/ways-share.js"></script><Fragment set:html={navScript} /></body>
 </html>
-<!-- WAYS live games API + custom analytics + GA4 bridge + Steam deep links + ads + mobile display enhancements + sharing/embed + stage nav + auto-hide volume -->
+<!-- WAYS live games API + DISCOVER/TIP shelves + analytics + deep links + ads + sharing/embed -->
