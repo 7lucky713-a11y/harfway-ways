@@ -78,5 +78,8 @@
     if (onload) script.addEventListener('load', onload, { once: true });
     document.head.appendChild(script);
   }
-  loadScript('/game-notes/runtime-core.js', () => loadScript('/game-notes/workflow-link.js'));
+  loadScript('/game-notes/runtime-core.js', () => {
+    loadScript('/game-notes/workflow-link.js');
+    loadScript('/game-notes/facet-presets.js');
+  });
 })();
