@@ -46,7 +46,13 @@ const navStyle = `
 .ways-type-pill.active{border-color:var(--accent);background:var(--accent);color:#111}
 .ways-kind-badge{border-color:var(--accent)!important;color:var(--accent);font-weight:950}
 .ways-mobile-type{display:none}
-@media(max-width:899px){.ways-mobile-type{position:fixed;z-index:22;left:14px;top:54px;display:flex;gap:6px}.ways-mobile-type button{border:1px solid #ffffff3d;background:#050505cc;color:#fff;border-radius:999px;padding:7px 9px;font-size:9px;font-weight:900}.ways-mobile-type button.active{border-color:var(--accent);background:var(--accent);color:#111}}
+body.ways-tip-mode{--bg:#0b1114;--panel:#12191d;--line:#2d3940;background:#0b1114}
+body.ways-tip-mode .desktop{background:radial-gradient(circle at 68% 8%,#102029 0,#0b1114 34%,#090d10 100%)}
+body.ways-tip-mode .shelf-wrap{background:linear-gradient(180deg,#0d1418 0,#0b1114 100%)}
+body.ways-tip-mode .side{background:linear-gradient(180deg,#0d1418 0,#0a1013 100%)}
+body.ways-tip-mode .video-frame{border-color:#34434a}
+body.ways-tip-mode .ways-type-pill:not(.active){border-color:#40515a;color:#aebbc0}
+@media(max-width:899px){.ways-mobile-type{position:fixed;z-index:22;left:14px;top:54px;display:flex;gap:6px}.ways-mobile-type button{border:1px solid #ffffff3d;background:#050505cc;color:#fff;border-radius:999px;padding:7px 9px;font-size:9px;font-weight:900}.ways-mobile-type button.active{border-color:var(--accent);background:var(--accent);color:#111}body.ways-tip-mode .mobile,body.ways-tip-mode .m-feed{background:#071014}body.ways-tip-mode .m-tools button,body.ways-tip-mode .m-tools a,body.ways-tip-mode .ways-mobile-type button:not(.active){background:#071014dd;border-color:#43535a}}
 @media (min-width:900px){
   .ways-stage-skip{position:absolute;z-index:8;top:50%;transform:translateY(-50%);width:clamp(58px,7vw,108px);height:clamp(116px,28vh,250px);border:1px solid #2f3238;background:#0b0c0ee8;color:#f5f5ef;display:grid;place-items:center;font-size:clamp(30px,3.2vw,50px);font-weight:900;cursor:pointer;transition:background .16s,border-color .16s,color .16s,transform .16s;backdrop-filter:blur(8px)}
   .ways-stage-skip:hover{border-color:var(--accent);color:var(--accent);background:#111309f2}.ways-stage-skip:active{transform:translateY(-50%) scale(.97)}.ways-stage-skip.prev{left:0}.ways-stage-skip.next{right:0}.ways-stage-skip span{transform:translateY(-2px)}
@@ -57,7 +63,11 @@ const navStyle = `
 const navScript = `
 <script>
 (() => {
-  const syncTypeUI=()=>document.querySelectorAll('[data-ways-type]').forEach(b=>b.classList.toggle('active',b.dataset.waysType===activeContentType));
+  const syncTypeUI=()=>{
+    document.body.classList.toggle('ways-tip-mode',activeContentType==='tip');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content',activeContentType==='tip'?'#0b1114':'#090909');
+    document.querySelectorAll('[data-ways-type]').forEach(b=>b.classList.toggle('active',b.dataset.waysType===activeContentType));
+  };
   const baseRenderShelfContext=renderShelfContext;
   renderShelfContext=function(){
     baseRenderShelfContext();
