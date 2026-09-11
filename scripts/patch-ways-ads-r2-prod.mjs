@@ -41,6 +41,38 @@ const desktopVideoMuteAfter = `      v.src = ad.mediaUrl;
       v.loop = true;`;
 const desktopImageContain = '.ways-ad-stage-media{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#050505;z-index:2}';
 const desktopImageCover = '.ways-ad-stage-media{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#050505;z-index:2}';
+const desktopClearBefore = `  function clearDesktopAdMedia() {
+    document.querySelector('.ways-ad-stage-media')?.remove();
+    document.querySelector('.ways-ad-preview-note')?.remove();
+    desktopAdOpen = false;
+    desktopAdAnchor = null;
+  }`;
+const desktopClearAfter = `  function clearDesktopAdMedia() {
+    document.querySelector('.ways-ad-stage-media')?.remove();
+    document.querySelector('.ways-ad-preview-note')?.remove();
+    const frame = document.querySelector('.video-frame');
+    if (frame?.dataset.waysAdFrameLocked === '1') {
+      frame.style.removeProperty('width');
+      frame.style.removeProperty('height');
+      delete frame.dataset.waysAdFrameLocked;
+    }
+    desktopAdOpen = false;
+    desktopAdAnchor = null;
+  }`;
+const desktopFrameLockBefore = `    const preserveMuted = v.muted;
+    const anchor = currentDesktopAdAnchor();
+    clearDesktopAdMedia();
+    desktopAdAnchor = anchor;`;
+const desktopFrameLockAfter = `    const preserveMuted = v.muted;
+    const frameRect = frame.getBoundingClientRect();
+    const anchor = currentDesktopAdAnchor();
+    clearDesktopAdMedia();
+    if (frameRect.width > 0 && frameRect.height > 0) {
+      frame.style.setProperty('width', frameRect.width + 'px', 'important');
+      frame.style.setProperty('height', frameRect.height + 'px', 'important');
+      frame.dataset.waysAdFrameLocked = '1';
+    }
+    desktopAdAnchor = anchor;`;
 
 const mobileBefore = `    const card = feed.querySelector('.ways-ad-mobile');
     card?.querySelector('.ways-ad-mobile-store')?.addEventListener('click', async () => {
@@ -83,12 +115,19 @@ if (source.includes(desktopVideoMuteBefore)) source = source.replace(desktopVide
 else if (!source.includes(desktopVideoMuteAfter)) throw new Error('[ways-ads-r2] desktop video mute block not found');
 
 // Image creatives should occupy the exact same center-stage frame as videos.
-// Use cover so non-16:9 sponsor images do not appear smaller with letterboxing.
 if (source.includes(desktopImageContain)) source = source.replace(desktopImageContain, desktopImageCover);
 else if (!source.includes(desktopImageCover)) throw new Error('[ways-ads-r2] desktop image fit rule not found');
+
+// Removing the video src can cause the responsive frame to recompute smaller.
+// Freeze the exact on-screen video frame dimensions while an ad is open, then
+// release the lock when returning to editorial content.
+if (source.includes(desktopClearBefore)) source = source.replace(desktopClearBefore, desktopClearAfter);
+else if (!source.includes(desktopClearAfter)) throw new Error('[ways-ads-r2] desktop clear frame block not found');
+if (source.includes(desktopFrameLockBefore)) source = source.replace(desktopFrameLockBefore, desktopFrameLockAfter);
+else if (!source.includes(desktopFrameLockAfter)) throw new Error('[ways-ads-r2] desktop frame lock block not found');
 
 if (source.includes(mobileBefore)) source = source.replace(mobileBefore, mobileAfter);
 else if (!source.includes(mobileAfter)) throw new Error('[ways-ads-r2] mobile click block not found');
 
 fs.writeFileSync(file, source);
-console.log('[ways-ads-r2] fair-v2 serve + desktop stage preview + WAYS sound inheritance + desktop image cover + mobile direct sponsor link applied');
+console.log('[ways-ads-r2] fair-v2 serve + desktop stage preview + WAYS sound inheritance + desktop image cover + exact ad frame lock + mobile direct sponsor link applied');
