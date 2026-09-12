@@ -35,15 +35,20 @@ function patchCleanEditor() {
   );
 
   const oldLoad = "  async function load(){showStatus('GAME NOTESを読み込んでいます…');const headers=state.adminKey?{'x-admin-key':state.adminKey}:{};const res=await fetch('/api/game-notes',{headers,cache:'no-store'}),data=await res.json().catch(()=>({}));if(res.status===401){showStatus('管理キーを入力するとGAME NOTESを読み込めます。',true);$('#book').innerHTML='<div class=\"empty\">GAME NOTESへの認証が必要です。</div>';return}if(!res.ok){showStatus(`読み込みに失敗しました: ${data.error||res.status}`);return}state.games=data.games||[];state.notes=data.notes||[];state.facets=data.facets||[];showStatus('');renderGames()}";
-  const newLoad = "  function gameNotesApiUrl(){let token='';try{const searches=[location.search,window.parent?.location?.search,window.top?.location?.search];for(const search of searches){const v=new URLSearchParams(search||'').get('_vercel_share');if(v){token=v;break}}}catch{}return token?`/api/game-notes?_vercel_share=${encodeURIComponent(token)}`:'/api/game-notes'}\n  async function load(){showStatus('GAME NOTESを読み込んでいます…');const headers=state.adminKey?{'x-admin-key':state.adminKey}:{},controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);try{const res=await fetch(gameNotesApiUrl(),{headers,cache:'no-store',signal:controller.signal}),data=await res.json().catch(()=>({}));if(res.status===401){showStatus('管理キーを入力するとGAME NOTESを読み込めます。',true);$('#book').innerHTML='<div class=\"empty\">GAME NOTESへの認証が必要です。</div>';return}if(!res.ok){showStatus(`読み込みに失敗しました: ${data.error||res.status}`);$('#book').innerHTML='<div class=\"empty\">GAME NOTESを読み込めませんでした。</div>';return}state.games=data.games||[];state.notes=data.notes||[];state.facets=data.facets||[];showStatus('');renderGames()}catch(err){const timeout=err?.name==='AbortError';showStatus(timeout?'GAME NOTESの読み込みがタイムアウトしました。ページを再読み込みしてください。':`読み込みに失敗しました: ${err?.message||err}`);$('#book').innerHTML='<div class=\"empty\">GAME NOTESを読み込めませんでした。ページを再読み込みしてください。</div>'}finally{clearTimeout(timer)}}";
-  html = replaceOnce(html, oldLoad, newLoad, 'preview share token and load timeout');
+  const previewMode = process.env.VERCEL_ENV === 'preview';
+  const dataApi = previewMode ? 'https://harfway-playback.vercel.app/api/game-notes' : '/api/game-notes';
+  const authCopy = previewMode
+    ? 'PreviewではProduction GAME NOTESを読むため管理キーが必要です。下に入力してください。'
+    : '管理キーを入力するとGAME NOTESを読み込めます。';
+  const newLoad = "  function gameNotesApiUrl(){return "+JSON.stringify(dataApi)+"}\n  async function load(){showStatus('GAME NOTESを読み込んでいます…');const headers=state.adminKey?{'x-admin-key':state.adminKey}:{},controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);try{const res=await fetch(gameNotesApiUrl(),{headers,cache:'no-store',mode:'cors',credentials:'omit',signal:controller.signal}),data=await res.json().catch(()=>({}));if(res.status===401){showStatus("+JSON.stringify(authCopy)+",true);$('#book').innerHTML='<div class=\"empty\">GAME NOTESへの認証が必要です。左側の管理キー欄から接続してください。</div>';return}if(!res.ok){showStatus(`読み込みに失敗しました: ${data.error||res.status}`);$('#book').innerHTML='<div class=\"empty\">GAME NOTESを読み込めませんでした。</div>';return}state.games=data.games||[];state.notes=data.notes||[];state.facets=data.facets||[];showStatus('');renderGames()}catch(err){const timeout=err?.name==='AbortError';showStatus(timeout?'GAME NOTESの読み込みがタイムアウトしました。再読み込みしてください。':`読み込みに失敗しました: ${err?.message||err}`);$('#book').innerHTML='<div class=\"empty\">GAME NOTESを読み込めませんでした。再読み込みしてください。</div>'}finally{clearTimeout(timer)}}";
+  html = replaceOnce(html, oldLoad, newLoad, 'production data source for protected preview');
 
-  if (!html.includes('id="body-font-size"') || !html.includes('--mini-body-size') || !html.includes('gameNotesApiUrl') || !html.includes('_vercel_share')) {
+  if (!html.includes('id="body-font-size"') || !html.includes('--mini-body-size') || !html.includes('gameNotesApiUrl') || !html.includes('harfway-playback.vercel.app/api/game-notes')) {
     throw new Error('[minibook-wordpress-fix] editor injection failed');
   }
 
   fs.writeFileSync(file, html);
-  console.log('[minibook-wordpress-fix] patched MINI BOOK editor body font size + preview API auth');
+  console.log(`[minibook-wordpress-fix] patched MINI BOOK editor body font size + ${previewMode ? 'production data API for preview' : 'same-origin production API'}`);
 }
 
 function patchWordpressExporter() {
