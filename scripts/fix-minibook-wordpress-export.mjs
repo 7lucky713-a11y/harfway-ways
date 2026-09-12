@@ -22,8 +22,8 @@ function patchCleanEditor() {
 
   html = replaceOnce(
     html,
-    '</style>',
-    '.page-body,.run-body,.after-list{font-size:var(--mini-body-size,15px)!important}\n</style>',
+    '</head>',
+    '<style>.page-body,.run-body,.after-list{font-size:var(--mini-body-size,15px)!important}</style></head>',
     'body size css variable'
   );
 
