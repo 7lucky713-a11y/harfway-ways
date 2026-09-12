@@ -1,0 +1,126 @@
+---
+const title = 'MINI BOOK / WORDPRESS EXPORT';
+---
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow,noarchive" />
+  <title>{title}</title>
+  <style is:global>
+    *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0d110f;color:#eef4ef;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif}
+    .bar{height:58px;display:flex;align-items:center;gap:12px;padding:9px 14px;border-bottom:1px solid #2d3831;background:#111612}.bar b{font-size:12px;letter-spacing:.08em}.bar small{color:#87938a;font-size:10px}.bar .spacer{flex:1}.bar button,.bar a{border:1px solid #414f46;background:#171d19;color:#eef4ef;border-radius:8px;padding:9px 12px;font-size:11px;font-weight:850;text-decoration:none;cursor:pointer}.bar button.primary{background:#dff238;border-color:#dff238;color:#111610}.status{max-width:420px;color:#9ba79e;font-size:10px;line-height:1.45;text-align:right}.frame{width:100%;height:calc(100% - 58px);border:0;background:#0d110f}
+    @media(max-width:760px){.bar{height:auto;min-height:58px;flex-wrap:wrap}.status{order:3;width:100%;max-width:none;text-align:left}.frame{height:calc(100% - 96px)}}
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <div><b>WORDPRESS EXPORT</b><br><small>現在のMINI BOOKを公開用HTMLへ固定</small></div>
+    <div class="spacer"></div>
+    <a href="/game-notes/minibook/" target="_blank" rel="noopener">MINI BOOKを別タブ</a>
+    <button class="primary" id="copy">WordPress用HTMLをコピー</button>
+    <div class="status" id="status">本を編集してからコピーしてください。</div>
+  </div>
+  <iframe class="frame" id="book-frame" src="/game-notes/minibook/" title="MINI BOOK"></iframe>
+<script is:inline>
+(()=>{
+  const frame=document.getElementById('book-frame');
+  const status=document.getElementById('status');
+  const copyBtn=document.getElementById('copy');
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+  function innerDocument(){
+    try{
+      const shell=frame.contentDocument;
+      const inner=shell?.querySelector('#minibook-frame');
+      return inner?.contentDocument||null;
+    }catch{return null}
+  }
+
+  async function getReadyDoc(){
+    for(let i=0;i<40;i++){
+      const doc=innerDocument();
+      if(doc?.querySelector('#print-stack')) return doc;
+      await sleep(100);
+    }
+    return null;
+  }
+
+  function publicPageHtml(doc){
+    const nodes=[...doc.querySelectorAll('#print-stack .print-page')];
+    const pages=[];let skipped=0;
+    for(const node of nodes){
+      if(node.querySelector('.blank-page')) continue;
+      const clone=node.cloneNode(true);
+      const privateMedia=[...clone.querySelectorAll('img[src*="/api/game-notes-media"],video[src*="/api/game-notes-media"]')];
+      if(privateMedia.length){skipped++;continue}
+      clone.querySelectorAll('img,video').forEach(el=>{
+        const src=el.getAttribute('src');
+        if(src){try{el.setAttribute('src',new URL(src,location.origin).href)}catch{}}
+        if(el.tagName==='VIDEO'){el.setAttribute('controls','');el.setAttribute('playsinline','');el.removeAttribute('preload')}
+      });
+      const article=clone.querySelector('.book-page');
+      if(article) pages.push(article.outerHTML);
+    }
+    return {pages,skipped};
+  }
+
+  function exportCss(){return `<style>
+#hw-mini-book,#hw-mini-book *{box-sizing:border-box}
+#hw-mini-book{--paper:#f2efe6;--ink:#171916;--muted:#6e716b;--line:#c9c3b5;width:min(680px,100%);margin:36px auto;color:var(--ink);font-family:"Hiragino Mincho ProN","Yu Mincho",serif}
+#hw-mini-book .hw-mb-stage{position:relative;width:100%;aspect-ratio:182/257;overflow:hidden;isolation:isolate;background:var(--paper);border:1px solid #c8c2b5;box-shadow:0 18px 48px rgba(0,0,0,.18);touch-action:pan-y;user-select:none}
+#hw-mini-book .hw-mb-under,#hw-mini-book .hw-mb-current,#hw-mini-book .hw-mb-fold,#hw-mini-book .hw-mb-shadow{position:absolute;inset:0}
+#hw-mini-book .hw-mb-under{z-index:1}#hw-mini-book .hw-mb-current{z-index:4;overflow:hidden}#hw-mini-book .hw-mb-fold{z-index:6;width:1px;right:auto;pointer-events:none;overflow:visible;transform-style:preserve-3d}#hw-mini-book .hw-mb-shadow{z-index:3;width:24%;opacity:0;pointer-events:none;background:linear-gradient(90deg,transparent,rgba(0,0,0,.18),rgba(0,0,0,.03),transparent);filter:blur(5px)}
+#hw-mini-book .hw-mb-fold:before{content:"";position:absolute;top:0;bottom:0;left:50%;width:100%;transform:translateX(-50%);background:linear-gradient(90deg,rgba(40,37,32,.26),rgba(239,235,224,.96) 16%,rgba(251,248,238,.98) 46%,rgba(212,205,191,.94) 80%,rgba(70,65,57,.16));box-shadow:0 0 16px rgba(0,0,0,.10)}
+#hw-mini-book .book-page{height:100%;min-height:0;padding:7.2% 8.8%;display:flex;flex-direction:column;background:var(--paper);margin:0;color:var(--ink)}
+#hw-mini-book .page-head{display:flex;justify-content:space-between;gap:16px;padding-bottom:11px;border-bottom:1px solid var(--line);font:900 9px ui-monospace,monospace;letter-spacing:.13em;color:var(--muted)}
+#hw-mini-book .page-title{margin:30px 0 20px;font-size:clamp(29px,6vw,43px);line-height:1.12;letter-spacing:-.045em;max-width:16ch;color:var(--ink)}
+#hw-mini-book .page-body{white-space:pre-wrap;font-size:15px;line-height:2;max-width:39em;overflow-wrap:anywhere}
+#hw-mini-book .page-foot{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-top:auto;padding-top:16px;border-top:1px solid var(--line);font:800 9px ui-monospace,monospace;color:#777a74;letter-spacing:.07em}
+#hw-mini-book .cover-body{display:flex;flex:1;flex-direction:column;justify-content:center}#hw-mini-book .cover-kicker{font:900 10px ui-monospace,monospace;letter-spacing:.16em;color:var(--muted)}#hw-mini-book .cover-title{margin:20px 0 18px;font-size:clamp(42px,9vw,66px);line-height:.98;letter-spacing:-.062em;max-width:10ch;color:var(--ink)}#hw-mini-book .cover-sub{max-width:31em;font-size:16px;line-height:1.9;color:var(--muted)}
+#hw-mini-book .intro-body{margin-top:28px}#hw-mini-book .intro-body .page-body{font-size:18px;line-height:2.05}
+#hw-mini-book .run-main{min-height:0}#hw-mini-book .run-title{margin:30px 0 20px;font-size:clamp(30px,6vw,44px);line-height:1.12;letter-spacing:-.045em;max-width:15ch;color:var(--ink)}#hw-mini-book .run-quote{margin:0;padding:17px 0;border-top:3px solid var(--ink);border-bottom:1px solid var(--line);font-size:clamp(20px,3.4vw,25px);line-height:1.65;font-weight:700}#hw-mini-book .run-body{margin-top:22px;white-space:pre-wrap;font-size:15px;line-height:2;max-width:39em;overflow-wrap:anywhere}#hw-mini-book .cont-mark{display:inline-block;margin-top:18px;border-top:1px solid var(--line);padding-top:11px;font:800 9px ui-monospace,monospace;letter-spacing:.15em;color:var(--muted)}#hw-mini-book .run-cont .run-title{margin-top:16px;font-size:20px;color:var(--muted);letter-spacing:-.02em}#hw-mini-book .run-cont .run-body{margin-top:28px}
+#hw-mini-book .tags{display:flex;gap:5px;flex-wrap:wrap}#hw-mini-book .tag{border:1px solid #aaa497;border-radius:999px;padding:4px 7px;font:700 8px ui-monospace,monospace;color:#595e57}#hw-mini-book .after-list{margin:28px 0 0;padding-left:1.1em;display:grid;gap:13px;font-size:16px;line-height:1.8;max-width:37em}#hw-mini-book .colophon-body{margin-top:28px}
+#hw-mini-book .media-page{padding:6% 7%}#hw-mini-book .media-frame{flex:1;min-height:0;margin:18px 0;display:grid;place-items:center;background:#e5e0d4;overflow:hidden}#hw-mini-book .media-frame img,#hw-mini-book .media-frame video{width:100%;height:100%;display:block;object-fit:contain}
+#hw-mini-book .hw-mb-nav{display:grid;grid-template-columns:88px 1fr 88px;gap:10px;align-items:center;margin-top:14px}#hw-mini-book .hw-mb-nav button{border:1px solid #3d463f;background:#161b18;color:#eef4ef;border-radius:999px;padding:9px 11px;font-size:11px;font-weight:850;cursor:pointer}#hw-mini-book .hw-mb-nav button:disabled{opacity:.28;cursor:default}#hw-mini-book .hw-mb-progress{text-align:center;color:#707a73;font:800 10px ui-monospace,monospace;letter-spacing:.08em}#hw-mini-book .hw-mb-help{text-align:center;margin-top:7px;color:#858e87;font-size:10px;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif}
+@media(max-width:560px){#hw-mini-book{margin:22px auto}#hw-mini-book .book-page{padding:7.2% 8.8%}#hw-mini-book .cover-title{font-size:38px}#hw-mini-book .page-title,#hw-mini-book .run-title{margin-top:22px;font-size:27px}#hw-mini-book .run-cont .run-title{font-size:16px}#hw-mini-book .run-quote{font-size:16px;padding:12px 0}#hw-mini-book .page-body,#hw-mini-book .run-body{font-size:11px;line-height:1.72}#hw-mini-book .intro-body .page-body{font-size:13px;line-height:1.85}#hw-mini-book .hw-mb-nav{grid-template-columns:70px 1fr 70px}}
+</style>`}
+
+  function exportScript(){return `<script>(function(){
+var root=document.getElementById('hw-mini-book');if(!root)return;var pages=[].slice.call(root.querySelectorAll('.hw-mb-source'));var stage=root.querySelector('.hw-mb-stage'),progress=root.querySelector('.hw-mb-progress'),prev=root.querySelector('[data-hw-prev]'),next=root.querySelector('[data-hw-next]');var index=0,anim=false,drag=null;
+function html(i){return pages[i]?pages[i].innerHTML:'<div class="book-page"></div>'}function chrome(){progress.textContent='B5 · PAGE '+(index+1)+' / '+pages.length;prev.disabled=index<=0;next.disabled=index>=pages.length-1}
+function show(){stage.innerHTML='<div class="hw-mb-under">'+html(index)+'</div>';chrome()}
+function ease(t){return .5-Math.cos(Math.PI*Math.max(0,Math.min(1,t)))/2}
+function apply(p,dir){var cur=stage.querySelector('.hw-mb-current'),fold=stage.querySelector('.hw-mb-fold'),shadow=stage.querySelector('.hw-mb-shadow');if(!cur||!fold||!shadow)return;var wave=Math.sin(Math.PI*p),w=4+17*wave,a=(dir==='next'?-1:1)*(8+70*wave),x;if(dir==='next'){x=(1-p)*100;cur.style.clipPath='inset(0 '+(p*100)+'% 0 0)'}else{x=p*100;cur.style.clipPath='inset(0 0 0 '+(p*100)+'%)'}fold.style.left=x+'%';shadow.style.left=x+'%';fold.style.width=w+'%';fold.style.transform='translateX(-50%) perspective(900px) rotateY('+a+'deg)';fold.style.opacity=Math.min(1,.22+wave*1.15);shadow.style.opacity=.04+wave*.34}
+function prep(target,dir){stage.innerHTML='<div class="hw-mb-under">'+html(target)+'</div><div class="hw-mb-current">'+html(index)+'</div><div class="hw-mb-shadow"></div><div class="hw-mb-fold"></div>';apply(0,dir)}
+function tween(from,to,dir,ms,done){var start=performance.now(),d=to-from;function tick(now){var r=Math.min(1,(now-start)/ms);apply(from+d*ease(r),dir);if(r<1)requestAnimationFrame(tick);else done()}requestAnimationFrame(tick)}
+function turn(target,dir){if(anim||target<0||target>=pages.length||target===index)return;anim=true;prep(target,dir);tween(0,1,dir,620,function(){index=target;anim=false;show()})}
+prev.addEventListener('click',function(){turn(index-1,'prev')});next.addEventListener('click',function(){turn(index+1,'next')});stage.addEventListener('pointerdown',function(e){if(anim)return;drag={id:e.pointerId,x:e.clientX,start:e.clientX,w:stage.getBoundingClientRect().width,active:false,dir:null,target:null,p:0};stage.setPointerCapture&&stage.setPointerCapture(e.pointerId)});stage.addEventListener('pointermove',function(e){if(!drag||drag.id!==e.pointerId||anim)return;var dx=e.clientX-drag.start;if(!drag.active){if(Math.abs(dx)<7)return;drag.dir=dx<0?'next':'prev';drag.target=index+(drag.dir==='next'?1:-1);if(drag.target<0||drag.target>=pages.length){drag=null;return}drag.active=true;prep(drag.target,drag.dir)}drag.p=Math.max(0,Math.min(1,(drag.dir==='next'?-dx:dx)/(drag.w||1)));apply(drag.p,drag.dir);e.preventDefault()});stage.addEventListener('pointerup',function(e){if(!drag||drag.id!==e.pointerId)return;if(!drag.active){drag=null;return}var d=drag;drag=null;anim=true;var commit=d.p>.2;tween(d.p,commit?1:0,d.dir,260+Math.round(360*Math.abs((commit?1:0)-d.p)),function(){if(commit)index=d.target;anim=false;show()})});document.addEventListener('keydown',function(e){if(e.key==='ArrowLeft')turn(index-1,'prev');if(e.key==='ArrowRight')turn(index+1,'next')});show();
+})();<\/script>`}
+
+  function buildExport(pages){
+    const source=pages.map((html,i)=>`<div class="hw-mb-source" data-page="${i+1}" hidden>${html}</div>`).join('');
+    return `${exportCss()}\n<div id="hw-mini-book">\n  <div class="hw-mb-stage" aria-live="polite"></div>\n  <div class="hw-mb-nav"><button type="button" data-hw-prev>← 前</button><div class="hw-mb-progress"></div><button type="button" data-hw-next>次 →</button></div>\n  <div class="hw-mb-help">左右ドラッグ / ← → でめくる</div>\n  <div class="hw-mb-sources" hidden>${source}</div>\n</div>\n${exportScript()}`;
+  }
+
+  async function copyText(text){
+    try{await navigator.clipboard.writeText(text);return true}catch{}
+    const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();const ok=document.execCommand('copy');ta.remove();return ok;
+  }
+
+  copyBtn.addEventListener('click',async()=>{
+    copyBtn.disabled=true;status.textContent='HTMLを生成しています…';
+    try{
+      const doc=await getReadyDoc();if(!doc)throw new Error('MINI BOOKの読み込みが完了していません');
+      doc.querySelector('#refresh')?.click();await sleep(180);
+      const {pages,skipped}=publicPageHtml(doc);if(!pages.length)throw new Error('公開できるページがありません');
+      const html=buildExport(pages);const ok=await copyText(html);if(!ok)throw new Error('クリップボードへコピーできませんでした');
+      status.textContent=`コピーしました：${pages.length}ページ${skipped?` / private media ${skipped}ページは除外`:''}。WordPressの「カスタムHTML」ブロックへ貼り付けてください。`;
+    }catch(err){status.textContent='失敗: '+(err?.message||err)}finally{copyBtn.disabled=false}
+  });
+})();
+</script>
+</body>
+</html>
