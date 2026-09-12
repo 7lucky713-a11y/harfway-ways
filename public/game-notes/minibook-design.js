@@ -4,6 +4,7 @@
 
   const STORAGE_KEY='harfway_minibook_design_v1';
   const DEFAULTS={bodyFontSize:15};
+  const KINSOKU_SELECTOR='.book-page,.page-body,.run-body,.run-quote,.page-title,.run-title,.cover-title,.cover-sub,.after-list,.colophon-body';
   let design={...DEFAULTS};
 
   try{
@@ -18,10 +19,22 @@
     window.dispatchEvent(new CustomEvent('minibook:designchange',{detail:{...design}}));
   }
 
+  function applyJapaneseTypography(root=document){
+    const nodes=[];
+    if(root?.nodeType===1&&root.matches?.(KINSOKU_SELECTOR)) nodes.push(root);
+    root?.querySelectorAll?.(KINSOKU_SELECTOR).forEach(el=>nodes.push(el));
+    nodes.forEach(el=>{
+      el.style.lineBreak='strict';
+      el.style.wordBreak='normal';
+      el.style.overflowWrap='break-word';
+    });
+  }
+
   function apply(){
     const size=Math.max(12,Math.min(18,Number(design.bodyFontSize)||15));
     design.bodyFontSize=size;
     document.documentElement.style.setProperty('--mini-design-body-size',size+'px');
+    applyJapaneseTypography(document);
     try{sessionStorage.setItem(STORAGE_KEY,JSON.stringify(design))}catch{}
     expose();
   }
@@ -32,6 +45,7 @@
     style.id='minibook-design-layer-style';
     style.textContent=`
       .page-body,.run-body,.after-list,.intro-body .page-body{font-size:var(--mini-design-body-size,15px)!important}
+      .book-page,.page-body,.run-body,.run-quote,.page-title,.run-title,.cover-title,.cover-sub,.after-list,.colophon-body{line-break:strict;word-break:normal;overflow-wrap:break-word}
       #minibook-design-panel .design-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
       #minibook-design-panel .design-title b{font:850 11px ui-monospace,monospace;letter-spacing:.11em;color:#dff238}
       #minibook-design-panel .design-title small{font-size:9px;color:#6d796f}
@@ -41,8 +55,21 @@
     document.head.appendChild(style);
   }
 
+  function observePages(){
+    if(window.__MINIBOOK_DESIGN_OBSERVER__||!document.body) return;
+    window.__MINIBOOK_DESIGN_OBSERVER__=new MutationObserver(records=>{
+      for(const record of records){
+        record.addedNodes.forEach(node=>{
+          if(node.nodeType===1) applyJapaneseTypography(node);
+        });
+      }
+    });
+    window.__MINIBOOK_DESIGN_OBSERVER__.observe(document.body,{childList:true,subtree:true});
+  }
+
   function mount(){
     ensureStyle();
+    observePages();
     const tools=document.querySelector('.tools');
     if(!tools) return false;
     if(document.getElementById('minibook-design-panel')){apply();return true}
@@ -63,7 +90,7 @@
           <option value="18">18px / LARGE</option>
         </select>
       </div>
-      <div class="hint">GAME NOTESの取得・ページ内容・PAGE EDITORには触れず、表示デザインだけ変更します。</div>
+      <div class="hint">GAME NOTESの取得・ページ内容・PAGE EDITORには触れず、表示デザインだけ変更します。日本語の行頭・行末禁則も常時適用します。</div>
     `;
 
     const format=[...tools.querySelectorAll('.group')].find(group=>group.querySelector('label')?.textContent?.trim()==='FORMAT');
@@ -83,7 +110,8 @@
 
   window.__MINIBOOK_DESIGN_API__={
     get:()=>({...design}),
-    set:next=>{design={...design,...(next||{})};apply()}
+    set:next=>{design={...design,...(next||{})};apply()},
+    applyJapaneseTypography:()=>applyJapaneseTypography(document)
   };
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',mount,{once:true});
