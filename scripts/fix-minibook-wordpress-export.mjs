@@ -51,12 +51,27 @@ function patchMinibookWrapper() {
   }
 
   html = html.replace(search, replacement);
-  if (!html.includes('/game-notes/minibook-design.js')) {
-    throw new Error('[minibook-wordpress-fix] design layer injection failed');
+
+  const dragSearch = "state.drag={id:e.pointerId,startX:e.clientX,lastX:e.clientX,startAt:performance.now(),lastAt:performance.now(),active:false,dir:null,next:null,width:stage.getBoundingClientRect().width,progress:0}";
+  const dragReplacement = "state.drag={id:e.pointerId,startX:e.clientX,startY:e.clientY,lastX:e.clientX,startAt:performance.now(),lastAt:performance.now(),active:false,dir:null,next:null,width:stage.getBoundingClientRect().width,progress:0}";
+  if (!html.includes(dragSearch)) {
+    throw new Error('[minibook-wordpress-fix] MINI BOOK click start pattern not found');
+  }
+  html = html.replace(dragSearch, dragReplacement);
+
+  const clickSearch = "if(!d.active||!stage){state.drag=null;return}";
+  const clickReplacement = "if(!d.active||!stage){state.drag=null;if(!stage)return;if(Math.abs(e.clientX-d.startX)>8||Math.abs(e.clientY-d.startY)>10)return;if(e.target?.closest?.('video,a,input,textarea,select,[contenteditable=\\\"true\\\"]'))return;const rect=stage.getBoundingClientRect(),dir=e.clientX<rect.left+rect.width/2?'prev':'next';state.suppressClickUntil=performance.now()+280;animatePage(state.page+(dir==='next'?1:-1),dir);return}";
+  if (!html.includes(clickSearch)) {
+    throw new Error('[minibook-wordpress-fix] MINI BOOK click turn pattern not found');
+  }
+  html = html.replace(clickSearch, clickReplacement);
+
+  if (!html.includes('/game-notes/minibook-design.js') || !html.includes('startY:e.clientY') || !html.includes("dir=e.clientX<rect.left+rect.width/2?'prev':'next'")) {
+    throw new Error('[minibook-wordpress-fix] wrapper interaction injection failed');
   }
 
   fs.writeFileSync(file, html);
-  console.log('[minibook-wordpress-fix] attached isolated MINI BOOK design layer');
+  console.log('[minibook-wordpress-fix] attached isolated MINI BOOK design layer + half-click navigation');
 }
 
 function patchWordpressExporter() {
