@@ -159,9 +159,7 @@
           payload.monsterTrainRun = currentRunPayload(payload.gameId);
           const headers = { ...(init.headers || {}), 'content-type':'application/json' };
           const response = await baseFetch(NOTE_API, { ...init, method, headers, body:JSON.stringify(payload) });
-          if (response.ok) {
-            response.clone().json().then(rememberWriteResult).catch(() => {});
-          }
+          if (response.ok) response.clone().json().then(rememberWriteResult).catch(() => {});
           return response;
         }
       } catch {}
@@ -172,12 +170,15 @@
     return response;
   };
 
-  function readerBlockHtml(run) {
+  function readerSignature(run) {
+    return `${run?.startTime || ''}|${run?.endTime || ''}|${run?.reachedStage ?? ''}`;
+  }
+  function readerBlockHtml(run, noteId, signature) {
     const start = run?.startTime || '—';
     const end = run?.endTime || '—';
     const stage = run?.reachedStage ?? '—';
     return `
-      <div class="monster-run-reader" id="monster-run-reader">
+      <div class="monster-run-reader" id="monster-run-reader" data-note-id="${esc(noteId)}" data-signature="${esc(signature)}">
         <div><small>START</small><b>${esc(start)}</b></div>
         <div><small>END</small><b>${esc(end)}</b></div>
         <div><small>REACHED STAGE</small><b>${esc(stage)}</b></div>
@@ -188,13 +189,19 @@
     readerRenderQueued = false;
     const article = $('#reader-article');
     if (!article) return;
-    $('#monster-run-reader', article)?.remove();
-    if (!pendingReaderNoteId) return;
-    const run = runs.get(String(pendingReaderNoteId));
-    if (!run) return;
+    const existing = $('#monster-run-reader', article);
+    const noteId = String(pendingReaderNoteId || '');
+    const run = noteId ? runs.get(noteId) : null;
+    if (!run) {
+      existing?.remove();
+      return;
+    }
+    const signature = readerSignature(run);
+    if (existing?.dataset?.noteId === noteId && existing?.dataset?.signature === signature) return;
+    existing?.remove();
     const hero = $('.reader-hero', article);
     if (!hero) return;
-    hero.insertAdjacentHTML('afterend', readerBlockHtml(run));
+    hero.insertAdjacentHTML('afterend', readerBlockHtml(run, noteId, signature));
   }
   function queueReaderRender() {
     if (readerRenderQueued) return;
@@ -235,10 +242,11 @@
   }, true);
 
   const readerArticle = $('#reader-article');
-  if (readerArticle) {
-    new MutationObserver(queueReaderRender).observe(readerArticle, { childList:true, subtree:true });
-  }
-  $('#reader-close')?.addEventListener('click', () => { pendingReaderNoteId = ''; });
+  if (readerArticle) new MutationObserver(queueReaderRender).observe(readerArticle, { childList:true, subtree:true });
+  $('#reader-close')?.addEventListener('click', () => {
+    pendingReaderNoteId = '';
+    queueReaderRender();
+  });
 
   loadRuns();
 })();
