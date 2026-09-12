@@ -81,5 +81,6 @@
   loadScript('/game-notes/runtime-core.js', () => {
     loadScript('/game-notes/workflow-link.js');
     loadScript('/game-notes/facet-presets.js');
+    loadScript('/game-notes/monster-train-fields.js');
   });
 })();
