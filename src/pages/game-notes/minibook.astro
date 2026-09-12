@@ -1,0 +1,143 @@
+---
+const title = 'MINI BOOK GENERATOR';
+---
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow,noarchive" />
+  <title>{title}</title>
+  <style is:global>
+    :root{--bg:#0d110f;--panel:#151a17;--panel2:#1b221e;--line:#2b352f;--line2:#3b483f;--text:#eef4ef;--muted:#8d9a90;--accent:#dff238;--ink:#111610}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif}.app{min-height:100vh}.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 22px;border-bottom:1px solid var(--line);background:#0d110ff2;backdrop-filter:blur(12px)}.top a{color:var(--muted);text-decoration:none;font-size:13px;font-weight:800}.top b{font-size:14px;letter-spacing:.08em}.top small{color:var(--muted);font-size:11px}.layout{display:grid;grid-template-columns:minmax(320px,420px) minmax(0,1fr);min-height:calc(100vh - 64px)}.tools{border-right:1px solid var(--line);padding:22px;overflow:auto}.preview{padding:28px;overflow:auto}.eyebrow{font:800 10px ui-monospace,monospace;letter-spacing:.12em;color:var(--accent);margin-bottom:7px}.tools h1{margin:0 0 7px;font-size:30px;letter-spacing:-.04em}.tools>p{margin:0 0 22px;color:var(--muted);font-size:13px;line-height:1.7}.group{padding:15px 0;border-top:1px solid var(--line)}.group:first-of-type{border-top:0}.group label,.group-title{display:block;margin-bottom:8px;font-size:11px;font-weight:850;color:#aeb9b0}.group input,.group select,.group textarea{width:100%;border:1px solid var(--line2);background:#101511;color:var(--text);border-radius:9px;padding:11px 12px;font-size:14px;outline:none}.group textarea{min-height:88px;line-height:1.65;resize:vertical}.row{display:flex;gap:8px}.row>*{flex:1}.btn{border:1px solid var(--line2);background:#161c18;color:var(--text);border-radius:9px;padding:10px 12px;font-size:12px;font-weight:850;cursor:pointer}.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--ink)}.btn:disabled{opacity:.45;cursor:not-allowed}.note-actions{display:flex;gap:7px;margin-bottom:9px}.note-list{display:grid;gap:7px;max-height:360px;overflow:auto;padding-right:2px}.note-item{display:grid;grid-template-columns:auto 1fr;gap:9px;padding:10px;border:1px solid var(--line);border-radius:9px;background:#111612}.note-item input{width:auto;margin-top:3px}.note-item b{display:block;font-size:12px;line-height:1.45}.note-item small{display:block;margin-top:3px;color:var(--muted);font-size:10px}.status{display:none;margin-bottom:14px;padding:12px;border:1px solid #7a5555;background:#261818;border-radius:9px;color:#e5b5b5;font-size:12px;line-height:1.6}.status.on{display:block}.status .auth-row{display:flex;gap:8px;margin-top:9px}.status input{flex:1;border:1px solid #694848;background:#120d0d;color:#fff;border-radius:8px;padding:9px}.book-wrap{width:min(860px,100%);margin:0 auto}.empty{min-height:70vh;display:grid;place-items:center;border:1px dashed var(--line2);border-radius:18px;color:var(--muted);text-align:center;padding:32px}.html-output{display:none;margin-top:14px}.html-output.on{display:block}.html-output textarea{min-height:200px;font:11px/1.5 ui-monospace,monospace}.count{color:var(--accent);font-weight:900}
+    .hw-mini-book{--paper:#f3f0e8;--paper2:#e9e4d8;--book-ink:#171816;--book-muted:#676b64;--book-accent:#161b17;background:var(--paper);color:var(--book-ink);font-family:"Hiragino Mincho ProN","Yu Mincho",serif;border-radius:3px;overflow:hidden;box-shadow:0 18px 70px #0007}.hw-mini-book *{box-sizing:border-box}.hwmb-cover{min-height:520px;padding:64px clamp(28px,7vw,78px);display:flex;flex-direction:column;justify-content:space-between;background:linear-gradient(145deg,#ece7db,#f7f4ed)}.hwmb-kicker{font:800 11px/1.4 ui-monospace,monospace;letter-spacing:.16em;text-transform:uppercase}.hwmb-cover h1{margin:20px 0 12px;font-size:clamp(44px,8vw,82px);line-height:.98;letter-spacing:-.065em;max-width:8ch}.hwmb-subtitle{max-width:34em;font-size:17px;line-height:1.8;color:var(--book-muted)}.hwmb-cover-foot{display:flex;justify-content:space-between;gap:16px;align-items:end;font:800 11px/1.5 ui-monospace,monospace;letter-spacing:.08em}.hwmb-intro{padding:46px clamp(28px,7vw,78px);border-top:1px solid #cdc7ba;border-bottom:1px solid #cdc7ba}.hwmb-intro p{max-width:38em;margin:0;font-size:18px;line-height:2}.hwmb-run{padding:54px clamp(28px,7vw,78px);border-bottom:1px solid #cdc7ba}.hwmb-run-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;margin-bottom:24px}.hwmb-run-no{font:900 12px ui-monospace,monospace;letter-spacing:.14em}.hwmb-run-date{font:700 10px ui-monospace,monospace;color:var(--book-muted)}.hwmb-run h2{margin:0 0 18px;font-size:clamp(28px,5vw,44px);line-height:1.15;letter-spacing:-.04em}.hwmb-quote{margin:0 0 24px;padding:20px 0;border-top:3px solid var(--book-accent);border-bottom:1px solid #c9c3b6;font-size:22px;line-height:1.65;font-weight:700}.hwmb-body{white-space:pre-wrap;font-size:16px;line-height:1.95}.hwmb-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:24px}.hwmb-tag{border:1px solid #aaa598;border-radius:999px;padding:5px 8px;font:700 9px ui-monospace,monospace;color:#555a53}.hwmb-after{padding:60px clamp(28px,7vw,78px);background:var(--book-accent);color:#f4f4ed}.hwmb-after small{font:800 10px ui-monospace,monospace;letter-spacing:.14em;color:#b9c0ba}.hwmb-after h2{font-size:38px;margin:10px 0 24px;letter-spacing:-.04em}.hwmb-after ul{margin:0;padding-left:1.2em;display:grid;gap:12px;max-width:40em;line-height:1.75}.hwmb-end{padding:32px clamp(28px,7vw,78px);background:#101411;color:#dfe6df;display:flex;justify-content:space-between;gap:14px;font:800 9px ui-monospace,monospace;letter-spacing:.08em}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}.tools{border-right:0;border-bottom:1px solid var(--line)}.preview{padding:14px}.note-list{max-height:300px}.hwmb-cover{min-height:430px}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <header class="top"><div><a href="/game-notes/">← GAME NOTES</a> <small>/ MINI BOOK</small></div><b>MINI BOOK GENERATOR</b></header>
+  <div class="layout">
+    <aside class="tools">
+      <div class="eyebrow">GAME NOTES → EDITORIAL OBJECT</div>
+      <h1>MINI BOOK</h1>
+      <p>同じゲームのプレイ記録を選ぶと、原文の温度を残した小さなプレイ記録集に自動整形します。公開は自動では行いません。</p>
+      <div class="status" id="status"><span id="status-text"></span><div class="auth-row" id="auth-row"><input id="admin-key" type="password" placeholder="HARF-WAY管理キー" /><button class="btn" id="auth-btn">再接続</button></div></div>
+      <div class="group"><label>GAME</label><select id="game"></select></div>
+      <div class="group">
+        <div class="group-title">RECORDS <span class="count" id="selected-count">0</span></div>
+        <div class="note-actions"><button class="btn" id="latest10">最新10件</button><button class="btn" id="select-all">すべて</button><button class="btn" id="clear-all">解除</button></div>
+        <div class="note-list" id="notes"></div>
+      </div>
+      <div class="group"><label>圧縮度</label><select id="density"><option value="fragment">切れ端（引用＋短い本文）</option><option value="medium">中くらい</option><option value="raw">原文をほぼ残す</option></select></div>
+      <div class="group"><label>BOOK TITLE</label><input id="book-title" /></div>
+      <div class="group"><label>KICKER</label><input id="kicker" value="PLAY NOTES / MINI BOOK" /></div>
+      <div class="group"><label>INTRO</label><textarea id="intro"></textarea></div>
+      <div class="group"><label>ENDING NOTE</label><textarea id="ending"></textarea></div>
+      <div class="group">
+        <div class="row"><button class="btn primary" id="generate">MINI BOOKを生成</button><button class="btn" id="copy">WordPress HTMLをコピー</button></div>
+        <div class="row" style="margin-top:8px"><button class="btn" id="toggle-html">HTMLを表示</button></div>
+        <div class="html-output" id="html-output"><textarea id="html" readonly></textarea></div>
+      </div>
+    </aside>
+    <main class="preview"><div class="book-wrap" id="book"><div class="empty">GAME NOTESを読み込み中…</div></div></main>
+  </div>
+</div>
+<script is:inline>
+(() => {
+  const state = { games:[], notes:[], facets:[], selected:new Set(), adminKey:sessionStorage.getItem('harfway_game_notes_key') || '', html:'' };
+  const $ = (s) => document.querySelector(s);
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const plain = (v) => String(v ?? '').replace(/\s+/g,' ').trim();
+  const fmtDate = (v) => { try { return new Intl.DateTimeFormat('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(v)); } catch { return ''; } };
+  const gameById = (id) => state.games.find(g => g.id === id);
+  const facetById = (id) => state.facets.find(f => f.id === id);
+  const currentGameId = () => $('#game').value;
+  const gameNotes = () => state.notes.filter(n => n.gameId === currentGameId()).sort((a,b)=>String(a.createdAt||a.updatedAt||'').localeCompare(String(b.createdAt||b.updatedAt||'')));
+
+  function showStatus(message, auth=false){ $('#status-text').textContent=message; $('#status').classList.toggle('on',Boolean(message)); $('#auth-row').style.display=auth?'flex':'none'; }
+  async function load(){
+    showStatus('GAME NOTESを読み込んでいます…');
+    const headers = state.adminKey ? {'x-admin-key':state.adminKey} : {};
+    const res = await fetch('/api/game-notes',{headers,cache:'no-store'});
+    const data = await res.json().catch(()=>({}));
+    if(res.status===401){ showStatus('管理キーを入力すると本番GAME NOTESを読み込めます。',true); $('#book').innerHTML='<div class="empty">GAME NOTESへの認証が必要です。</div>'; return; }
+    if(!res.ok){ showStatus(`読み込みに失敗しました: ${data.error||res.status}`); return; }
+    state.games=data.games||[]; state.notes=data.notes||[]; state.facets=data.facets||[];
+    showStatus(''); renderGames();
+  }
+  function renderGames(){
+    const sel=$('#game');
+    sel.innerHTML=state.games.map(g=>`<option value="${esc(g.id)}">${esc(g.name)}</option>`).join('');
+    const mt=state.games.find(g=>/モンスタートレイン/i.test(g.name)); if(mt) sel.value=mt.id;
+    onGameChange();
+  }
+  function onGameChange(){
+    state.selected.clear(); const list=gameNotes();
+    list.slice(-Math.min(10,list.length)).forEach(n=>state.selected.add(n.id));
+    const g=gameById(currentGameId()); const count=state.selected.size || list.length;
+    $('#book-title').value=g ? `${g.name} / ${count || 10} RUNS` : 'PLAY NOTES';
+    $('#intro').value=g ? `${g.name}を遊びながら残したメモを、整えすぎず一冊にまとめる。攻略の正解より、迷ったこと、試したこと、少しずつ分かってきたことを残すための小さな記録。` : '';
+    $('#ending').value='まだ結論は出ていない。次のプレイで、また見え方が変わるかもしれない。';
+    renderNoteList(); generate();
+  }
+  function renderNoteList(){
+    const list=gameNotes();
+    $('#notes').innerHTML=list.length ? list.map((n,i)=>`<label class="note-item"><input type="checkbox" data-note="${esc(n.id)}" ${state.selected.has(n.id)?'checked':''}><span><b>${esc(n.title||`記録 ${i+1}`)}</b><small>${esc(fmtDate(n.createdAt||n.updatedAt))} · ${esc(plain(n.body).slice(0,58))}${plain(n.body).length>58?'…':''}</small></span></label>`).join('') : '<div class="empty" style="min-height:120px">このゲームの記録はまだありません。</div>';
+    $('#selected-count').textContent=state.selected.size;
+  }
+  function runNumber(note,index){ const m=String(note.title||'').match(/(?:第\s*)?(\d+)\s*(?:回|run)/i); return m ? Number(m[1]) : index+1; }
+  function sentences(body){
+    return String(body||'').replace(/\r/g,'').split(/(?<=[。！？!?])|\n+/).map(plain).filter(s=>s.length>=5);
+  }
+  function scoreSentence(s){
+    let score=Math.min(3,s.length/35); if(/[！？!?]/.test(s))score+=2; if(/強|弱|勝|負|死亡|撃破|クリア|重要|相性|噛み合|分から|わから|難し|気づ|思う|かも|役割|デバフ|バフ|処理|回転率|中途半端/.test(s))score+=3; if(s.length>120)score-=2; return score;
+  }
+  function pullQuote(body){ const list=sentences(body).sort((a,b)=>scoreSentence(b)-scoreSentence(a)); return list[0]||plain(body).slice(0,120); }
+  function compressedBody(body,density){
+    const raw=String(body||'').trim(); if(density==='raw') return raw;
+    const max=density==='medium'?900:380; if(raw.length<=max)return raw;
+    const cut=raw.slice(0,max); const end=Math.max(cut.lastIndexOf('。'),cut.lastIndexOf('\n')); return (end>120?cut.slice(0,end+1):cut)+'\n…';
+  }
+  function tagValues(note){
+    const out=[]; for(const [id,values] of Object.entries(note.facets||{})){ const name=facetById(id)?.name||''; for(const v of (values||[])){ if(v && !out.some(x=>x.value===v)) out.push({name,value:v}); } }
+    return out.slice(0,8);
+  }
+  function insightLines(notes){
+    const candidates=[]; notes.forEach((n,idx)=>sentences(n.body).forEach(s=>{ if(/重要|方が|必要|役割|相乗効果|回転率|全部を追わず|勝て|ゲームっぽい|デバフ|火力|タンク|後列|蘇生|再構築|強いカード|いらないカード/.test(s)) candidates.push({s,score:scoreSentence(s)+idx/notes.length}); }));
+    const seen=new Set(); return candidates.sort((a,b)=>b.score-a.score).map(x=>x.s).filter(s=>{const k=s.slice(0,24);if(seen.has(k))return false;seen.add(k);return true;}).slice(0,5);
+  }
+  function selectedNotes(){ return gameNotes().filter(n=>state.selected.has(n.id)); }
+  function buildBookHtml(){
+    const notes=selectedNotes(); const g=gameById(currentGameId()); if(!g||!notes.length)return '';
+    const title=$('#book-title').value.trim()||`${g.name} / ${notes.length} RUNS`; const kicker=$('#kicker').value.trim()||'PLAY NOTES / MINI BOOK'; const intro=$('#intro').value.trim(); const ending=$('#ending').value.trim(); const density=$('#density').value;
+    const runs=notes.map((n,i)=>{
+      const no=String(runNumber(n,i)).padStart(2,'0'); const quote=pullQuote(n.body); const tags=tagValues(n);
+      return `<section class="hwmb-run"><div class="hwmb-run-head"><div class="hwmb-run-no">RUN ${no}</div><div class="hwmb-run-date">${esc(fmtDate(n.createdAt||n.updatedAt))}</div></div><h2>${esc(n.title||`RUN ${no}`)}</h2><p class="hwmb-quote">${esc(quote)}</p><div class="hwmb-body">${esc(compressedBody(n.body,density))}</div>${tags.length?`<div class="hwmb-tags">${tags.map(t=>`<span class="hwmb-tag">${esc(t.name?`${t.name}: `:'')}${esc(t.value)}</span>`).join('')}</div>`:''}</section>`;
+    }).join('');
+    const insights=insightLines(notes); const first=fmtDate(notes[0].createdAt||notes[0].updatedAt), last=fmtDate(notes.at(-1).createdAt||notes.at(-1).updatedAt);
+    return `<article class="hw-mini-book"><section class="hwmb-cover"><div><div class="hwmb-kicker">${esc(kicker)}</div><h1>${esc(title)}</h1><p class="hwmb-subtitle">プレイ中の断片を、迷いも勘違いも含めて並べ直した小さな記録集。</p></div><div class="hwmb-cover-foot"><span>HARF-WAY / GAME NOTES</span><span>${esc(notes.length)} RECORDS · ${esc(first)}${first&&last&&first!==last?` — ${esc(last)}`:''}</span></div></section>${intro?`<section class="hwmb-intro"><p>${esc(intro)}</p></section>`:''}${runs}<section class="hwmb-after"><small>AFTER ${esc(String(notes.length))} RECORDS</small><h2>いま見えていること</h2>${insights.length?`<ul>${insights.map(s=>`<li>${esc(s)}</li>`).join('')}</ul>`:'<p>まだ言葉にできる結論はない。</p>'}${ending?`<p style="margin:28px 0 0;max-width:38em;line-height:1.9;color:#cbd1cb">${esc(ending)}</p>`:''}</section><footer class="hwmb-end"><span>GAME FRAGMENTS / HARF-WAY</span><span>${esc(g.name)}</span></footer></article>`;
+  }
+  function wpStyle(){
+    return `.hw-mini-book{--paper:#f3f0e8;--paper2:#e9e4d8;--book-ink:#171816;--book-muted:#676b64;--book-accent:#161b17;background:var(--paper);color:var(--book-ink);font-family:"Hiragino Mincho ProN","Yu Mincho",serif;overflow:hidden}.hw-mini-book *{box-sizing:border-box}.hwmb-cover{min-height:520px;padding:64px clamp(28px,7vw,78px);display:flex;flex-direction:column;justify-content:space-between;background:linear-gradient(145deg,#ece7db,#f7f4ed)}.hwmb-kicker{font:800 11px/1.4 ui-monospace,monospace;letter-spacing:.16em}.hwmb-cover h1{margin:20px 0 12px;font-size:clamp(44px,8vw,82px);line-height:.98;letter-spacing:-.065em;max-width:8ch}.hwmb-subtitle{max-width:34em;font-size:17px;line-height:1.8;color:var(--book-muted)}.hwmb-cover-foot{display:flex;justify-content:space-between;gap:16px;align-items:end;font:800 11px/1.5 ui-monospace,monospace;letter-spacing:.08em}.hwmb-intro{padding:46px clamp(28px,7vw,78px);border-top:1px solid #cdc7ba;border-bottom:1px solid #cdc7ba}.hwmb-intro p{max-width:38em;margin:0;font-size:18px;line-height:2}.hwmb-run{padding:54px clamp(28px,7vw,78px);border-bottom:1px solid #cdc7ba}.hwmb-run-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;margin-bottom:24px}.hwmb-run-no{font:900 12px ui-monospace,monospace;letter-spacing:.14em}.hwmb-run-date{font:700 10px ui-monospace,monospace;color:var(--book-muted)}.hwmb-run h2{margin:0 0 18px;font-size:clamp(28px,5vw,44px);line-height:1.15;letter-spacing:-.04em}.hwmb-quote{margin:0 0 24px;padding:20px 0;border-top:3px solid var(--book-accent);border-bottom:1px solid #c9c3b6;font-size:22px;line-height:1.65;font-weight:700}.hwmb-body{white-space:pre-wrap;font-size:16px;line-height:1.95}.hwmb-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:24px}.hwmb-tag{border:1px solid #aaa598;border-radius:999px;padding:5px 8px;font:700 9px ui-monospace,monospace;color:#555a53}.hwmb-after{padding:60px clamp(28px,7vw,78px);background:var(--book-accent);color:#f4f4ed}.hwmb-after small{font:800 10px ui-monospace,monospace;letter-spacing:.14em;color:#b9c0ba}.hwmb-after h2{font-size:38px;margin:10px 0 24px;letter-spacing:-.04em}.hwmb-after ul{margin:0;padding-left:1.2em;display:grid;gap:12px;max-width:40em;line-height:1.75}.hwmb-end{padding:32px clamp(28px,7vw,78px);background:#101411;color:#dfe6df;display:flex;justify-content:space-between;gap:14px;font:800 9px ui-monospace,monospace;letter-spacing:.08em}@media(max-width:700px){.hwmb-cover{min-height:430px}.hwmb-cover-foot,.hwmb-end{align-items:flex-start;flex-direction:column}.hwmb-run,.hwmb-intro,.hwmb-after{padding-left:24px;padding-right:24px}}`;
+  }
+  function generate(){
+    const body=buildBookHtml(); if(!body){ $('#book').innerHTML='<div class="empty">記録を1件以上選択してください。</div>'; state.html=''; $('#html').value=''; return; }
+    $('#book').innerHTML=body; state.html=`<!-- wp:html -->\n<style data-harfway-mini-book>\n${wpStyle()}\n</style>\n${body}\n<!-- /wp:html -->`; $('#html').value=state.html;
+  }
+  $('#game').addEventListener('change',onGameChange);
+  $('#notes').addEventListener('change',e=>{const el=e.target.closest('[data-note]');if(!el)return;el.checked?state.selected.add(el.dataset.note):state.selected.delete(el.dataset.note);$('#selected-count').textContent=state.selected.size;generate();});
+  $('#latest10').addEventListener('click',()=>{state.selected.clear();gameNotes().slice(-10).forEach(n=>state.selected.add(n.id));renderNoteList();generate();});
+  $('#select-all').addEventListener('click',()=>{gameNotes().forEach(n=>state.selected.add(n.id));renderNoteList();generate();});
+  $('#clear-all').addEventListener('click',()=>{state.selected.clear();renderNoteList();generate();});
+  ['density','book-title','kicker','intro','ending'].forEach(id=>$('#'+id).addEventListener(id==='density'?'change':'input',generate));
+  $('#generate').addEventListener('click',generate);
+  $('#copy').addEventListener('click',async()=>{if(!state.html)generate();if(!state.html)return;try{await navigator.clipboard.writeText(state.html);$('#copy').textContent='コピーしました';setTimeout(()=>$('#copy').textContent='WordPress HTMLをコピー',1400);}catch{$('#html-output').classList.add('on');}});
+  $('#toggle-html').addEventListener('click',()=>$('#html-output').classList.toggle('on'));
+  $('#auth-btn').addEventListener('click',()=>{state.adminKey=$('#admin-key').value.trim();if(state.adminKey){sessionStorage.setItem('harfway_game_notes_key',state.adminKey);load();}});
+  load().catch(err=>showStatus(`読み込みに失敗しました: ${err.message||err}`));
+})();
+</script>
+</body>
+</html>
