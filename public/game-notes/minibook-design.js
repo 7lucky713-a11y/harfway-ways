@@ -46,12 +46,6 @@
     style.textContent=`
       .page-body,.run-body,.after-list,.intro-body .page-body{font-size:var(--mini-design-body-size,15px)!important}
       .book-page,.page-body,.run-body,.run-quote,.page-title,.run-title,.cover-title,.cover-sub,.after-list,.colophon-body{line-break:strict;word-break:normal;overflow-wrap:break-word}
-      @media screen{
-        .paper-page>.book-page{overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain;scrollbar-gutter:stable;scrollbar-width:thin;scrollbar-color:#9b9589 transparent;-webkit-overflow-scrolling:touch}
-        .paper-page>.book-page::-webkit-scrollbar{width:7px}
-        .paper-page>.book-page::-webkit-scrollbar-thumb{background:#9b9589;border-radius:999px}
-        .paper-page>.book-page::-webkit-scrollbar-track{background:transparent}
-      }
       #minibook-design-panel .design-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
       #minibook-design-panel .design-title b{font:850 11px ui-monospace,monospace;letter-spacing:.11em;color:#dff238}
       #minibook-design-panel .design-title small{font-size:9px;color:#6d796f}
@@ -96,7 +90,7 @@
           <option value="18">18px / LARGE</option>
         </select>
       </div>
-      <div class="hint">GAME NOTESの取得・ページ内容・PAGE EDITORには触れず、表示デザインだけ変更します。日本語の行頭・行末禁則を常時適用し、長文は紙面内スクロールで全文表示します。</div>
+      <div class="hint">GAME NOTESの取得・PAGE EDITORには触れず、表示デザインだけ変更します。日本語の行頭・行末禁則は常時適用し、長文のページ分割はLAYOUT側で処理します。</div>
     `;
 
     const format=[...tools.querySelectorAll('.group')].find(group=>group.querySelector('label')?.textContent?.trim()==='FORMAT');
