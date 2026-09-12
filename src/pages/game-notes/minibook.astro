@@ -1,0 +1,132 @@
+---
+const title = 'MINI BOOK';
+---
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow,noarchive" />
+  <title>{title}</title>
+  <style is:global>
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0d110f}
+    #minibook-frame{display:block;width:100%;height:100%;border:0;background:#0d110f}
+    #boot{position:fixed;inset:0;display:grid;place-items:center;color:#9aa59d;font:12px -apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:#0d110f}
+  </style>
+</head>
+<body>
+<div id="boot">MINI BOOK を読み込んでいます…</div>
+<iframe id="minibook-frame" title="MINI BOOK"></iframe>
+<script is:inline>
+(async()=>{
+  const frame=document.getElementById('minibook-frame');
+  const boot=document.getElementById('boot');
+  try{
+    let html=await fetch('/game-notes/minibook-clean/',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.text()});
+
+    html=html.replace('B5 / EBOOK MOTION PREVIEW','B5 / EDGE CURL');
+    html=html.replace('FLUID PAGE SWIPE','EDGE CURL PAGE TURN');
+    html=html.replace('ページ送りは3D回転ではなく、電子書籍に近い横スライド＋指追従に変更しています。','ページ全体をスライドさせず、端から折れ目が進むようにめくります。');
+    html=html.replace('左右タップ / ドラッグ / ← → で送る','左右の端をタップ / ドラッグ / ← → でめくる');
+
+    html=html.replace('</head>',`<style>
+      .book-stage{perspective:1500px!important;overflow:hidden!important}
+      .curl-current,.curl-fold,.curl-shadow{position:absolute;top:0;bottom:0;will-change:transform,clip-path,left,width,opacity}
+      .curl-current{inset:0;z-index:4;overflow:hidden;transform:none!important}
+      .curl-current>.paper-page{height:100%}
+      .curl-fold{z-index:6;width:1px;pointer-events:none;transform-style:preserve-3d;transform-origin:center center;overflow:visible}
+      .curl-fold::before{content:"";position:absolute;top:0;bottom:0;left:50%;width:100%;transform:translateX(-50%);background:linear-gradient(90deg,rgba(40,37,32,.30) 0%,rgba(239,235,224,.96) 14%,rgba(251,248,238,.98) 45%,rgba(212,205,191,.96) 78%,rgba(70,65,57,.20) 100%);border-left:1px solid rgba(120,112,100,.20);border-right:1px solid rgba(120,112,100,.13);box-shadow:0 0 18px rgba(0,0,0,.12)}
+      .curl-fold::after{content:"";position:absolute;top:0;bottom:0;left:50%;width:2px;transform:translateX(-50%);background:rgba(255,255,255,.52);filter:blur(.2px)}
+      .curl-shadow{z-index:3;width:24%;pointer-events:none;opacity:0;background:linear-gradient(90deg,transparent,rgba(0,0,0,.20),rgba(0,0,0,.04),transparent);filter:blur(5px)}
+      .curl-stage.curl-next .curl-shadow{transform:translateX(-58%)}
+      .curl-stage.curl-prev .curl-shadow{transform:translateX(-42%) scaleX(-1)}
+      .curl-stage .static-page{z-index:1!important;transform:none!important;filter:none!important}
+      .curl-stage .page-hit,.curl-stage .edge-cue{display:none!important}
+      @media(prefers-reduced-motion:reduce){.curl-fold,.curl-shadow{display:none!important}}
+    </style></head>`);
+
+    const replacement=`function curlEase(t){return .5-Math.cos(Math.PI*Math.max(0,Math.min(1,t)))/2}
+  function applyCurl(stage,progress,dir){
+    const p=Math.max(0,Math.min(1,progress));
+    const current=stage?.querySelector('.curl-current'),fold=stage?.querySelector('.curl-fold'),shadow=stage?.querySelector('.curl-shadow');
+    if(!current||!fold||!shadow)return;
+    const wave=Math.sin(Math.PI*p),foldW=4+17*wave,angle=(dir==='next'?-1:1)*(8+70*wave);
+    if(dir==='next'){
+      const x=(1-p)*100;
+      current.style.clipPath='inset(0 '+(p*100).toFixed(3)+'% 0 0)';
+      fold.style.left=x.toFixed(3)+'%';
+      shadow.style.left=x.toFixed(3)+'%';
+    }else{
+      const x=p*100;
+      current.style.clipPath='inset(0 0 0 '+(p*100).toFixed(3)+'%)';
+      fold.style.left=x.toFixed(3)+'%';
+      shadow.style.left=x.toFixed(3)+'%';
+    }
+    fold.style.width=foldW.toFixed(2)+'%';
+    fold.style.transform='translateX(-50%) perspective(900px) rotateY('+angle.toFixed(2)+'deg)';
+    fold.style.opacity=String(Math.min(1,.22+wave*1.15));
+    shadow.style.opacity=String(.04+wave*.36);
+  }
+  function prepareCurl(next,dir){
+    const stage=$('[data-stage]'),current=state.pages[state.page],target=state.pages[next];if(!stage)return null;
+    stage.className='book-stage curl-stage '+(dir==='next'?'curl-next':'curl-prev');
+    stage.innerHTML='<div class="static-page">'+paperPage(target)+'</div><div class="curl-current">'+paperPage(current)+'</div><div class="curl-shadow"></div><div class="curl-fold"></div>';
+    applyCurl(stage,0,dir);return stage;
+  }
+  function tweenCurl(stage,from,to,dir,duration,done){
+    const start=performance.now(),delta=to-from;
+    const tick=now=>{const raw=Math.min(1,(now-start)/Math.max(1,duration)),e=curlEase(raw);applyCurl(stage,from+delta*e,dir);if(raw<1)requestAnimationFrame(tick);else done?.()};
+    requestAnimationFrame(tick);
+  }
+  function finishCurl(next){state.page=next;state.animating=false;state.drag=null;setTimeout(render,0)}
+  function animatePage(next,dir){
+    if(state.animating||next<0||next>=state.pages.length||next===state.page)return;
+    state.animating=true;const stage=prepareCurl(next,dir);if(!stage){finishCurl(next);return}
+    tweenCurl(stage,0,1,dir,620,()=>finishCurl(next));
+  }
+  function beginDrag(e){
+    if(state.animating||e.button>0||e.target.closest('video,button[data-nav]'))return;
+    const stage=$('[data-stage]');if(!stage)return;
+    state.drag={id:e.pointerId,startX:e.clientX,lastX:e.clientX,startAt:performance.now(),lastAt:performance.now(),active:false,dir:null,next:null,width:stage.getBoundingClientRect().width,progress:0};
+    stage.setPointerCapture?.(e.pointerId);
+  }
+  function moveDrag(e){
+    const d=state.drag;if(!d||d.id!==e.pointerId||state.animating)return;
+    const dx=e.clientX-d.startX,abs=Math.abs(dx);d.lastX=e.clientX;d.lastAt=performance.now();
+    if(!d.active){
+      if(abs<6)return;const dir=dx<0?'next':'prev',next=state.page+(dir==='next'?1:-1);
+      if(next<0||next>=state.pages.length){state.drag=null;return}
+      d.active=true;d.dir=dir;d.next=next;prepareCurl(next,dir);
+    }
+    const directional=d.dir==='next'?-dx:dx;
+    d.progress=Math.max(0,Math.min(1,directional/(d.width||1)));
+    applyCurl($('[data-stage]'),d.progress,d.dir);e.preventDefault();
+  }
+  function endDrag(e){
+    const d=state.drag;if(!d||d.id!==e.pointerId)return;const stage=$('[data-stage]');
+    if(!d.active||!stage){state.drag=null;return}
+    const dx=e.clientX-d.startX,elapsed=Math.max(1,performance.now()-d.startAt),velocity=Math.abs(dx)/elapsed,commit=d.progress>.20||velocity>.50;
+    state.animating=true;state.suppressClickUntil=performance.now()+280;
+    const from=d.progress,to=commit?1:0,distance=Math.abs(to-from),duration=Math.round(260+390*distance),next=d.next,dir=d.dir;
+    state.drag=null;tweenCurl(stage,from,to,dir,duration,()=>{if(commit)state.page=next;state.animating=false;render()});
+  }
+  function cancelDrag(e){if(!state.drag)return;endDrag(e)}
+  function bindReader(){
+    const prev=()=>{if(performance.now()<(state.suppressClickUntil||0))return;animatePage(state.page-1,'prev')};
+    const next=()=>{if(performance.now()<(state.suppressClickUntil||0))return;animatePage(state.page+1,'next')};
+    $('[data-nav="prev"]')?.addEventListener('click',prev);$('[data-nav="next"]')?.addEventListener('click',next);$('.page-hit.prev')?.addEventListener('click',prev);$('.page-hit.next')?.addEventListener('click',next);
+    const stage=$('[data-stage]');if(stage){stage.addEventListener('pointerdown',beginDrag);stage.addEventListener('pointermove',moveDrag,{passive:false});stage.addEventListener('pointerup',endDrag);stage.addEventListener('pointercancel',cancelDrag)}
+  }
+  function renderPrint`;
+
+    html=html.replace(/function animatePage\(next,dir\)\{[\s\S]*?function renderPrint/,replacement);
+
+    frame.srcdoc=html;
+    frame.addEventListener('load',()=>{boot.style.display='none'},{once:true});
+  }catch(err){
+    boot.textContent='読み込みに失敗しました: '+(err?.message||err);
+  }
+})();
+</script>
+</body>
+</html>
