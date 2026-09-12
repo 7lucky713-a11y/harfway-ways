@@ -86,6 +86,28 @@
           "scope": "page"
         }
       }
+    },
+    {
+      "id": "mini-book",
+      "project_slug": "harfway-playback",
+      "public_url": "https://harfway-playback.vercel.app/game-notes/minibook/",
+      "admin_url": "https://harfway-playback.vercel.app/game-notes/minibook-wordpress-v3/",
+      "sync_source": "page-manifest",
+      "manifest": {
+        "harfway": true,
+        "id": "mini-book",
+        "name": "MINI BOOK",
+        "project_slug": "harfway-playback",
+        "group": "CREATE",
+        "role": "GAME NOTES → 小冊子 / WordPress",
+        "description": "PRIVATE GAME NOTEBOOKの生プレイメモを、本文を書き直さずページ分割・組版・前後ページ編集で小さな本へ変換。Web閲覧、WordPress書き出し、PDF/印刷導線を持つ。",
+        "public_url": "https://harfway-playback.vercel.app/game-notes/minibook/",
+        "admin_url": "https://harfway-playback.vercel.app/game-notes/minibook-wordpress-v3/",
+        "control_center": {
+          "sync": true,
+          "scope": "page"
+        }
+      }
     }
   ]
 }
