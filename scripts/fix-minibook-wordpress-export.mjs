@@ -20,13 +20,6 @@ function patchCleanEditor() {
     'text size editor control'
   );
 
-  html = replaceOnce(html, '.page-body{white-space:pre-wrap;font-size:15px;', '.page-body{white-space:pre-wrap;font-size:var(--hw-body-size,15px);', 'page body font variable');
-  html = replaceOnce(html, '.intro-body .page-body{font-size:18px;', '.intro-body .page-body{font-size:var(--hw-body-size,15px);', 'intro body font variable');
-  html = replaceOnce(html, '.run-body{margin-top:22px;white-space:pre-wrap;font-size:15px;', '.run-body{margin-top:22px;white-space:pre-wrap;font-size:var(--hw-body-size,15px);', 'run body font variable');
-  html = replaceOnce(html, '.after-list{margin:28px 0 0;padding-left:1.1em;display:grid;gap:13px;font-size:16px;', '.after-list{margin:28px 0 0;padding-left:1.1em;display:grid;gap:13px;font-size:var(--hw-body-size,15px);', 'after font variable');
-  html = replaceOnce(html, '.page-body,.run-body{font-size:11px;line-height:1.72}', '.page-body,.run-body{font-size:calc(var(--hw-body-size,15px)*.74);line-height:1.72}', 'mobile body font variable');
-  html = replaceOnce(html, '.intro-body .page-body{font-size:13px;line-height:1.85}', '.intro-body .page-body{font-size:calc(var(--hw-body-size,15px)*.74);line-height:1.85}', 'mobile intro font variable');
-
   html = replaceOnce(
     html,
     "function paginate(body,first=520,next=760){const t=String(body||'').replace(/\\r/g,'').trim();",
@@ -44,8 +37,8 @@ function patchCleanEditor() {
   html = replaceOnce(
     html,
     '    state.pages=raw;state.page=Math.max(0,Math.min(state.page,raw.length-1));renderPrint();return raw;',
-    '    const sized=raw.map(p=>({...p,html:p.html.replace(\'<article class="book-page\',`<article style="--hw-body-size:${bodySize}px" class="book-page`)}));state.pages=sized;state.page=Math.max(0,Math.min(state.page,sized.length-1));renderPrint();return sized;',
-    'inline body size on pages'
+    '    const sized=raw.map(p=>({...p,html:p.html.replaceAll(\'class="page-body"\',`class="page-body" style="font-size:${bodySize}px"`).replaceAll(\'class="run-body"\',`class="run-body" style="font-size:${bodySize}px"`).replaceAll(\'class="after-list"\',`class="after-list" style="font-size:${bodySize}px"`)}));state.pages=sized;state.page=Math.max(0,Math.min(state.page,sized.length-1));renderPrint();return sized;',
+    'inline body size on text elements'
   );
 
   html = replaceOnce(
@@ -55,7 +48,7 @@ function patchCleanEditor() {
     'font size change binding'
   );
 
-  if (!html.includes('id="body-font-size"') || !html.includes('--hw-body-size:${bodySize}px')) {
+  if (!html.includes('id="body-font-size"') || !html.includes('font-size:${bodySize}px')) {
     throw new Error('[minibook-wordpress-fix] editor font size injection failed');
   }
 
@@ -74,14 +67,6 @@ function patchWordpressExporter() {
   if (buildAllIndex < 0) throw new Error('[minibook-wordpress-fix] buildAll function not found');
   lines[buildAllIndex] = "  function buildAll(pages){return buildHtmlCss(pages)+'\\n'+'<scr'+'ipt>'+exportJs()+'</scr'+'ipt>'}";
   html = lines.join('\n');
-
-  // Carry the editor-selected body size into exported WordPress CSS via the inline CSS variable on each page.
-  html = replaceOnce(html, '.hw-minibook .hw-mb-page-body{white-space:pre-wrap;font-size:15px;', '.hw-minibook .hw-mb-page-body{white-space:pre-wrap;font-size:var(--hw-body-size,15px);', 'export page body font variable');
-  html = replaceOnce(html, '.hw-minibook .hw-mb-intro-body .hw-mb-page-body{font-size:18px;', '.hw-minibook .hw-mb-intro-body .hw-mb-page-body{font-size:var(--hw-body-size,15px);', 'export intro font variable');
-  html = replaceOnce(html, '.hw-minibook .hw-mb-run-body{margin-top:22px;white-space:pre-wrap;font-size:15px;', '.hw-minibook .hw-mb-run-body{margin-top:22px;white-space:pre-wrap;font-size:var(--hw-body-size,15px);', 'export run body font variable');
-  html = replaceOnce(html, '.hw-minibook .hw-mb-after-list{margin:28px 0 0;padding-left:1.1em;display:grid;gap:13px;font-size:16px;', '.hw-minibook .hw-mb-after-list{margin:28px 0 0;padding-left:1.1em;display:grid;gap:13px;font-size:var(--hw-body-size,15px);', 'export after font variable');
-  html = replaceOnce(html, '.hw-minibook .hw-mb-page-body,.hw-minibook .hw-mb-run-body{font-size:11px;line-height:1.72}', '.hw-minibook .hw-mb-page-body,.hw-minibook .hw-mb-run-body{font-size:calc(var(--hw-body-size,15px)*.74);line-height:1.72}', 'export mobile body font variable');
-  html = replaceOnce(html, '.hw-minibook .hw-mb-intro-body .hw-mb-page-body{font-size:13px;line-height:1.85}', '.hw-minibook .hw-mb-intro-body .hw-mb-page-body{font-size:calc(var(--hw-body-size,15px)*.74);line-height:1.85}', 'export mobile intro font variable');
 
   // Explain the direct left/right tap controls in the exported reader.
   html = replaceOnce(
@@ -106,10 +91,9 @@ function patchWordpressExporter() {
   if (html.includes("replace(/<\\\\/script/gi")) throw new Error('[minibook-wordpress-fix] broken script escape still present');
   if (html.includes('data-hw-zoom-reset') || html.includes("root.addEventListener('wheel'")) throw new Error('[minibook-wordpress-fix] zoom runtime unexpectedly present');
   if (!html.includes('var spreadTap=null') || !html.includes("navigate(e.clientX<rect0.left+rect0.width/2?'prev':'next')")) throw new Error('[minibook-wordpress-fix] tap navigation injection failed');
-  if (!html.includes('var(--hw-body-size,15px)')) throw new Error('[minibook-wordpress-fix] WordPress body size variable injection failed');
 
   fs.writeFileSync(file, html);
-  console.log('[minibook-wordpress-fix] patched WordPress exporter + tap navigation + body font size');
+  console.log('[minibook-wordpress-fix] patched WordPress exporter + tap navigation');
 }
 
 patchCleanEditor();
