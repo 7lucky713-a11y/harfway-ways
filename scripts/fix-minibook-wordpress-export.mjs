@@ -1,6 +1,41 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+function patchMinibookLayout() {
+  const file = path.resolve('dist/game-notes/minibook-clean/index.html');
+  if (!fs.existsSync(file)) {
+    throw new Error(`[minibook-wordpress-fix] missing ${file}`);
+  }
+
+  let html = fs.readFileSync(file, 'utf8');
+
+  function replaceOnce(search, replacement, label) {
+    if (!html.includes(search)) {
+      throw new Error(`[minibook-wordpress-fix] ${label} pattern not found`);
+    }
+    html = html.replace(search, replacement);
+  }
+
+  replaceOnce(
+    "function notePages(n,index){const run=runNumber(n,index),label=String(run).padStart(2,'0'),chunks=paginate(n.body),tags=tagsOf(n),out=[];",
+    "function notePages(n,index){const run=runNumber(n,index),label=String(run).padStart(2,'0'),bodySize=Math.max(12,Math.min(18,Number(window.__MINIBOOK_DESIGN__?.bodyFontSize||15))),scale=15/bodySize,firstLimit=Math.max(190,Math.min(320,Math.round(260*scale))),nextLimit=Math.max(320,Math.min(540,Math.round(420*scale))),chunks=paginate(n.body,firstLimit,nextLimit),tags=tagsOf(n),out=[];",
+    'font-aware run pagination'
+  );
+
+  replaceOnce(
+    "  $('#game').addEventListener('change',onGame);",
+    "  window.addEventListener('minibook:designchange',()=>{if(state.games.length)render()});\n  $('#game').addEventListener('change',onGame);",
+    'design-change repagination'
+  );
+
+  if (!html.includes('firstLimit=Math.max(190') || !html.includes("window.addEventListener('minibook:designchange'")) {
+    throw new Error('[minibook-wordpress-fix] layout pagination injection failed');
+  }
+
+  fs.writeFileSync(file, html);
+  console.log('[minibook-wordpress-fix] patched MINI BOOK layout pagination');
+}
+
 function patchMinibookWrapper() {
   const file = path.resolve('dist/game-notes/minibook/index.html');
   if (!fs.existsSync(file)) {
@@ -60,14 +95,26 @@ function patchWordpressExporter() {
     'body size freeze'
   );
 
+  // The editor now splits long RUNs into real pages; the public artifact must not add an inner scroll layer.
+  replaceOnce(
+    '.hw-minibook__scroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-gutter:stable;scrollbar-width:thin;scrollbar-color:#9b9589 transparent;-webkit-overflow-scrolling:touch}',
+    '.hw-minibook__scroll{position:absolute;inset:0;overflow:hidden}',
+    'disable inner page scroll'
+  );
+  replaceOnce(
+    '.hw-minibook__scroll>.hw-mb-page{height:auto!important;min-height:100%!important}',
+    '.hw-minibook__scroll>.hw-mb-page{height:100%!important;min-height:0!important}',
+    'fixed page height'
+  );
+
   // Explain the direct left/right tap controls in the exported reader.
   replaceOnce(
     '長文はページ内スクロール · 1ページ時は左右ドラッグ / ← → でめくる',
-    '長文はページ内スクロール · 左半分タップで前へ / 右半分タップで次へ · 1ページ時は左右ドラッグでもめくれる',
+    '長文は自動で複数ページに分割 · 左半分タップで前へ / 右半分タップで次へ · 1ページ時は左右ドラッグでもめくれる',
     'tap help copy'
   );
 
-  // Track vertical movement too, so a scroll gesture never becomes an accidental tap-to-turn.
+  // Track vertical movement too, so touch movement never becomes an accidental tap-to-turn.
   replaceOnce(
     "drag={id:e.pointerId,start:e.clientX,w:slot.getBoundingClientRect().width,active:false,dir:null,target:null,p:0}",
     "drag={id:e.pointerId,start:e.clientX,startY:e.clientY,w:slot.getBoundingClientRect().width,active:false,dir:null,target:null,p:0}",
@@ -84,13 +131,14 @@ function patchWordpressExporter() {
   if (html.includes('data-hw-zoom-reset') || html.includes("root.addEventListener('wheel'")) {
     throw new Error('[minibook-wordpress-fix] zoom runtime unexpectedly present');
   }
-  if (!html.includes('var spreadTap=null') || !html.includes("navigate(e.clientX<rect0.left+rect0.width/2?'prev':'next')") || !html.includes('__MINIBOOK_DESIGN__')) {
+  if (!html.includes('var spreadTap=null') || !html.includes("navigate(e.clientX<rect0.left+rect0.width/2?'prev':'next')") || !html.includes('__MINIBOOK_DESIGN__') || !html.includes('長文は自動で複数ページに分割')) {
     throw new Error('[minibook-wordpress-fix] exporter injection failed');
   }
 
   fs.writeFileSync(file, html);
-  console.log('[minibook-wordpress-fix] patched exporter + tap navigation + isolated DESIGN export');
+  console.log('[minibook-wordpress-fix] patched exporter + tap navigation + paged long notes');
 }
 
+patchMinibookLayout();
 patchMinibookWrapper();
 patchWordpressExporter();
