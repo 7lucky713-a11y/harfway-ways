@@ -16,44 +16,30 @@ function patchCleanEditor() {
   html = replaceOnce(
     html,
     '<div class="group"><label>FORMAT</label><div class="format-card"><b>B5 / 182 × 257 mm</b><small>FULL NOTES · EDITABLE FRONT/BACK MATTER · FLUID PAGE SWIPE</small></div></div>',
-    '<div class="group"><label>FORMAT</label><div class="format-card"><b>B5 / 182 × 257 mm</b><small>FULL NOTES · EDITABLE FRONT/BACK MATTER · FLUID PAGE SWIPE</small></div></div><div class="group"><label>TEXT SIZE</label><select id="body-font-size"><option value="12">12px / SMALL</option><option value="13">13px</option><option value="14">14px</option><option value="15" selected>15px / DEFAULT</option><option value="16">16px</option><option value="18">18px / LARGE</option></select><div class="hint">GAME NOTES本文・INTRO・AFTER・COLOPHONの本文サイズ。サイズに合わせてページ分割量も自動調整します。</div></div>',
+    '<div class="group"><label>FORMAT</label><div class="format-card"><b>B5 / 182 × 257 mm</b><small>FULL NOTES · EDITABLE FRONT/BACK MATTER · FLUID PAGE SWIPE</small></div></div><div class="group"><label>TEXT SIZE</label><select id="body-font-size"><option value="12">12px / SMALL</option><option value="13">13px</option><option value="14">14px</option><option value="15" selected>15px / DEFAULT</option><option value="16">16px</option><option value="18">18px / LARGE</option></select><div class="hint">GAME NOTES本文・INTRO・AFTER・COLOPHONの本文サイズ。</div></div>',
     'text size editor control'
   );
 
   html = replaceOnce(
     html,
-    "function paginate(body,first=520,next=760){const t=String(body||'').replace(/\\r/g,'').trim();",
-    "function paginate(body,first=520,next=760){const fs=Number($('#body-font-size')?.value||15),scale=Math.max(.65,Math.min(1.35,15/fs));first=Math.round(first*scale);next=Math.round(next*scale);const t=String(body||'').replace(/\\r/g,'').trim();",
-    'font aware pagination'
-  );
-
-  html = replaceOnce(
-    html,
-    "function build(){\n    const notes=chosen(),g=gameById(gameId()),raw=[];",
-    "function build(){\n    const notes=chosen(),g=gameById(gameId()),raw=[],bodySize=Math.max(12,Math.min(18,Number($('#body-font-size')?.value||15)));",
-    'build body font size state'
-  );
-
-  html = replaceOnce(
-    html,
-    '    state.pages=raw;state.page=Math.max(0,Math.min(state.page,raw.length-1));renderPrint();return raw;',
-    '    const sized=raw.map(p=>({...p,html:p.html.replaceAll(\'class="page-body"\',`class="page-body" style="font-size:${bodySize}px"`).replaceAll(\'class="run-body"\',`class="run-body" style="font-size:${bodySize}px"`).replaceAll(\'class="after-list"\',`class="after-list" style="font-size:${bodySize}px"`)}));state.pages=sized;state.page=Math.max(0,Math.min(state.page,sized.length-1));renderPrint();return sized;',
-    'inline body size on text elements'
+    '</style>',
+    '.page-body,.run-body,.after-list{font-size:var(--mini-body-size,15px)!important}\n</style>',
+    'body size css variable'
   );
 
   html = replaceOnce(
     html,
     "  $$('.page-editor input,.page-editor textarea').forEach(el=>el.addEventListener('input',()=>{clearTimeout(state._t);state._t=setTimeout(()=>render(),120)}));",
-    "  $$('.page-editor input,.page-editor textarea').forEach(el=>el.addEventListener('input',()=>{clearTimeout(state._t);state._t=setTimeout(()=>render(),120)}));$('#body-font-size').addEventListener('change',()=>{state.page=0;render()});",
+    "  $$('.page-editor input,.page-editor textarea').forEach(el=>el.addEventListener('input',()=>{clearTimeout(state._t);state._t=setTimeout(()=>render(),120)}));const applyBodyFontSize=()=>{const v=Math.max(12,Math.min(18,Number($('#body-font-size')?.value||15)));document.documentElement.style.setProperty('--mini-body-size',v+'px')};$('#body-font-size').addEventListener('change',applyBodyFontSize);applyBodyFontSize();",
     'font size change binding'
   );
 
-  if (!html.includes('id="body-font-size"') || !html.includes('font-size:${bodySize}px')) {
+  if (!html.includes('id="body-font-size"') || !html.includes('--mini-body-size')) {
     throw new Error('[minibook-wordpress-fix] editor font size injection failed');
   }
 
   fs.writeFileSync(file, html);
-  console.log('[minibook-wordpress-fix] patched MINI BOOK editor body font size');
+  console.log('[minibook-wordpress-fix] patched MINI BOOK editor body font size (CSS-only)');
 }
 
 function patchWordpressExporter() {
@@ -61,14 +47,12 @@ function patchWordpressExporter() {
   if (!fs.existsSync(file)) throw new Error(`[minibook-wordpress-fix] missing ${file}`);
   let html = fs.readFileSync(file, 'utf8');
 
-  // Fix the split-export script wrapper so the exporter page itself parses.
   const lines = html.split('\n');
   const buildAllIndex = lines.findIndex((line) => line.includes('function buildAll(pages)'));
   if (buildAllIndex < 0) throw new Error('[minibook-wordpress-fix] buildAll function not found');
   lines[buildAllIndex] = "  function buildAll(pages){return buildHtmlCss(pages)+'\\n'+'<scr'+'ipt>'+exportJs()+'</scr'+'ipt>'}";
   html = lines.join('\n');
 
-  // Explain the direct left/right tap controls in the exported reader.
   html = replaceOnce(
     html,
     '長文はページ内スクロール · 1ページ時は左右ドラッグ / ← → でめくる',
@@ -76,7 +60,20 @@ function patchWordpressExporter() {
     'tap help copy'
   );
 
-  // Track vertical movement too, so a scroll gesture never becomes an accidental tap-to-turn.
+  html = replaceOnce(
+    html,
+    "function publicPageHtml(doc){\n    const nodes=[...doc.querySelectorAll('#print-stack .print-page')];",
+    "function publicPageHtml(doc){\n    const bodySize=Math.max(12,Math.min(18,Number(doc.querySelector('#body-font-size')?.value||15)));\n    const nodes=[...doc.querySelectorAll('#print-stack .print-page')];",
+    'export selected body size'
+  );
+
+  html = replaceOnce(
+    html,
+    '      const clone=node.cloneNode(true);',
+    "      const clone=node.cloneNode(true);clone.querySelectorAll('.page-body,.run-body,.after-list').forEach(el=>el.style.fontSize=bodySize+'px');",
+    'inline exported body size'
+  );
+
   html = replaceOnce(
     html,
     "drag={id:e.pointerId,start:e.clientX,w:slot.getBoundingClientRect().width,active:false,dir:null,target:null,p:0}",
@@ -90,10 +87,10 @@ function patchWordpressExporter() {
 
   if (html.includes("replace(/<\\\\/script/gi")) throw new Error('[minibook-wordpress-fix] broken script escape still present');
   if (html.includes('data-hw-zoom-reset') || html.includes("root.addEventListener('wheel'")) throw new Error('[minibook-wordpress-fix] zoom runtime unexpectedly present');
-  if (!html.includes('var spreadTap=null') || !html.includes("navigate(e.clientX<rect0.left+rect0.width/2?'prev':'next')")) throw new Error('[minibook-wordpress-fix] tap navigation injection failed');
+  if (!html.includes('var spreadTap=null') || !html.includes('const bodySize=Math.max(12')) throw new Error('[minibook-wordpress-fix] exporter injection failed');
 
   fs.writeFileSync(file, html);
-  console.log('[minibook-wordpress-fix] patched WordPress exporter + tap navigation');
+  console.log('[minibook-wordpress-fix] patched WordPress exporter + tap navigation + font size export');
 }
 
 patchCleanEditor();
