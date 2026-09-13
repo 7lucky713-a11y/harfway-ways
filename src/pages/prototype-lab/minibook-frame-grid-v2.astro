@@ -1,0 +1,223 @@
+---
+export const prerender = true;
+---
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>MINI BOOK Frame Grid Lab V2</title>
+  <style>
+    :root{--bg:#090d0a;--panel:#0f1510;--line:#2a352d;--text:#edf3ee;--muted:#7f8c83;--acid:#dff238;--paper:#f2efe6;--ink:#171916;--body:#bf5c5c;--title:#547df0;--quote:#4f9b69}
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif}
+    button,input,select{font:inherit}button{cursor:pointer}.app{min-height:100dvh;display:grid;grid-template-columns:320px minmax(0,1fr)}
+    .panel{position:sticky;top:0;height:100dvh;overflow:auto;padding:18px;border-right:1px solid var(--line);background:var(--panel)}
+    .brand{font:950 11px ui-monospace,monospace;letter-spacing:.12em;color:var(--acid)}h1{margin:9px 0 6px;font-size:22px;letter-spacing:-.04em}.lead{margin:0 0 16px;color:var(--muted);font-size:10px;line-height:1.7}
+    .group{padding:14px 0;border-top:1px solid var(--line)}.group h2{margin:0 0 9px;font:900 10px ui-monospace,monospace;letter-spacing:.1em;color:#c3cbc5}.row{display:flex;gap:7px;flex-wrap:wrap}.btn{border:1px solid #3b4a3f;background:#141b16;color:#e4ebe5;border-radius:8px;padding:8px 10px;font-size:10px;font-weight:850}.btn.on,.btn.acid{background:var(--acid);border-color:var(--acid);color:#111}.btn.danger{color:#ff9ca3}.hint{margin-top:8px;font-size:9px;line-height:1.6;color:#6f7e74}.placeNote{display:none;margin-top:9px;padding:9px 10px;border:1px solid #68702c;border-radius:8px;background:#171c10;color:var(--acid);font-size:9px;font-weight:850}.placeNote.on{display:block}
+    .fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}.field{display:grid;gap:5px}.field.wide{grid-column:1/-1}.field label{font-size:9px;color:#91a097}.field input,.field select{width:100%;border:1px solid #354339;background:#090d0a;color:#fff;border-radius:7px;padding:7px 8px;font-size:10px}.stat{display:grid;grid-template-columns:1fr auto;gap:7px 10px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#0a0f0b;font:800 9px/1.5 ui-monospace,monospace;color:#8f9c93}.stat b{color:#f1f5f1}
+    .stage{min-width:0;padding:24px 28px 44px;display:grid;justify-items:center;align-content:start;gap:14px;background:radial-gradient(circle at 50% 10%,#151d17 0,#090d0a 54%)}.stagebar{width:min(100%,980px);display:flex;gap:8px;align-items:center}.stagebar strong{font-size:11px;letter-spacing:.08em}.stagebar span{font-size:9px;color:#77857b}.spacer{flex:1}
+    .pageWrap{width:min(720px,calc(100vw - 380px));min-width:320px}.page{position:relative;width:100%;aspect-ratio:182/257;background:var(--paper);color:var(--ink);border:1px solid #c9c1b1;box-shadow:0 26px 80px #0008;overflow:hidden;user-select:none;touch-action:none}.page.placing{cursor:crosshair}.page.pageGrid{background-image:linear-gradient(to right,rgba(75,124,255,.12) 1px,transparent 1px),linear-gradient(to bottom,rgba(75,124,255,.12) 1px,transparent 1px);background-size:2.74725% 1.94555%}.pageLabel{position:absolute;left:3%;bottom:2%;font:800 8px ui-monospace,monospace;letter-spacing:.12em;color:#85857d;pointer-events:none}
+    .frame{position:absolute;overflow:hidden;background:rgba(255,255,255,.03);border:1px solid #777;cursor:grab;touch-action:none}.frame.body{border-color:var(--body)}.frame.title{border-color:var(--title)}.frame.quote{border-color:var(--quote)}.frame.selected{outline:2px solid var(--acid);outline-offset:2px;z-index:30}.frameLabel{position:absolute;z-index:5;top:3px;left:4px;padding:2px 4px;border-radius:3px;background:#171b17dd;color:#f1f5f1;font:800 7px ui-monospace,monospace;letter-spacing:.07em;pointer-events:none}.resize{position:absolute;z-index:9;right:0;bottom:0;width:15px;height:15px;border-top-left-radius:5px;background:var(--acid);cursor:nwse-resize}.grid{position:absolute;inset:0;pointer-events:none}.grid.on{background-image:linear-gradient(to right,rgba(196,68,68,.3) 1px,transparent 1px),linear-gradient(to bottom,rgba(196,68,68,.3) 1px,transparent 1px)}
+    .chars{position:absolute;inset:0;pointer-events:none}.char{position:absolute;display:grid;place-items:center;color:var(--ink);font-family:"Yu Mincho","Hiragino Mincho ProN",serif;line-height:1}.verticalText{position:absolute;inset:0;padding:5px 7px;overflow:hidden;writing-mode:vertical-rl;text-orientation:mixed;line-break:strict;word-break:normal;color:var(--ink);font-family:"Yu Mincho","Hiragino Mincho ProN",serif}.title .verticalText{font-weight:750}.quote .verticalText{font-weight:650}
+    @media(max-width:920px){.app{display:block}.panel{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--line)}.stage{padding:18px 10px 34px}.pageWrap{width:min(94vw,720px)}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="panel">
+    <div class="brand">HARF-WAY / PROTOTYPE LAB</div>
+    <h1>MINI BOOK FRAME LAB V2</h1>
+    <p class="lead">箱を先に置き、その寸法から文字グリッドを作る方式です。追加ボタンを押してから紙面をクリックすると、その場所にフレームを配置できます。</p>
+
+    <section class="group">
+      <h2>PLACE FRAME</h2>
+      <div class="row"><button class="btn acid add" data-type="body">＋本文</button><button class="btn add" data-type="title">＋タイトル</button><button class="btn add" data-type="quote">＋引用</button><button id="cancelPlace" class="btn" hidden>キャンセル</button></div>
+      <div id="placeNote" class="placeNote"></div>
+    </section>
+
+    <section class="group">
+      <h2>VIEW</h2>
+      <div class="row"><button id="toggleGrid" class="btn on">文字グリッド</button><button id="toggleText" class="btn on">テキスト</button><button id="togglePageGrid" class="btn">5mmガイド</button><button id="reset" class="btn">初期化</button></div>
+    </section>
+
+    <section class="group">
+      <h2>SELECTED FRAME</h2>
+      <div id="empty" class="hint">フレームをクリックすると数値編集できます。</div>
+      <div id="editor" hidden>
+        <div class="fields">
+          <div class="field wide"><label>TYPE</label><select id="type"><option value="body">本文</option><option value="title">タイトル</option><option value="quote">引用</option></select></div>
+          <div class="field"><label>X / mm</label><input id="x" type="number" step="1"></div><div class="field"><label>Y / mm</label><input id="y" type="number" step="1"></div>
+          <div class="field"><label>幅 / mm</label><input id="w" type="number" step="1" min="8"></div><div class="field"><label>高さ / mm</label><input id="h" type="number" step="1" min="12"></div>
+          <div class="field"><label>文字 / px</label><input id="font" type="number" step="1" min="10" max="34"></div><div class="field"><label>セル / mm</label><input id="cell" type="number" step="0.2" min="3" max="12"></div>
+        </div>
+        <div class="row" style="margin-top:10px"><button id="delete" class="btn danger">削除</button></div>
+      </div>
+    </section>
+
+    <section class="group"><h2>FRAME RESULT</h2><div class="stat"><span>ページ</span><b>B5 182×257mm</b><span>フレーム</span><b id="frameStat">—</b><span>1列文字数</span><b id="rowsStat">—</b><span>列数</span><b id="colsStat">—</b><span>最大文字数</span><b id="capStat">—</b><span>残り本文</span><b id="remainStat">—</b></div></section>
+  </aside>
+
+  <main class="stage">
+    <div class="stagebar"><strong>LIVE B5 / CLICK TO PLACE</strong><span>追加 → 紙面クリック → ドラッグ / リサイズ</span><div class="spacer"></div><span id="status"></span></div>
+    <div class="pageWrap"><div id="page" class="page"><div class="pageLabel">B5 / 182 × 257 mm</div></div></div>
+  </main>
+</div>
+<script is:inline>
+(() => {
+  const B5={w:182,h:257};
+  const SAMPLE='とりあえずモードで「王冠を食う者」を育てる流れで進行。素の攻撃力が100を笑う。連撃を巨人の盾でアタッカーに。タンクを用意した方がいいのかもしれないけど、とりあえず最前線に立たせている。これでいいのだろうか……。インプを犠牲に攻撃と連撃が異様に噛み合って強い。インプに永続を与えて、その後に犠牲で何度も殴るとかが強い？次の戦闘では配置順によって被害量が大きく変わった。手札の回り方だけではなく、どの階層で誰を受けに置くかを先に決めた方が安定する。強いカードを引いた瞬間だけを見るより、毎ターンの損失を減らす方が最終的な火力につながっている。さらに試してみると、単体で強いユニットよりも処理順を変えるカードの方が全体を押し上げる場面がある。';
+  const TITLE='第二回「2026年9月11日、20時53分」';
+  const QUOTE='インプを犠牲に攻撃と連撃が異様に噛み合って強い。';
+  const $=id=>document.getElementById(id);
+  const page=$('page');
+  const inputs={type:$('type'),x:$('x'),y:$('y'),w:$('w'),h:$('h'),font:$('font'),cell:$('cell')};
+  let frames=[];
+  let selectedId='';
+  let placingType='';
+  let showGrid=true;
+  let showText=true;
+  let serial=1;
+
+  const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
+  const snap=n=>Math.round(n);
+  const pxToMmX=(px,rect)=>px/rect.width*B5.w;
+  const pxToMmY=(px,rect)=>px/rect.height*B5.h;
+  const textFor=f=>f.type==='body'?SAMPLE:f.type==='title'?TITLE:QUOTE;
+  const typeName=t=>t==='body'?'本文':t==='title'?'タイトル':'引用';
+  const metrics=f=>({rows:Math.max(1,Math.floor(f.h/f.cell)),cols:Math.max(1,Math.floor(f.w/f.cell))});
+  const selected=()=>frames.find(f=>f.id===selectedId)||null;
+
+  function defaults(){return [
+    {id:'body-1',type:'body',x:22,y:24,w:96,h:190,font:15,cell:4.8},
+    {id:'quote-1',type:'quote',x:126,y:24,w:18,h:190,font:17,cell:5.2},
+    {id:'title-1',type:'title',x:150,y:24,w:18,h:190,font:24,cell:6.2}
+  ]}
+
+  function newFrame(type,x,y){
+    const base=type==='body'?{w:86,h:170,font:15,cell:4.8}:type==='title'?{w:20,h:150,font:24,cell:6.2}:{w:20,h:150,font:17,cell:5.2};
+    const id=`${type}-${Date.now()}-${serial++}`;
+    return {id,type,x:clamp(snap(x-base.w/2),0,B5.w-base.w),y:clamp(snap(y-base.h/2),0,B5.h-base.h),...base};
+  }
+
+  function setPlacement(type){
+    placingType=type||'';
+    page.classList.toggle('placing',!!placingType);
+    $('cancelPlace').hidden=!placingType;
+    const note=$('placeNote');
+    note.classList.toggle('on',!!placingType);
+    note.textContent=placingType?`${typeName(placingType)}フレーム配置中：紙面の置きたい位置をクリック` : '';
+    document.querySelectorAll('.add').forEach(b=>b.classList.toggle('on',b.dataset.type===placingType));
+    $('status').textContent=placingType?`PLACE ${placingType.toUpperCase()} FRAME`:`${frames.length} FRAMES`;
+  }
+
+  function renderBody(f){
+    const m=metrics(f),capacity=m.rows*m.cols,chars=Array.from(textFor(f)).slice(0,capacity);
+    let charsHtml='';
+    for(let i=0;i<chars.length;i++){
+      const col=Math.floor(i/m.rows),row=i%m.rows;
+      const left=100-((col+1)/m.cols*100),top=row/m.rows*100;
+      charsHtml+=`<span class="char" style="left:${left}%;top:${top}%;width:${100/m.cols}%;height:${100/m.rows}%;font-size:${f.font}px">${chars[i]}</span>`;
+    }
+    return `<div class="grid ${showGrid?'on':''}" style="background-size:${100/m.cols}% ${100/m.rows}%"></div>${showText?`<div class="chars">${charsHtml}</div>`:''}`;
+  }
+
+  function renderTextFrame(f){
+    return showText?`<div class="verticalText" style="font-size:${f.font}px;line-height:1.6">${textFor(f)}</div>`:'';
+  }
+
+  function render(){
+    page.querySelectorAll('.frame').forEach(n=>n.remove());
+    frames.forEach(f=>{
+      const el=document.createElement('div');
+      el.className=`frame ${f.type}${f.id===selectedId?' selected':''}`;
+      el.dataset.id=f.id;
+      el.style.left=(f.x/B5.w*100)+'%';
+      el.style.top=(f.y/B5.h*100)+'%';
+      el.style.width=(f.w/B5.w*100)+'%';
+      el.style.height=(f.h/B5.h*100)+'%';
+      el.innerHTML=`<div class="frameLabel">${typeName(f.type)} · ${f.w}×${f.h}mm</div>${f.type==='body'?renderBody(f):renderTextFrame(f)}<div class="resize"></div>`;
+      page.appendChild(el);
+      bindFrame(el,f);
+    });
+    syncEditor();
+    if(!placingType)$('status').textContent=`${frames.length} FRAMES · ${showGrid?'GRID ON':'GRID OFF'}`;
+  }
+
+  function syncEditor(){
+    const f=selected();
+    $('editor').hidden=!f;
+    $('empty').hidden=!!f;
+    if(!f){$('frameStat').textContent=$('rowsStat').textContent=$('colsStat').textContent=$('capStat').textContent=$('remainStat').textContent='—';return;}
+    Object.keys(inputs).forEach(k=>{inputs[k].value=f[k]});
+    const m=metrics(f),cap=m.rows*m.cols,len=Array.from(textFor(f)).length;
+    $('frameStat').textContent=`${f.w}×${f.h}mm`;
+    $('rowsStat').textContent=f.type==='body'?`${m.rows}字`:'—';
+    $('colsStat').textContent=f.type==='body'?`${m.cols}列`:'—';
+    $('capStat').textContent=f.type==='body'?`${cap}字`:'—';
+    $('remainStat').textContent=f.type==='body'?`${Math.max(0,len-cap)}字`:'—';
+  }
+
+  function bindFrame(el,f){
+    el.addEventListener('pointerdown',ev=>{
+      if(placingType)return;
+      if(ev.target.classList.contains('resize'))return;
+      ev.preventDefault();ev.stopPropagation();
+      selectedId=f.id;render();
+      const rect=page.getBoundingClientRect(),sx=ev.clientX,sy=ev.clientY,ox=f.x,oy=f.y;
+      const move=e=>{f.x=clamp(snap(ox+pxToMmX(e.clientX-sx,rect)),0,B5.w-f.w);f.y=clamp(snap(oy+pxToMmY(e.clientY-sy,rect)),0,B5.h-f.h);render()};
+      const up=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up)};
+      window.addEventListener('pointermove',move);window.addEventListener('pointerup',up,{once:true});
+    });
+    const handle=el.querySelector('.resize');
+    handle.addEventListener('pointerdown',ev=>{
+      if(placingType)return;
+      ev.preventDefault();ev.stopPropagation();
+      selectedId=f.id;
+      const rect=page.getBoundingClientRect(),sx=ev.clientX,sy=ev.clientY,ow=f.w,oh=f.h;
+      const move=e=>{f.w=clamp(snap(ow+pxToMmX(e.clientX-sx,rect)),8,B5.w-f.x);f.h=clamp(snap(oh+pxToMmY(e.clientY-sy,rect)),12,B5.h-f.y);render()};
+      const up=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up)};
+      window.addEventListener('pointermove',move);window.addEventListener('pointerup',up,{once:true});
+    });
+  }
+
+  page.addEventListener('pointerdown',ev=>{
+    if(placingType){
+      ev.preventDefault();ev.stopPropagation();
+      const rect=page.getBoundingClientRect();
+      const x=pxToMmX(ev.clientX-rect.left,rect),y=pxToMmY(ev.clientY-rect.top,rect);
+      const f=newFrame(placingType,x,y);
+      frames.push(f);selectedId=f.id;setPlacement('');render();return;
+    }
+    if(ev.target===page){selectedId='';render();}
+  },true);
+
+  document.querySelectorAll('.add').forEach(btn=>btn.addEventListener('click',()=>setPlacement(btn.dataset.type)));
+  $('cancelPlace').addEventListener('click',()=>setPlacement(''));
+
+  function updateSelected(){
+    const f=selected();if(!f)return;
+    f.type=inputs.type.value;
+    f.w=clamp(snap(Number(inputs.w.value)||8),8,B5.w-f.x);
+    f.h=clamp(snap(Number(inputs.h.value)||12),12,B5.h-f.y);
+    f.x=clamp(snap(Number(inputs.x.value)||0),0,B5.w-f.w);
+    f.y=clamp(snap(Number(inputs.y.value)||0),0,B5.h-f.h);
+    f.font=clamp(Number(inputs.font.value)||15,10,34);
+    f.cell=clamp(Number(inputs.cell.value)||4.8,3,12);
+    render();
+  }
+  Object.values(inputs).forEach(el=>el.addEventListener('input',updateSelected));
+  $('delete').addEventListener('click',()=>{frames=frames.filter(f=>f.id!==selectedId);selectedId='';render()});
+  $('toggleGrid').addEventListener('click',e=>{showGrid=!showGrid;e.currentTarget.classList.toggle('on',showGrid);render()});
+  $('toggleText').addEventListener('click',e=>{showText=!showText;e.currentTarget.classList.toggle('on',showText);render()});
+  $('togglePageGrid').addEventListener('click',e=>{page.classList.toggle('pageGrid');e.currentTarget.classList.toggle('on',page.classList.contains('pageGrid'))});
+  $('reset').addEventListener('click',()=>{frames=defaults();selectedId='body-1';setPlacement('');showGrid=true;showText=true;$('toggleGrid').classList.add('on');$('toggleText').classList.add('on');page.classList.remove('pageGrid');$('togglePageGrid').classList.remove('on');render()});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')setPlacement('')});
+
+  frames=defaults();
+  selectedId='body-1';
+  render();
+})();
+</script>
+</body>
+</html>
