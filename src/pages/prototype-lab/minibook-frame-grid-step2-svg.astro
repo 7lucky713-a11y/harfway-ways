@@ -1,0 +1,117 @@
+---
+export const prerender = true;
+---
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>MINI BOOK Frame Lab SVG Step 2</title>
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#090d0a;color:#eef4ef;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif}
+    .app{min-height:100dvh;display:grid;grid-template-columns:300px 1fr}.panel{padding:20px;border-right:1px solid #2b382f}.stage{padding:24px;display:grid;place-items:start center}
+    .brand{font:900 11px ui-monospace,monospace;color:#dff238;letter-spacing:.12em}h1{font-size:22px;margin:10px 0}.lead{color:#829087;font-size:11px;line-height:1.7}.tools{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}.tool{border:1px solid #415047;background:#151c17;color:#eef4ef;border-radius:8px;padding:9px 11px;font-size:11px;font-weight:800;cursor:pointer}.tool.on{background:#dff238;border-color:#dff238;color:#111}.status{margin-top:14px;padding:10px;border:1px solid #2b382f;border-radius:8px;font:800 10px ui-monospace,monospace;color:#a9b5ad}.count{color:#dff238}.sheet{width:min(720px,90vw);filter:drop-shadow(0 24px 50px #0008);cursor:crosshair;touch-action:none}.frame-group{cursor:grab}.frame-group.dragging{cursor:grabbing}.frame-hit{fill:transparent;stroke:transparent;pointer-events:all}
+    @media(max-width:800px){.app{display:block}.panel{border-right:0;border-bottom:1px solid #2b382f}.stage{padding:14px}.sheet{width:min(94vw,720px)}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="panel">
+    <div class="brand">HARF-WAY / SVG FRAME LAB / STEP 2</div>
+    <h1>箱を置く + 移動する</h1>
+    <p class="lead">STEP 1のSVG方式を維持。紙面クリックで追加、既存の色付きフレームをドラッグすると位置だけ動きます。リサイズはまだありません。</p>
+    <div class="tools">
+      <button class="tool on" data-tool="body">本文</button>
+      <button class="tool" data-tool="title">タイトル</button>
+      <button class="tool" data-tool="quote">引用</button>
+    </div>
+    <div class="status" id="status">TOOL: BODY / 紙面をクリック</div>
+    <div class="status">FRAME COUNT: <span class="count" id="count">1</span></div>
+  </aside>
+  <main class="stage">
+    <svg id="sheet" class="sheet" viewBox="0 0 182 257" role="img" aria-label="B5 page">
+      <rect id="paper" x="0" y="0" width="182" height="257" fill="#f2efe6" stroke="#c8c1b2" stroke-width="0.6"/>
+      <g id="frames"></g>
+    </svg>
+  </main>
+</div>
+<script is:inline>
+(() => {
+  const svg=document.getElementById('sheet');
+  const paper=document.getElementById('paper');
+  const layer=document.getElementById('frames');
+  const count=document.getElementById('count');
+  const status=document.getElementById('status');
+  const tools=[...document.querySelectorAll('[data-tool]')];
+  const NS='http://www.w3.org/2000/svg';
+  let active='body';
+  let serial=1;
+  let drag=null;
+  let suppressPlace=false;
+  const spec={
+    body:{w:70,h:120,stroke:'#ff3b30',fill:'#ff3b3048'},
+    title:{w:24,h:100,stroke:'#245dff',fill:'#245dff48'},
+    quote:{w:24,h:100,stroke:'#00a651',fill:'#00a65148'}
+  };
+  function svgPoint(clientX,clientY){
+    const p=svg.createSVGPoint(); p.x=clientX; p.y=clientY;
+    return p.matrixTransform(svg.getScreenCTM().inverse());
+  }
+  function setTool(type){
+    active=type;
+    tools.forEach(b=>b.classList.toggle('on',b.dataset.tool===type));
+    status.textContent=`TOOL: ${type.toUpperCase()} / 紙面をクリック`;
+  }
+  function setFramePos(g,x,y){
+    const w=Number(g.dataset.w),h=Number(g.dataset.h);
+    x=Math.max(0,Math.min(182-w,x)); y=Math.max(0,Math.min(257-h,y));
+    g.dataset.x=x.toFixed(2); g.dataset.y=y.toFixed(2);
+    g.setAttribute('transform',`translate(${x.toFixed(2)} ${y.toFixed(2)})`);
+  }
+  function makeFrame(type,x,y,id){
+    const s=spec[type];
+    const g=document.createElementNS(NS,'g');
+    g.classList.add('frame-group');
+    g.dataset.frame=id||`${type}-${++serial}`; g.dataset.type=type; g.dataset.w=s.w; g.dataset.h=s.h;
+    const r=document.createElementNS(NS,'rect'); r.setAttribute('width',s.w); r.setAttribute('height',s.h); r.setAttribute('fill',s.fill); r.setAttribute('stroke',s.stroke); r.setAttribute('stroke-width','1.4');
+    const bg=document.createElementNS(NS,'rect'); bg.setAttribute('x','3'); bg.setAttribute('y','3'); bg.setAttribute('width',type==='body'?'37':'31'); bg.setAttribute('height','8'); bg.setAttribute('rx','1'); bg.setAttribute('fill','#111');
+    const t=document.createElementNS(NS,'text'); t.setAttribute('x','5'); t.setAttribute('y','8.7'); t.setAttribute('fill','#fff'); t.setAttribute('font-size','4'); t.setAttribute('font-family','monospace'); t.setAttribute('font-weight','700'); t.textContent=id==='test-1'?'TEST FRAME':type.toUpperCase();
+    const hit=document.createElementNS(NS,'rect'); hit.classList.add('frame-hit'); hit.setAttribute('width',s.w); hit.setAttribute('height',s.h);
+    g.append(r,bg,t,hit); layer.appendChild(g); setFramePos(g,x,y); bindDrag(g); return g;
+  }
+  function bindDrag(g){
+    g.addEventListener('pointerdown',ev=>{
+      ev.preventDefault(); ev.stopPropagation();
+      const p=svgPoint(ev.clientX,ev.clientY);
+      drag={g,startX:p.x,startY:p.y,originX:Number(g.dataset.x),originY:Number(g.dataset.y),moved:false};
+      g.classList.add('dragging');
+      status.textContent=`DRAG: ${g.dataset.frame}`;
+    });
+  }
+  window.addEventListener('pointermove',ev=>{
+    if(!drag)return;
+    const p=svgPoint(ev.clientX,ev.clientY); const dx=p.x-drag.startX,dy=p.y-drag.startY;
+    if(Math.abs(dx)+Math.abs(dy)>.6)drag.moved=true;
+    setFramePos(drag.g,drag.originX+dx,drag.originY+dy);
+  });
+  window.addEventListener('pointerup',()=>{
+    if(!drag)return;
+    const id=drag.g.dataset.frame; const moved=drag.moved; drag.g.classList.remove('dragging'); drag=null;
+    if(moved){suppressPlace=true; setTimeout(()=>suppressPlace=false,0); status.textContent=`MOVED: ${id}`;}
+  });
+  tools.forEach(b=>b.addEventListener('click',()=>setTool(b.dataset.tool)));
+  svg.addEventListener('click',ev=>{
+    if(suppressPlace || ev.target!==paper)return;
+    const p=svgPoint(ev.clientX,ev.clientY); const s=spec[active];
+    const x=Math.max(0,Math.min(182-s.w,p.x-s.w/2)); const y=Math.max(0,Math.min(257-s.h,p.y-s.h/2));
+    const g=makeFrame(active,x,y);
+    count.textContent=String(layer.querySelectorAll('.frame-group').length);
+    status.textContent=`PLACED: ${g.dataset.frame}`;
+  });
+  makeFrame('body',61,82,'test-1');
+  window.__FRAME_LAB_STEP2__={count:()=>layer.querySelectorAll('.frame-group').length,pos:id=>{const g=layer.querySelector(`[data-frame="${id}"]`);return g?{x:Number(g.dataset.x),y:Number(g.dataset.y)}:null}};
+})();
+</script>
+</body>
+</html>
