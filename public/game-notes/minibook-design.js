@@ -6,6 +6,7 @@
   const DEFAULTS={bodyFontSize:15,writingMode:'horizontal'};
   const KINSOKU_SELECTOR='.book-page,.page-body,.run-body,.run-quote,.page-title,.run-title,.cover-title,.cover-sub,.after-list,.colophon-body';
   let design={...DEFAULTS};
+  let fitRaf=0;
 
   try{
     const saved=JSON.parse(sessionStorage.getItem(STORAGE_KEY)||'null');
@@ -33,6 +34,42 @@
     });
   }
 
+  function fitReaderToViewport(){
+    const preview=document.querySelector('.preview');
+    const reader=preview?.querySelector('.reader');
+    if(!preview||!reader) return;
+
+    document.documentElement.dataset.miniReaderFit='1';
+    reader.style.zoom='1';
+    reader.style.transform='none';
+    reader.style.transformOrigin='center center';
+
+    const cs=getComputedStyle(preview);
+    const padX=(parseFloat(cs.paddingLeft)||0)+(parseFloat(cs.paddingRight)||0);
+    const padY=(parseFloat(cs.paddingTop)||0)+(parseFloat(cs.paddingBottom)||0);
+    const availableWidth=Math.max(1,preview.clientWidth-padX);
+    const availableHeight=Math.max(1,preview.clientHeight-padY);
+    const baseWidth=Math.max(1,reader.offsetWidth);
+    const baseHeight=Math.max(1,reader.offsetHeight);
+    let scale=Math.min(1,availableWidth/baseWidth,availableHeight/baseHeight);
+    if(!Number.isFinite(scale)||scale<=0) scale=1;
+    scale=Math.max(.2,scale);
+
+    if(window.CSS?.supports?.('zoom','1')){
+      reader.style.zoom=String(scale);
+      reader.style.transform='none';
+    }else{
+      reader.style.zoom='';
+      reader.style.transform=`scale(${scale})`;
+    }
+    reader.dataset.miniFitScale=scale.toFixed(3);
+  }
+
+  function scheduleReaderFit(){
+    cancelAnimationFrame(fitRaf);
+    fitRaf=requestAnimationFrame(()=>requestAnimationFrame(fitReaderToViewport));
+  }
+
   function apply(){
     const size=Math.max(12,Math.min(18,Number(design.bodyFontSize)||15));
     design.bodyFontSize=size;
@@ -42,6 +79,7 @@
     applyJapaneseTypography(document);
     try{sessionStorage.setItem(STORAGE_KEY,JSON.stringify(design))}catch{}
     expose();
+    scheduleReaderFit();
   }
 
   function ensureStyle(){
@@ -110,6 +148,23 @@
         html[data-mini-writing="vertical"] .run-main .run-body{line-height:1.7!important}
       }
 
+      /* Reading viewport: keep the complete page + nav inside one visible screen.
+         The B5 composition stays fixed; only the on-screen reader is scaled. */
+      @media screen{
+        html[data-mini-reader-fit="1"] .preview{
+          height:calc(100dvh - 57px)!important;
+          min-height:320px!important;
+          overflow:hidden!important;
+          align-items:center!important;
+          align-content:center!important;
+          justify-items:center!important;
+        }
+        html[data-mini-reader-fit="1"] .preview .reader{
+          margin:0 auto!important;
+          transform-origin:center center!important;
+        }
+      }
+
       #minibook-design-panel .design-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
       #minibook-design-panel .design-title b{font:850 11px ui-monospace,monospace;letter-spacing:.11em;color:#dff238}
       #minibook-design-panel .design-title small{font-size:9px;color:#6d796f}
@@ -123,13 +178,30 @@
   function observePages(){
     if(window.__MINIBOOK_DESIGN_OBSERVER__||!document.body) return;
     window.__MINIBOOK_DESIGN_OBSERVER__=new MutationObserver(records=>{
+      let changed=false;
       for(const record of records){
         record.addedNodes.forEach(node=>{
-          if(node.nodeType===1) applyJapaneseTypography(node);
+          if(node.nodeType===1){applyJapaneseTypography(node);changed=true}
         });
       }
+      if(changed) scheduleReaderFit();
     });
     window.__MINIBOOK_DESIGN_OBSERVER__.observe(document.body,{childList:true,subtree:true});
+  }
+
+  function observeViewport(){
+    if(window.__MINIBOOK_FIT_VIEWPORT_BOUND__) return;
+    window.__MINIBOOK_FIT_VIEWPORT_BOUND__=true;
+    window.addEventListener('resize',scheduleReaderFit,{passive:true});
+    window.addEventListener('orientationchange',scheduleReaderFit,{passive:true});
+    window.visualViewport?.addEventListener('resize',scheduleReaderFit,{passive:true});
+    if('ResizeObserver' in window){
+      const preview=document.querySelector('.preview');
+      if(preview){
+        window.__MINIBOOK_FIT_RESIZE_OBSERVER__=new ResizeObserver(scheduleReaderFit);
+        window.__MINIBOOK_FIT_RESIZE_OBSERVER__.observe(preview);
+      }
+    }
   }
 
   function mount(){
@@ -137,7 +209,7 @@
     observePages();
     const tools=document.querySelector('.tools');
     if(!tools) return false;
-    if(document.getElementById('minibook-design-panel')){apply();return true}
+    if(document.getElementById('minibook-design-panel')){apply();observeViewport();scheduleReaderFit();return true}
 
     const panel=document.createElement('div');
     panel.className='group';
@@ -162,7 +234,7 @@
           <option value="18">18px / LARGE</option>
         </select>
       </div>
-      <div class="hint">縦書きはRUN本文だけに適用し、ヘッダー・フッター・タグ・表紙は横組みを維持します。GAME NOTES取得やPAGE EDITORには触れず、縦書き時はLAYOUT側でページ分割量も安全側へ調整します。</div>
+      <div class="hint">縦書きはRUN本文だけに適用し、ヘッダー・フッター・タグ・表紙は横組みを維持します。通常表示はB5組版を変えず、端末の可視領域に合わせて本全体を縮小し、ページ送りだけで読める高さへ収めます。</div>
     `;
 
     const format=[...tools.querySelectorAll('.group')].find(group=>group.querySelector('label')?.textContent?.trim()==='FORMAT');
@@ -183,13 +255,16 @@
     });
 
     apply();
+    observeViewport();
+    scheduleReaderFit();
     return true;
   }
 
   window.__MINIBOOK_DESIGN_API__={
     get:()=>({...design}),
     set:next=>{design={...design,...(next||{})};apply()},
-    applyJapaneseTypography:()=>applyJapaneseTypography(document)
+    applyJapaneseTypography:()=>applyJapaneseTypography(document),
+    fitReaderToViewport:()=>{fitReaderToViewport()}
   };
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',mount,{once:true});
