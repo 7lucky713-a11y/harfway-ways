@@ -1,0 +1,72 @@
+---
+export const prerender = true;
+---
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>MINI BOOK Frame Grid Lab</title>
+  <style>
+    :root{--bg:#090d0a;--panel:#0e140f;--line:#28352b;--text:#eff4ef;--muted:#829087;--acid:#dff238;--paper:#f2efe6;--ink:#171916;--guide:#4b7cff;--grid:#d45d5d;--select:#dff238}
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif}
+    button,input,select{font:inherit}.app{min-height:100dvh;display:grid;grid-template-columns:320px minmax(0,1fr)}
+    .panel{height:100dvh;overflow:auto;position:sticky;top:0;border-right:1px solid var(--line);padding:18px;background:var(--panel)}
+    .brand{font:950 11px ui-monospace,monospace;letter-spacing:.13em;color:var(--acid)}
+    h1{margin:9px 0 6px;font-size:22px;letter-spacing:-.04em}.lead{margin:0 0 16px;color:var(--muted);font-size:10px;line-height:1.7}
+    .group{padding:14px 0;border-top:1px solid var(--line)}.group h2{margin:0 0 10px;font:900 10px ui-monospace,monospace;letter-spacing:.1em;color:#c3ccc5}
+    .row{display:flex;gap:7px;flex-wrap:wrap}.btn{border:1px solid #3c4b40;background:#141b16;color:#e4ebe5;border-radius:8px;padding:8px 10px;font-size:10px;font-weight:850;cursor:pointer}.btn.acid,.btn.on{background:var(--acid);border-color:var(--acid);color:#111}.btn.danger{color:#ff9ea5}
+    .fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}.field{display:grid;gap:5px}.field label{font-size:9px;color:#93a098}.field input,.field select{width:100%;border:1px solid #354339;background:#090d0a;color:#fff;border-radius:7px;padding:7px 8px;font-size:10px}.field.wide{grid-column:1/-1}
+    .stat{display:grid;grid-template-columns:1fr auto;gap:7px 10px;border:1px solid var(--line);border-radius:10px;padding:10px;background:#0a0f0b;font:800 9px/1.5 ui-monospace,monospace;color:#92a098}.stat b{color:#f1f5f1}.hint{font-size:9px;line-height:1.6;color:#6f7e74;margin-top:8px}
+    .stage{min-width:0;padding:24px 28px 44px;display:grid;justify-items:center;align-content:start;gap:14px;background:radial-gradient(circle at 50% 10%,#151d17 0,#090d0a 54%)}
+    .stagebar{width:min(100%,980px);display:flex;align-items:center;gap:8px}.stagebar strong{font-size:11px;letter-spacing:.08em}.stagebar span{font-size:9px;color:#77857b}.spacer{flex:1}
+    .pageWrap{width:min(720px,calc(100vw - 380px));min-width:320px}.page{position:relative;width:100%;aspect-ratio:182/257;background:var(--paper);color:var(--ink);box-shadow:0 26px 80px rgba(0,0,0,.48);border:1px solid #c9c1b1;overflow:hidden;user-select:none;touch-action:none}
+    .page.show-page-grid{background-image:linear-gradient(to right,rgba(75,124,255,.11) 1px,transparent 1px),linear-gradient(to bottom,rgba(75,124,255,.11) 1px,transparent 1px);background-size:5.4945% 3.8911%}
+    .pageLabel{position:absolute;left:3%;bottom:2%;font:800 8px ui-monospace,monospace;letter-spacing:.12em;color:#85857d}
+    .frame{position:absolute;border:1px solid rgba(42,55,46,.55);background:rgba(255,255,255,.02);overflow:hidden;cursor:grab}.frame:active{cursor:grabbing}.frame.selected{outline:2px solid var(--select);outline-offset:1px;z-index:20}.frameLabel{position:absolute;z-index:5;top:3px;left:4px;padding:2px 4px;background:rgba(20,25,20,.82);color:#e8eee9;font:800 7px ui-monospace,monospace;letter-spacing:.08em;border-radius:3px;pointer-events:none}.resize{position:absolute;z-index:8;width:13px;height:13px;right:0;bottom:0;background:var(--select);border-top-left-radius:4px;cursor:nwse-resize}
+    .frame.body{border-color:rgba(180,75,75,.55)}.frame.title{border-color:rgba(75,124,255,.62)}.frame.quote{border-color:rgba(70,145,100,.62)}
+    .cellGrid{position:absolute;inset:0;pointer-events:none}.cellGrid.visible{background-image:linear-gradient(to right,rgba(196,68,68,.30) 1px,transparent 1px),linear-gradient(to bottom,rgba(196,68,68,.30) 1px,transparent 1px)}
+    .chars{position:absolute;inset:0;pointer-events:none}.char{position:absolute;display:grid;place-items:center;color:var(--ink);line-height:1;font-family:"Yu Mincho","Hiragino Mincho ProN",serif;transform:translateZ(0)}
+    .textFrame{position:absolute;inset:0;padding:4px 6px;color:var(--ink);writing-mode:vertical-rl;text-orientation:mixed;line-break:strict;word-break:normal;overflow:hidden;font-family:"Yu Mincho","Hiragino Mincho ProN",serif}.title .textFrame{font-weight:750}.quote .textFrame{font-weight:650}
+    .emptyFrame{position:absolute;inset:0;display:grid;place-items:center;color:#999;font:800 9px ui-monospace,monospace}
+    @media(max-width:920px){.app{display:block}.panel{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--line)}.stage{padding:18px 10px 34px}.pageWrap{width:min(94vw,720px)}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="panel">
+    <div class="brand">HARF-WAY / PROTOTYPE LAB</div>
+    <h1>MINI BOOK FRAME LAB</h1>
+    <p class="lead">B5の白紙にフレームを先に配置し、そのフレームの寸法から文字グリッドを生成する試作品。ドラッグ・リサイズで紙面を作ります。</p>
+    <section class="group"><h2>ADD FRAME</h2><div class="row"><button class="btn acid" data-add="body">＋本文</button><button class="btn" data-add="title">＋タイトル</button><button class="btn" data-add="quote">＋引用</button></div></section>
+    <section class="group"><h2>VIEW</h2><div class="row"><button id="toggleGrid" class="btn on">文字グリッド</button><button id="toggleText" class="btn on">テキスト</button><button id="togglePageGrid" class="btn">5mmガイド</button><button id="reset" class="btn">初期化</button></div><div class="hint">本文フレームは赤、タイトルは青、引用は緑。選択したフレームは黄枠になります。</div></section>
+    <section class="group"><h2>SELECTED FRAME</h2><div id="noSelection" class="hint">紙面上のフレームをクリックしてください。</div><div id="editor" hidden><div class="fields"><div class="field wide"><label>TYPE</label><select id="type"><option value="body">本文</option><option value="title">タイトル</option><option value="quote">引用</option></select></div><div class="field"><label>X / mm</label><input id="x" type="number" step="1"></div><div class="field"><label>Y / mm</label><input id="y" type="number" step="1"></div><div class="field"><label>幅 / mm</label><input id="w" type="number" step="1" min="8"></div><div class="field"><label>高さ / mm</label><input id="h" type="number" step="1" min="12"></div><div class="field"><label>文字サイズ / px</label><input id="font" type="number" step="1" min="10" max="34"></div><div class="field"><label>セル / mm</label><input id="cell" type="number" step="0.2" min="3" max="12"></div></div><div class="row" style="margin-top:10px"><button id="delete" class="btn danger">削除</button></div></div></section>
+    <section class="group"><h2>FRAME RESULT</h2><div class="stat"><span>ページ</span><b>B5 182×257mm</b><span>フレーム</span><b id="frameStat">—</b><span>1列文字数</span><b id="rowsStat">—</b><span>列数</span><b id="colsStat">—</b><span>最大文字数</span><b id="capacityStat">—</b><span>本文残り</span><b id="overflowStat">—</b></div></section>
+  </aside>
+  <main class="stage"><div class="stagebar"><strong>LIVE B5 / FRAME-FIRST</strong><span>フレーム → グリッド → テキスト</span><div class="spacer"></div><span id="status"></span></div><div class="pageWrap"><div id="page" class="page"><div class="pageLabel">B5 / 182 × 257 mm</div></div></div></main>
+</div>
+<script is:inline>
+(() => {
+  const B5={w:182,h:257};
+  const sample='とりあえずモードで「王冠を食う者」を育てる流れで進行。素の攻撃力が100を笑う。連撃を巨人の盾でアタッカーに。タンクを用意した方がいいのかもしれないけど、とりあえず最前線に立たせている。これでいいのだろうか……。インプを犠牲に攻撃と連撃が異様に噛み合って強い。インプに永続を与えて、その後に犠牲で何度も殴るとかが強い？次の戦闘では配置順によって被害量が大きく変わった。手札の回り方だけではなく、どの階層で誰を受けに置くかを先に決めた方が安定する。強いカードを引いた瞬間だけを見るより、毎ターンの損失を減らす方が最終的な火力につながっている。さらに試してみると、単体で強いユニットよりも処理順を変えるカードの方が全体を押し上げる場面がある。数字の大きさに目を奪われると見落としやすい。ここは次のランでもう一度確認したい。ボス戦では前衛が予想より早く崩れた。攻撃力を伸ばしすぎて耐久の更新を後回しにしたせいかもしれない。途中で拾った防御札を切るタイミングにも無駄があった。今の構成なら、火力をもう少し削ってでも一回余計に攻撃できる形を作る方がよさそう。';
+  const titleText='第二回「2026年9月11日、20時53分」',quoteText='インプを犠牲に攻撃と連撃が異様に噛み合って強い。';
+  const page=document.querySelector('#page'),$=id=>document.getElementById(id),editor=$('editor'),noSelection=$('noSelection');
+  const inputs={type:$('type'),x:$('x'),y:$('y'),w:$('w'),h:$('h'),font:$('font'),cell:$('cell')};
+  const stats={frame:$('frameStat'),rows:$('rowsStat'),cols:$('colsStat'),capacity:$('capacityStat'),overflow:$('overflowStat')};
+  let showGrid=true,showText=true,selectedId='body-1',frames=[];
+  const defaults=()=>[{id:'body-1',type:'body',x:18,y:18,w:104,h:217,font:15,cell:4.8},{id:'quote-1',type:'quote',x:128,y:18,w:18,h:217,font:17,cell:5.2},{id:'title-1',type:'title',x:150,y:18,w:18,h:217,font:25,cell:6.2}];
+  const snap=v=>Math.round(v),clamp=(v,min,max)=>Math.max(min,Math.min(max,v)),pctX=mm=>mm/B5.w*100,pctY=mm=>mm/B5.h*100,selected=()=>frames.find(f=>f.id===selectedId)||null;
+  const frameText=f=>f.type==='body'?sample:f.type==='title'?titleText:quoteText,typeLabel=t=>t==='body'?'BODY':t==='title'?'TITLE':'QUOTE';
+  function gridMetrics(f){const rows=Math.max(1,Math.floor(f.h/f.cell)),cols=Math.max(1,Math.floor(f.w/f.cell));return {rows,cols,capacity:rows*cols}}
+  function bodyHTML(f){const m=gridMetrics(f),chars=Array.from(frameText(f)).slice(0,m.capacity);let out='';for(let i=0;i<chars.length;i++){const col=Math.floor(i/m.rows),row=i%m.rows,left=100-((col+1)/m.cols*100),top=row/m.rows*100;out+=`<span class="char" style="left:${left}%;top:${top}%;width:${100/m.cols}%;height:${100/m.rows}%;font-size:${f.font}px">${chars[i]}</span>`}return `<div class="cellGrid ${showGrid?'visible':''}" style="background-size:${100/m.cols}% ${100/m.rows}%"></div>${showText?`<div class="chars">${out}</div>`:''}`}
+  function textHTML(f){const txt=frameText(f);return showText?`<div class="textFrame" style="font-size:${f.font}px;line-height:${Math.max(1.25,f.cell/(f.font*.2646)).toFixed(2)}">${txt}</div>`:'<div class="emptyFrame">TEXT OFF</div>'}
+  function render(){page.querySelectorAll('.frame').forEach(n=>n.remove());frames.forEach(f=>{const el=document.createElement('div');el.className=`frame ${f.type}${f.id===selectedId?' selected':''}`;el.dataset.id=f.id;el.style.left=pctX(f.x)+'%';el.style.top=pctY(f.y)+'%';el.style.width=pctX(f.w)+'%';el.style.height=pctY(f.h)+'%';el.innerHTML=`<div class="frameLabel">${typeLabel(f.type)} · ${f.w}×${f.h}mm</div>${f.type==='body'?bodyHTML(f):textHTML(f)}<div class="resize" title="resize"></div>`;page.appendChild(el);bindFrame(el,f)});syncEditor();$('status').textContent=`${frames.length} FRAMES · ${showGrid?'GRID ON':'GRID OFF'} · ${showText?'TEXT ON':'TEXT OFF'}`}
+  function syncEditor(){const f=selected();editor.hidden=!f;noSelection.hidden=!!f;if(!f){Object.values(stats).forEach(el=>el.textContent='—');return}inputs.type.value=f.type;inputs.x.value=f.x;inputs.y.value=f.y;inputs.w.value=f.w;inputs.h.value=f.h;inputs.font.value=f.font;inputs.cell.value=f.cell;const m=gridMetrics(f),len=Array.from(frameText(f)).length;stats.frame.textContent=`${f.w}×${f.h}mm`;stats.rows.textContent=f.type==='body'?`${m.rows}字`:'—';stats.cols.textContent=f.type==='body'?`${m.cols}列`:'—';stats.capacity.textContent=f.type==='body'?`${m.capacity}字`:'—';stats.overflow.textContent=f.type==='body'?`${Math.max(0,len-m.capacity)}字`:'—'}
+  function bindFrame(el,f){el.addEventListener('pointerdown',e=>{if(e.target.classList.contains('resize'))return;selectedId=f.id;render();const rect=page.getBoundingClientRect(),sx=e.clientX,sy=e.clientY,ox=f.x,oy=f.y;const move=ev=>{const dx=(ev.clientX-sx)/rect.width*B5.w,dy=(ev.clientY-sy)/rect.height*B5.h;f.x=clamp(snap(ox+dx),0,B5.w-f.w);f.y=clamp(snap(oy+dy),0,B5.h-f.h);render()};const up=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up)};window.addEventListener('pointermove',move);window.addEventListener('pointerup',up,{once:true})});const handle=el.querySelector('.resize');handle.addEventListener('pointerdown',e=>{e.stopPropagation();selectedId=f.id;const rect=page.getBoundingClientRect(),sx=e.clientX,sy=e.clientY,ow=f.w,oh=f.h;const move=ev=>{const dw=(ev.clientX-sx)/rect.width*B5.w,dh=(ev.clientY-sy)/rect.height*B5.h;f.w=clamp(snap(ow+dw),8,B5.w-f.x);f.h=clamp(snap(oh+dh),12,B5.h-f.y);render()};const up=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up)};window.addEventListener('pointermove',move);window.addEventListener('pointerup',up,{once:true})})}
+  function updateSelected(){const f=selected();if(!f)return;f.type=inputs.type.value;f.x=clamp(snap(+inputs.x.value||0),0,B5.w-f.w);f.y=clamp(snap(+inputs.y.value||0),0,B5.h-f.h);f.w=clamp(snap(+inputs.w.value||8),8,B5.w-f.x);f.h=clamp(snap(+inputs.h.value||12),12,B5.h-f.y);f.font=clamp(+inputs.font.value||15,10,34);f.cell=clamp(+inputs.cell.value||4.8,3,12);render()}
+  document.querySelectorAll('[data-add]').forEach(btn=>btn.addEventListener('click',()=>{const type=btn.dataset.add,id=`${type}-${Date.now()}`;frames.push({id,type,x:22,y:24,w:type==='body'?90:18,h:type==='body'?190:180,font:type==='title'?24:type==='quote'?17:15,cell:type==='title'?6.2:type==='quote'?5.2:4.8});selectedId=id;render()}));Object.values(inputs).forEach(el=>el.addEventListener('input',updateSelected));$('delete').addEventListener('click',()=>{if(!selectedId)return;frames=frames.filter(f=>f.id!==selectedId);selectedId=frames[0]?.id||'';render()});$('toggleGrid').addEventListener('click',e=>{showGrid=!showGrid;e.currentTarget.classList.toggle('on',showGrid);render()});$('toggleText').addEventListener('click',e=>{showText=!showText;e.currentTarget.classList.toggle('on',showText);render()});$('togglePageGrid').addEventListener('click',e=>{page.classList.toggle('show-page-grid');e.currentTarget.classList.toggle('on',page.classList.contains('show-page-grid'))});$('reset').addEventListener('click',()=>{frames=defaults();selectedId='body-1';showGrid=true;showText=true;$('toggleGrid').classList.add('on');$('toggleText').classList.add('on');page.classList.remove('show-page-grid');$('togglePageGrid').classList.remove('on');render()});page.addEventListener('pointerdown',e=>{if(e.target===page){selectedId='';render()}});frames=defaults();render();
+})();
+</script>
+</body>
+</html>
