@@ -4,9 +4,9 @@
 
   const STORAGE_KEY='harfway_minibook_design_v1';
   const PRESETS={
-    relaxed:{verticalCharsPerColumn:32,verticalColumns:9,horizontalCharsPerLine:25,horizontalLines:16},
-    standard:{verticalCharsPerColumn:36,verticalColumns:12,horizontalCharsPerLine:28,horizontalLines:18},
-    dense:{verticalCharsPerColumn:40,verticalColumns:14,horizontalCharsPerLine:32,horizontalLines:20}
+    relaxed:{verticalCharsPerColumn:22,verticalColumns:9,horizontalCharsPerLine:20,horizontalLines:16},
+    standard:{verticalCharsPerColumn:28,verticalColumns:12,horizontalCharsPerLine:26,horizontalLines:18},
+    dense:{verticalCharsPerColumn:34,verticalColumns:14,horizontalCharsPerLine:32,horizontalLines:20}
   };
   const DEFAULTS={
     bodyFontSize:15,
@@ -28,10 +28,10 @@
     design.bodyFontSize=clamp(12,18,design.bodyFontSize||15);
     design.writingMode=design.writingMode==='vertical'?'vertical':'horizontal';
     design.densityPreset=['relaxed','standard','dense','custom'].includes(design.densityPreset)?design.densityPreset:'standard';
-    design.verticalCharsPerColumn=Math.round(clamp(24,48,design.verticalCharsPerColumn||DEFAULTS.verticalCharsPerColumn));
-    design.verticalColumns=Math.round(clamp(6,18,design.verticalColumns||DEFAULTS.verticalColumns));
-    design.horizontalCharsPerLine=Math.round(clamp(20,40,design.horizontalCharsPerLine||DEFAULTS.horizontalCharsPerLine));
-    design.horizontalLines=Math.round(clamp(12,26,design.horizontalLines||DEFAULTS.horizontalLines));
+    design.verticalCharsPerColumn=Math.round(clamp(14,48,design.verticalCharsPerColumn||DEFAULTS.verticalCharsPerColumn));
+    design.verticalColumns=Math.round(clamp(5,18,design.verticalColumns||DEFAULTS.verticalColumns));
+    design.horizontalCharsPerLine=Math.round(clamp(14,40,design.horizontalCharsPerLine||DEFAULTS.horizontalCharsPerLine));
+    design.horizontalLines=Math.round(clamp(10,26,design.horizontalLines||DEFAULTS.horizontalLines));
   }
 
   function expose(){
@@ -92,12 +92,12 @@
     const grid=currentGrid();
     if(unit){
       unit.value=String(grid.units);
-      unit.min=design.writingMode==='vertical'?'24':'20';
+      unit.min='14';
       unit.max=design.writingMode==='vertical'?'48':'40';
     }
     if(count){
       count.value=String(grid.count);
-      count.min=design.writingMode==='vertical'?'6':'12';
+      count.min=design.writingMode==='vertical'?'5':'10';
       count.max=design.writingMode==='vertical'?'18':'26';
     }
     if(unitLabel) unitLabel.textContent=grid.unitLabel;
@@ -113,7 +113,11 @@
 
   function apply(){
     normalize();
+    const grid=currentGrid();
+    const lineSpan=Math.max(1,Math.round(grid.units*design.bodyFontSize));
     document.documentElement.style.setProperty('--mini-design-body-size',design.bodyFontSize+'px');
+    document.documentElement.style.setProperty('--mini-density-line-span',lineSpan+'px');
+    document.documentElement.style.setProperty('--mini-density-units',String(grid.units));
     document.documentElement.dataset.miniWriting=design.writingMode;
     applyJapaneseTypography(document);
     try{sessionStorage.setItem(STORAGE_KEY,JSON.stringify(design))}catch{}
@@ -128,14 +132,16 @@
     style.textContent=`
       .page-body,.run-body,.after-list,.intro-body .page-body{font-size:var(--mini-design-body-size,15px)!important}
       .book-page,.page-body,.run-body,.run-quote,.page-title,.run-title,.cover-title,.cover-sub,.after-list,.colophon-body{line-break:strict;word-break:normal;overflow-wrap:break-word}
+      html[data-mini-writing="horizontal"] .run-body{max-inline-size:min(100%,var(--mini-density-line-span,420px))!important}
 
       /* Vertical writing is deliberately limited to RUN content.
-         Page chrome, tags and special pages remain horizontal so the fixed B5 layout stays stable. */
+         The requested chars-per-column now controls the real column height as well as pagination. */
       html[data-mini-writing="vertical"] .run-main{
         flex:1!important;
         width:100%!important;
         min-width:0!important;
         min-height:0!important;
+        max-inline-size:min(100%,var(--mini-density-line-span,420px))!important;
         overflow:hidden!important;
         writing-mode:vertical-rl!important;
         text-orientation:mixed!important;
@@ -268,7 +274,7 @@
         </div>
         <div class="density-estimate" data-density-estimate></div>
       </div>
-      <div class="hint">密度はページ分割の目安です。縦書きは「1列の文字数 × 本文列数」、横書きは「1行の文字数 × 本文行数」で調整します。最初のRUNはタイトル・引用ぶんを自動で差し引き、端末が小さい場合はLAYOUT側の安全補正もかかります。</div>
+      <div class="hint">DETAILは即時反映します。縦書きは「1列の文字数」が実際の列の高さとページ分割の両方に効きます。最小14字まで。最初のRUNはタイトル・引用ぶんを自動で差し引き、端末が小さい場合はLAYOUT側の安全補正もかかります。</div>
     `;
 
     const format=[...tools.querySelectorAll('.group')].find(group=>group.querySelector('label')?.textContent?.trim()==='FORMAT');
@@ -289,15 +295,19 @@
       apply();
     });
     panel.querySelectorAll('[data-density-preset]').forEach(btn=>btn.addEventListener('click',()=>applyPreset(btn.dataset.densityPreset)));
-    unit.addEventListener('change',()=>{
-      if(design.writingMode==='vertical') design.verticalCharsPerColumn=Number(unit.value);
-      else design.horizontalCharsPerLine=Number(unit.value);
+    unit.addEventListener('input',()=>{
+      const value=Number(unit.value),min=Number(unit.min),max=Number(unit.max);
+      if(!Number.isFinite(value)||value<min||value>max) return;
+      if(design.writingMode==='vertical') design.verticalCharsPerColumn=value;
+      else design.horizontalCharsPerLine=value;
       design.densityPreset='custom';
       apply();
     });
-    count.addEventListener('change',()=>{
-      if(design.writingMode==='vertical') design.verticalColumns=Number(count.value);
-      else design.horizontalLines=Number(count.value);
+    count.addEventListener('input',()=>{
+      const value=Number(count.value),min=Number(count.min),max=Number(count.max);
+      if(!Number.isFinite(value)||value<min||value>max) return;
+      if(design.writingMode==='vertical') design.verticalColumns=value;
+      else design.horizontalLines=value;
       design.densityPreset='custom';
       apply();
     });
