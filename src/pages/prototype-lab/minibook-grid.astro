@@ -12,37 +12,46 @@ export const prerender = true;
     :root{
       --bg:#0a0d0b;--panel:#101511;--line:#29322c;--text:#eef3ef;--muted:#839087;--acid:#dff238;
       --paper:#f2efe6;--ink:#171916;--paperLine:#c8c1b2;
-      --page-w:680px;--page-ratio:1.4120879;
-      --font-size:15px;--line-height:1.9;--col-pitch:28.5px;
-      --mt:7%;--mb:8.6%;--mi:11%;--mo:8.8%;
+      --font-size:15px;--leading:1.9;--pitch:28.5px;
+      --mt:7.00%;--mb:8.56%;--mi:10.99%;--mo:8.79%;
       --title-w:62px;--quote-w:66px;
     }
-    *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif}
-    button,input{font:inherit}.app{min-height:100dvh;display:grid;grid-template-columns:310px minmax(0,1fr)}
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif}
+    button,input{font:inherit}
+    .app{min-height:100dvh;display:grid;grid-template-columns:310px minmax(0,1fr)}
     .panel{position:sticky;top:0;height:100dvh;overflow:auto;border-right:1px solid var(--line);background:#0e120f;padding:18px}
     .brand{font-size:11px;font-weight:950;letter-spacing:.14em;color:var(--acid)}
-    h1{margin:10px 0 8px;font-size:22px;letter-spacing:-.04em}.lead{margin:0 0 18px;color:var(--muted);font-size:11px;line-height:1.7}
-    .group{padding:14px 0;border-top:1px solid var(--line)}.group:first-of-type{border-top:0}.group h2{margin:0 0 10px;font:900 10px ui-monospace,monospace;letter-spacing:.1em;color:#b8c1ba}
-    .control{display:grid;grid-template-columns:1fr 76px;gap:10px;align-items:center;margin:9px 0}.control label{font-size:10px;color:#a8b1aa}.control input{width:100%;border:1px solid #344039;background:#0a0d0b;color:white;border-radius:7px;padding:7px 8px;font-size:11px}.range{grid-template-columns:1fr}.range input{padding:0}
-    .row{display:flex;gap:7px}.btn{border:1px solid #3c4941;background:#161d18;color:#dce4de;border-radius:8px;padding:8px 10px;font-size:10px;font-weight:850;cursor:pointer}.btn.on,.btn.acid{background:var(--acid);border-color:var(--acid);color:#111}
-    .stat{display:grid;grid-template-columns:1fr auto;gap:7px 12px;padding:11px;border:1px solid var(--line);border-radius:10px;background:#0a0d0b;font:800 9px/1.55 ui-monospace,monospace;color:#9cab9f}.stat b{color:#edf3ee}
+    h1{margin:10px 0 8px;font-size:22px;letter-spacing:-.04em}
+    .lead{margin:0 0 18px;color:var(--muted);font-size:11px;line-height:1.7}
+    .group{padding:14px 0;border-top:1px solid var(--line)}
+    .group h2{margin:0 0 10px;font:900 10px ui-monospace,monospace;letter-spacing:.1em;color:#b8c1ba}
+    .control{display:grid;grid-template-columns:1fr 82px;gap:10px;align-items:center;margin:9px 0}
+    .control label{font-size:10px;color:#a8b1aa}
+    .control input{width:100%;border:1px solid #344039;background:#0a0d0b;color:white;border-radius:7px;padding:7px 8px;font-size:11px}
+    .row{display:flex;gap:7px;flex-wrap:wrap}
+    .btn{border:1px solid #3c4941;background:#161d18;color:#dce4de;border-radius:8px;padding:8px 10px;font-size:10px;font-weight:850;cursor:pointer}
+    .btn.on,.btn.acid{background:var(--acid);border-color:var(--acid);color:#111}
+    .stat{display:grid;grid-template-columns:1fr auto;gap:7px 12px;padding:11px;border:1px solid var(--line);border-radius:10px;background:#0a0d0b;font:800 9px/1.55 ui-monospace,monospace;color:#9cab9f}
+    .stat b{color:#edf3ee}
     .hint{margin-top:8px;color:#748078;font-size:9px;line-height:1.6}
     .stage{min-width:0;padding:26px 30px 44px;display:grid;justify-items:center;align-content:start;gap:18px;background:radial-gradient(circle at 50% 12%,#171d18 0,#0a0d0b 52%)}
-    .stagebar{width:min(100%,980px);display:flex;align-items:center;gap:8px}.stagebar strong{font-size:11px;letter-spacing:.08em}.stagebar span{color:#7d8a81;font-size:10px}.stagebar .spacer{flex:1}
-    .book{width:min(var(--page-w),calc(100vw - 370px));min-width:300px}.sheet{position:relative;width:100%;aspect-ratio:182/257;background:var(--paper);color:var(--ink);box-shadow:0 24px 70px rgba(0,0,0,.44);overflow:hidden;border:1px solid #c8c1b2}
-    .frame{position:absolute;top:var(--mt);bottom:var(--mb);right:var(--mi);left:var(--mo);display:grid;grid-template-columns:minmax(0,1fr) var(--quote-w) var(--title-w);min-height:0;overflow:hidden}
+    .stagebar{width:min(100%,980px);display:flex;align-items:center;gap:8px}
+    .stagebar strong{font-size:11px;letter-spacing:.08em}.stagebar span{color:#7d8a81;font-size:10px}.stagebar .spacer{flex:1}
+    .book{width:min(680px,calc(100vw - 370px));min-width:300px}
+    .sheet{position:relative;width:100%;aspect-ratio:182/257;background:var(--paper);color:var(--ink);box-shadow:0 24px 70px rgba(0,0,0,.44);overflow:hidden;border:1px solid #c8c1b2}
+    .frame{position:absolute;top:var(--mt);bottom:var(--mb);right:var(--mi);left:var(--mo);display:grid;grid-template-columns:minmax(0,1fr) var(--quote-w) var(--title-w);overflow:hidden}
     .sheet.cont .frame{grid-template-columns:1fr}
     .titlecol,.quotecol,.bodycol{min-width:0;min-height:0;overflow:hidden;writing-mode:vertical-rl;text-orientation:mixed;line-break:strict;word-break:normal;color:var(--ink)}
     .titlecol{grid-column:3;padding-left:10px;border-left:3px solid var(--ink);font-size:28px;font-weight:750;line-height:1.45;letter-spacing:.01em}
     .quotecol{grid-column:2;padding-left:10px;border-left:1px solid var(--paperLine);font-size:17px;font-weight:700;line-height:1.75}
-    .bodycol{grid-column:1;padding-left:8px;font-size:var(--font-size);line-height:var(--line-height);white-space:pre-wrap;overflow:hidden}
+    .bodycol{grid-column:1;padding-left:8px;font-size:var(--font-size);line-height:var(--leading);white-space:pre-wrap;overflow:hidden}
     .sheet.cont .bodycol{grid-column:1;padding-left:0}
     .running{position:absolute;right:3.2%;top:var(--mt);writing-mode:vertical-rl;font:800 8px ui-monospace,monospace;letter-spacing:.12em;color:#8a8b85}
     .folio{position:absolute;left:50%;bottom:3.4%;transform:translateX(-50%);font:800 8px ui-monospace,monospace;color:#777b74;letter-spacing:.1em}
-    .grid-on .bodycol{background-image:repeating-linear-gradient(to left,rgba(198,64,64,.13) 0,rgba(198,64,64,.13) 1px,transparent 1px,transparent var(--col-pitch))}
-    .margin-guides:before{content:"";position:absolute;top:var(--mt);bottom:var(--mb);right:var(--mi);left:var(--mo);border:1px dashed rgba(74,105,188,.36);pointer-events:none;z-index:3}
+    .grid-on .bodycol{background-image:repeating-linear-gradient(to left,rgba(198,64,64,.16) 0,rgba(198,64,64,.16) 1px,transparent 1px,transparent var(--pitch))}
+    .margin-guides:before{content:"";position:absolute;top:var(--mt);bottom:var(--mb);right:var(--mi);left:var(--mo);border:1px dashed rgba(74,105,188,.5);pointer-events:none;z-index:4}
     .pager{display:flex;align-items:center;gap:10px}.pager button{border:1px solid #344039;background:#111713;color:#eef4ef;border-radius:999px;padding:9px 14px;font-size:10px;font-weight:850;cursor:pointer}.pager button:disabled{opacity:.3}.pager span{min-width:105px;text-align:center;color:#87928a;font:800 9px ui-monospace,monospace}
-    .measure{position:fixed;left:-10000px;top:0;visibility:hidden;pointer-events:none}
     @media(max-width:920px){.app{display:block}.panel{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--line)}.stage{padding:20px 12px 36px}.book{width:min(94vw,680px)}.control{grid-template-columns:1fr 90px}}
   </style>
 </head>
@@ -51,35 +60,37 @@ export const prerender = true;
   <aside class="panel">
     <div class="brand">HARF-WAY / PROTOTYPE LAB</div>
     <h1>MINI BOOK 組版グリッド</h1>
-    <p class="lead">B5の余白と本文フレームを固定し、その中へ縦書き本文を実際に流し込む試作品です。文字数は入力値ではなく、組版結果として計測します。</p>
+    <p class="lead">B5の余白から固定本文フレームを作り、その内側で縦組みの密度を調整する試作品です。文字数でフレーム自体を縮めません。</p>
 
     <div class="group">
       <h2>TYPE</h2>
-      <div class="control"><label>本文サイズ</label><input id="font" type="number" min="11" max="20" step="1" value="15"></div>
-      <div class="control"><label>列送り（line-height）</label><input id="leading" type="number" min="1.3" max="2.4" step="0.05" value="1.9"></div>
-      <div class="control"><label>タイトル列幅</label><input id="titlew" type="number" min="42" max="90" step="2" value="62"></div>
-      <div class="control"><label>引用列幅</label><input id="quotew" type="number" min="42" max="90" step="2" value="66"></div>
+      <div class="control"><label for="font">本文サイズ</label><input id="font" type="number" min="11" max="20" step="1" value="15"></div>
+      <div class="control"><label for="leading">列送り</label><input id="leading" type="number" min="1.3" max="2.4" step="0.05" value="1.9"></div>
+      <div class="control"><label for="titlew">タイトル列幅</label><input id="titlew" type="number" min="42" max="100" step="2" value="62"></div>
+      <div class="control"><label for="quotew">引用列幅</label><input id="quotew" type="number" min="42" max="100" step="2" value="66"></div>
     </div>
 
     <div class="group">
       <h2>MARGINS / B5</h2>
-      <div class="control"><label>天</label><input id="mt" type="number" min="10" max="35" step="1" value="18"></div>
-      <div class="control"><label>地</label><input id="mb" type="number" min="10" max="35" step="1" value="22"></div>
-      <div class="control"><label>ノド</label><input id="mi" type="number" min="10" max="35" step="1" value="20"></div>
-      <div class="control"><label>小口</label><input id="mo" type="number" min="10" max="35" step="1" value="16"></div>
+      <div class="control"><label for="mt">天</label><input id="mt" type="number" min="8" max="40" step="1" value="18"></div>
+      <div class="control"><label for="mb">地</label><input id="mb" type="number" min="8" max="40" step="1" value="22"></div>
+      <div class="control"><label for="mi">ノド</label><input id="mi" type="number" min="8" max="40" step="1" value="20"></div>
+      <div class="control"><label for="mo">小口</label><input id="mo" type="number" min="8" max="40" step="1" value="16"></div>
     </div>
 
     <div class="group">
       <h2>VIEW</h2>
-      <div class="row"><button id="grid" class="btn">グリッド</button><button id="margins" class="btn">余白ガイド</button><button id="reset" class="btn">初期値</button></div>
-      <div class="hint">本文領域の高さは「1列の文字数」で縮めません。余白を決めた結果として列長が決まり、入りきらない本文だけ次ページへ送ります。</div>
+      <div class="row"><button id="grid" class="btn">グリッド</button><button id="margins" class="btn on">余白ガイド</button><button id="reset" class="btn">初期値</button></div>
+      <div class="hint">入力値は即時反映。本文フレームは天・地・ノド・小口から固定し、文字サイズと列送りで入る列数だけが変わります。</div>
     </div>
 
     <div class="group">
-      <h2>MEASURED RESULT</h2>
+      <h2>LAYOUT RESULT</h2>
       <div class="stat">
         <span>本文フレーム</span><b id="frameStat">-</b>
-        <span>推定1列</span><b id="charStat">-</b>
+        <span>1列あたり</span><b id="charStat">-</b>
+        <span>1ページ目 列数</span><b id="firstCols">-</b>
+        <span>続きページ 列数</span><b id="nextCols">-</b>
         <span>1ページ目本文</span><b id="firstStat">-</b>
         <span>続きページ本文</span><b id="nextStat">-</b>
         <span>総ページ</span><b id="pagesStat">-</b>
@@ -88,33 +99,85 @@ export const prerender = true;
   </aside>
 
   <main class="stage">
-    <div class="stagebar"><strong>LIVE B5</strong><span>固定本文フレーム / DOM実測ページ分割</span><div class="spacer"></div><span id="modeStat"></span></div>
+    <div class="stagebar"><strong>LIVE B5</strong><span>固定本文フレーム / 組版換算ページ分割</span><div class="spacer"></div><span id="modeStat"></span></div>
     <div class="book"><div id="page" class="sheet margin-guides"></div></div>
     <div class="pager"><button id="next">← 次</button><span id="progress">PAGE 1 / 1</span><button id="prev">前 →</button></div>
   </main>
 </div>
-<div id="measure" class="measure book"></div>
 
 <script is:inline>
 (() => {
   const B5={w:182,h:257};
-  const sample=`とりあえずモードで「王冠を食う者」を育てる流れで進行。素の攻撃力が100を笑う。連撃を巨人の盾でアタッカーに。タンクを用意した方がいいのかもしれないけど、とりあえず最前線に立たせている。これでいいのだろうか……。インプを犠牲に攻撃と連撃が異様に噛み合って強い。インプに永続を与えて、その後に犠牲で何度も殴るとかが強い？\n\n次の戦闘では配置順によって被害量が大きく変わった。手札の回り方だけではなく、どの階層で誰を受けに置くかを先に決めた方が安定する。強いカードを引いた瞬間だけを見るより、毎ターンの損失を減らす方が最終的な火力につながっている。\n\nさらに試してみると、単体で強いユニットよりも処理順を変えるカードの方が全体を押し上げる場面がある。数字の大きさに目を奪われると見落としやすい。ここは次のランでもう一度確認したい。\n\nボス戦では前衛が予想より早く崩れた。攻撃力を伸ばしすぎて耐久の更新を後回しにしたせいかもしれない。途中で拾った防御札を切るタイミングにも無駄があった。今の構成なら、火力をもう少し削ってでも一回余計に攻撃できる形を作る方がよさそう。\n\n結果として、最初に考えていた「大きな数字を作れば勝てる」という理解から少し変わった。実際には配置、処理順、犠牲にする対象まで含めて一つの攻撃になっている。次はそこだけに注目して走ってみる。`;
-  const els={page:document.querySelector('#page'),measure:document.querySelector('#measure'),font:document.querySelector('#font'),leading:document.querySelector('#leading'),titlew:document.querySelector('#titlew'),quotew:document.querySelector('#quotew'),mt:document.querySelector('#mt'),mb:document.querySelector('#mb'),mi:document.querySelector('#mi'),mo:document.querySelector('#mo'),grid:document.querySelector('#grid'),margins:document.querySelector('#margins'),reset:document.querySelector('#reset'),next:document.querySelector('#next'),prev:document.querySelector('#prev'),progress:document.querySelector('#progress'),frameStat:document.querySelector('#frameStat'),charStat:document.querySelector('#charStat'),firstStat:document.querySelector('#firstStat'),nextStat:document.querySelector('#nextStat'),pagesStat:document.querySelector('#pagesStat'),modeStat:document.querySelector('#modeStat')};
-  let pages=[],index=0,showGrid=false,showMargins=true;
+  const sample='とりあえずモードで「王冠を食う者」を育てる流れで進行。素の攻撃力が100を笑う。連撃を巨人の盾でアタッカーに。タンクを用意した方がいいのかもしれないけど、とりあえず最前線に立たせている。これでいいのだろうか……。インプを犠牲に攻撃と連撃が異様に噛み合って強い。インプに永続を与えて、その後に犠牲で何度も殴るとかが強い？\n\n次の戦闘では配置順によって被害量が大きく変わった。手札の回り方だけではなく、どの階層で誰を受けに置くかを先に決めた方が安定する。強いカードを引いた瞬間だけを見るより、毎ターンの損失を減らす方が最終的な火力につながっている。\n\nさらに試してみると、単体で強いユニットよりも処理順を変えるカードの方が全体を押し上げる場面がある。数字の大きさに目を奪われると見落としやすい。ここは次のランでもう一度確認したい。\n\nボス戦では前衛が予想より早く崩れた。攻撃力を伸ばしすぎて耐久の更新を後回しにしたせいかもしれない。途中で拾った防御札を切るタイミングにも無駄があった。今の構成なら、火力をもう少し削ってでも一回余計に攻撃できる形を作る方がよさそう。\n\n結果として、最初に考えていた「大きな数字を作れば勝てる」という理解から少し変わった。実際には配置、処理順、犠牲にする対象まで含めて一つの攻撃になっている。次はそこだけに注目して走ってみる。';
+  const $=id=>document.getElementById(id);
+  const els={font:$('font'),leading:$('leading'),titlew:$('titlew'),quotew:$('quotew'),mt:$('mt'),mb:$('mb'),mi:$('mi'),mo:$('mo'),grid:$('grid'),margins:$('margins'),reset:$('reset'),next:$('next'),prev:$('prev'),page:$('page'),progress:$('progress'),frameStat:$('frameStat'),charStat:$('charStat'),firstCols:$('firstCols'),nextCols:$('nextCols'),firstStat:$('firstStat'),nextStat:$('nextStat'),pagesStat:$('pagesStat'),modeStat:$('modeStat')};
+  let pages=[];let index=0;let showGrid=false;let showMargins=true;
 
+  const clamp=(min,max,v)=>Math.max(min,Math.min(max,Number(v)));
   const mmPct=(mm,total)=>`${(Number(mm)/total*100).toFixed(4)}%`;
-  function settings(){return {font:+els.font.value,leading:+els.leading.value,titlew:+els.titlew.value,quotew:+els.quotew.value,mt:+els.mt.value,mb:+els.mb.value,mi:+els.mi.value,mo:+els.mo.value}}
-  function applyVars(){const s=settings(),r=document.documentElement.style;r.setProperty('--font-size',s.font+'px');r.setProperty('--line-height',s.leading);r.setProperty('--col-pitch',(s.font*s.leading)+'px');r.setProperty('--title-w',s.titlew+'px');r.setProperty('--quote-w',s.quotew+'px');r.setProperty('--mt',mmPct(s.mt,B5.h));r.setProperty('--mb',mmPct(s.mb,B5.h));r.setProperty('--mi',mmPct(s.mi,B5.w));r.setProperty('--mo',mmPct(s.mo,B5.w));}
-  function pageHtml(text,first=true,measure=false){return `<div class="sheet ${first?'':'cont'} ${showGrid?'grid-on':''} ${showMargins?'margin-guides':''}"><div class="running">RUN ${first?'01':'CONT'} · 2026/09/11</div><div class="frame">${first?`<div class="titlecol">第二回「2026年9月11日、20時53分」</div><div class="quotecol">インプを犠牲に攻撃と連撃が異様に噛み合って強い。</div>`:''}<div class="bodycol">${text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div></div><div class="folio">${measure?'MEASURE':'MINI BOOK'}</div></div>`}
-  function overflow(el){const body=el.querySelector('.bodycol');return body.scrollWidth>body.clientWidth+1 || body.scrollHeight>body.clientHeight+1}
-  function fitChunk(text,first){if(!text)return {fit:'',rest:''};const chars=Array.from(text);let lo=1,hi=chars.length,best=0;while(lo<=hi){const mid=(lo+hi)>>1;els.measure.innerHTML=pageHtml(chars.slice(0,mid).join(''),first,true);const sheet=els.measure.firstElementChild;if(!overflow(sheet)){best=mid;lo=mid+1}else hi=mid-1}if(best===0)best=1;let cut=best;for(let i=best;i>Math.max(1,best-24);i--){if(/[。！？!?\n]/.test(chars[i-1])){cut=i;break}}return {fit:chars.slice(0,cut).join(''),rest:chars.slice(cut).join('').replace(/^\s+/,'')}}
-  function paginate(){applyVars();pages=[];let rest=sample,first=true,guard=0;while(rest&&guard++<30){const out=fitChunk(rest,first);pages.push({text:out.fit,first});rest=out.rest;first=false}index=Math.min(index,Math.max(0,pages.length-1));render();measureStats();}
-  function render(){const p=pages[index]||{text:'',first:true};els.page.outerHTML=pageHtml(p.text,p.first,false);els.page=document.querySelector('.stage .sheet');els.progress.textContent=`PAGE ${index+1} / ${pages.length}`;els.prev.disabled=index===0;els.next.disabled=index>=pages.length-1;els.pagesStat.textContent=String(pages.length);els.modeStat.textContent=`${showGrid?'GRID ON':'GRID OFF'} · ${showMargins?'MARGINS ON':'MARGINS OFF'}`;}
-  function measureStats(){const s=settings();const frameH=B5.h-s.mt-s.mb,frameW=B5.w-s.mi-s.mo;els.frameStat.textContent=`${frameW.toFixed(0)} × ${frameH.toFixed(0)}mm`;els.measure.innerHTML=pageHtml('あ'.repeat(1200),false,true);const body=els.measure.querySelector('.bodycol');const oneCol=Math.max(1,Math.floor(body.clientHeight/s.font));els.charStat.textContent=`約${oneCol}字`;els.firstStat.textContent=`${Array.from(pages[0]?.text||'').length}字`;els.nextStat.textContent=pages[1]?`${Array.from(pages[1].text).length}字`:'—';}
-  function reset(){els.font.value=15;els.leading.value=1.9;els.titlew.value=62;els.quotew.value=66;els.mt.value=18;els.mb.value=22;els.mi.value=20;els.mo.value=16;showGrid=false;showMargins=true;els.grid.classList.remove('on');els.margins.classList.add('on');index=0;paginate()}
+  const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  function settings(){return {font:clamp(11,20,els.font.value),leading:clamp(1.3,2.4,els.leading.value),titlew:clamp(42,100,els.titlew.value),quotew:clamp(42,100,els.quotew.value),mt:clamp(8,40,els.mt.value),mb:clamp(8,40,els.mb.value),mi:clamp(8,40,els.mi.value),mo:clamp(8,40,els.mo.value)}}
+  function applyVars(){const s=settings();const r=document.documentElement.style;r.setProperty('--font-size',s.font+'px');r.setProperty('--leading',String(s.leading));r.setProperty('--pitch',(s.font*s.leading)+'px');r.setProperty('--title-w',s.titlew+'px');r.setProperty('--quote-w',s.quotew+'px');r.setProperty('--mt',mmPct(s.mt,B5.h));r.setProperty('--mb',mmPct(s.mb,B5.h));r.setProperty('--mi',mmPct(s.mi,B5.w));r.setProperty('--mo',mmPct(s.mo,B5.w));}
+  function metrics(){
+    const s=settings();
+    const frameH=B5.h-s.mt-s.mb;
+    const frameW=B5.w-s.mi-s.mo;
+    const pxPerMm=680/B5.w;
+    const frameHPx=frameH*pxPerMm;
+    const frameWPx=frameW*pxPerMm;
+    const charsPerCol=Math.max(8,Math.floor(frameHPx/(s.font*1.08)));
+    const pitch=s.font*s.leading;
+    const nextCols=Math.max(1,Math.floor(frameWPx/pitch));
+    const firstBodyWidth=Math.max(pitch,frameWPx-s.titlew-s.quotew-20);
+    const firstCols=Math.max(1,Math.floor(firstBodyWidth/pitch));
+    const firstCap=Math.max(20,Math.floor(charsPerCol*firstCols*.92));
+    const nextCap=Math.max(20,Math.floor(charsPerCol*nextCols*.94));
+    return {s,frameH,frameW,charsPerCol,firstCols,nextCols,firstCap,nextCap};
+  }
+  function splitText(text,cap){
+    const chars=Array.from(text);if(chars.length<=cap)return [text,''];
+    let cut=Math.min(cap,chars.length);
+    for(let i=cut;i>Math.max(1,cut-24);i--){const ch=chars[i-1];if(ch==='。'||ch==='！'||ch==='？'||ch==='!'||ch==='?'||ch==='\n'){cut=i;break}}
+    return [chars.slice(0,cut).join(''),chars.slice(cut).join('').replace(/^\s+/,'')];
+  }
+  function paginate(){
+    applyVars();const m=metrics();pages=[];let rest=sample;let first=true;let guard=0;
+    while(rest&&guard++<40){const cap=first?m.firstCap:m.nextCap;const [fit,nextRest]=splitText(rest,cap);pages.push({text:fit,first});rest=nextRest;first=false}
+    index=Math.min(index,Math.max(0,pages.length-1));render();updateStats(m);
+  }
+  function pageHtml(p){
+    const classes=['sheet',p.first?'':'cont',showGrid?'grid-on':'',showMargins?'margin-guides':''].filter(Boolean).join(' ');
+    return `<div class="running">RUN ${p.first?'01':'CONT'} · 2026/09/11</div><div class="frame">${p.first?'<div class="titlecol">第二回「2026年9月11日、20時53分」</div><div class="quotecol">インプを犠牲に攻撃と連撃が異様に噛み合って強い。</div>':''}<div class="bodycol">${esc(p.text)}</div></div><div class="folio">MINI BOOK</div>`;
+  }
+  function render(){
+    const p=pages[index]||{text:'',first:true};
+    els.page.className=['sheet',p.first?'':'cont',showGrid?'grid-on':'',showMargins?'margin-guides':''].filter(Boolean).join(' ');
+    els.page.innerHTML=pageHtml(p);
+    els.progress.textContent=`PAGE ${index+1} / ${Math.max(1,pages.length)}`;
+    els.prev.disabled=index===0;els.next.disabled=index>=pages.length-1;
+    els.modeStat.textContent=`${showGrid?'GRID ON':'GRID OFF'} · ${showMargins?'MARGINS ON':'MARGINS OFF'}`;
+  }
+  function updateStats(m){
+    els.frameStat.textContent=`${m.frameW.toFixed(0)} × ${m.frameH.toFixed(0)}mm`;
+    els.charStat.textContent=`約${m.charsPerCol}字`;
+    els.firstCols.textContent=`${m.firstCols}列`;
+    els.nextCols.textContent=`${m.nextCols}列`;
+    els.firstStat.textContent=`約${m.firstCap}字`;
+    els.nextStat.textContent=`約${m.nextCap}字`;
+    els.pagesStat.textContent=String(pages.length);
+  }
+  function reset(){
+    els.font.value=15;els.leading.value=1.9;els.titlew.value=62;els.quotew.value=66;els.mt.value=18;els.mb.value=22;els.mi.value=20;els.mo.value=16;
+    showGrid=false;showMargins=true;els.grid.classList.remove('on');els.margins.classList.add('on');index=0;paginate();
+  }
   [els.font,els.leading,els.titlew,els.quotew,els.mt,els.mb,els.mi,els.mo].forEach(el=>el.addEventListener('input',()=>{index=0;paginate()}));
-  els.grid.addEventListener('click',()=>{showGrid=!showGrid;els.grid.classList.toggle('on',showGrid);render()});els.margins.addEventListener('click',()=>{showMargins=!showMargins;els.margins.classList.toggle('on',showMargins);render()});els.reset.addEventListener('click',reset);els.next.addEventListener('click',()=>{if(index<pages.length-1){index++;render()}});els.prev.addEventListener('click',()=>{if(index>0){index--;render()}});document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'&&index<pages.length-1){index++;render()}if(e.key==='ArrowRight'&&index>0){index--;render()}});
-  els.margins.classList.add('on');paginate();
+  els.grid.addEventListener('click',()=>{showGrid=!showGrid;els.grid.classList.toggle('on',showGrid);render()});
+  els.margins.addEventListener('click',()=>{showMargins=!showMargins;els.margins.classList.toggle('on',showMargins);render()});
+  els.reset.addEventListener('click',reset);
+  els.next.addEventListener('click',()=>{if(index<pages.length-1){index++;render()}});
+  els.prev.addEventListener('click',()=>{if(index>0){index--;render()}});
+  document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'&&index<pages.length-1){index++;render()}else if(e.key==='ArrowRight'&&index>0){index--;render()}});
+  paginate();
 })();
 </script>
 </body>
