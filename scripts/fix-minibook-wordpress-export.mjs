@@ -18,8 +18,8 @@ function patchMinibookLayout() {
 
   replaceOnce(
     "function notePages(n,index){const run=runNumber(n,index),label=String(run).padStart(2,'0'),chunks=paginate(n.body),tags=tagsOf(n),out=[];",
-    "function notePages(n,index){const run=runNumber(n,index),label=String(run).padStart(2,'0'),bodySize=Math.max(12,Math.min(18,Number(window.__MINIBOOK_DESIGN__?.bodyFontSize||15))),scale=15/bodySize,firstLimit=Math.max(190,Math.min(320,Math.round(260*scale))),nextLimit=Math.max(320,Math.min(540,Math.round(420*scale))),chunks=paginate(n.body,firstLimit,nextLimit),tags=tagsOf(n),out=[];",
-    'font-aware run pagination'
+    "function notePages(n,index){const run=runNumber(n,index),label=String(run).padStart(2,'0'),bodySize=Math.max(12,Math.min(18,Number(window.__MINIBOOK_DESIGN__?.bodyFontSize||15))),vertical=window.__MINIBOOK_DESIGN__?.writingMode==='vertical',scale=15/bodySize,firstLimit=Math.max(vertical?160:190,Math.min(vertical?260:320,Math.round((vertical?210:260)*scale))),nextLimit=Math.max(vertical?250:320,Math.min(vertical?430:540,Math.round((vertical?330:420)*scale))),chunks=paginate(n.body,firstLimit,nextLimit),tags=tagsOf(n),out=[];",
+    'font / writing-mode aware run pagination'
   );
 
   replaceOnce(
@@ -40,12 +40,12 @@ function patchMinibookLayout() {
     'reverse keyboard page direction'
   );
 
-  if (!html.includes('firstLimit=Math.max(190') || !html.includes("window.addEventListener('minibook:designchange'") || !html.includes('← 次') || !html.includes("ArrowLeft')animatePage(state.page+1")) {
-    throw new Error('[minibook-wordpress-fix] layout pagination / binding injection failed');
+  if (!html.includes("vertical=window.__MINIBOOK_DESIGN__?.writingMode==='vertical'") || !html.includes("window.addEventListener('minibook:designchange'") || !html.includes('← 次') || !html.includes("ArrowLeft')animatePage(state.page+1")) {
+    throw new Error('[minibook-wordpress-fix] layout pagination / writing-mode / binding injection failed');
   }
 
   fs.writeFileSync(file, html);
-  console.log('[minibook-wordpress-fix] patched MINI BOOK layout pagination + reverse binding controls');
+  console.log('[minibook-wordpress-fix] patched MINI BOOK safe vertical pagination + reverse binding controls');
 }
 
 function patchMinibookWrapper() {
@@ -173,13 +173,19 @@ function patchWordpressExporter() {
 
   replaceOnce(
     "  function publicPageHtml(doc){\n    const nodes=[...doc.querySelectorAll('#print-stack .print-page')];",
-    "  function publicPageHtml(doc){\n    const bodySize=Math.max(12,Math.min(18,Number(doc.defaultView?.__MINIBOOK_DESIGN__?.bodyFontSize||15)));\n    const nodes=[...doc.querySelectorAll('#print-stack .print-page')];",
+    "  function publicPageHtml(doc){\n    const bodySize=Math.max(12,Math.min(18,Number(doc.defaultView?.__MINIBOOK_DESIGN__?.bodyFontSize||15)));\n    const writingMode=doc.defaultView?.__MINIBOOK_DESIGN__?.writingMode==='vertical'?'vertical':'horizontal';\n    const nodes=[...doc.querySelectorAll('#print-stack .print-page')];",
     'design state export'
   );
   replaceOnce(
     '      const clone=node.cloneNode(true);',
-    "      const clone=node.cloneNode(true);clone.querySelectorAll('.page-body,.run-body,.after-list').forEach(el=>el.style.fontSize=bodySize+'px');",
-    'body size freeze'
+    "      const clone=node.cloneNode(true);clone.querySelectorAll('.page-body,.run-body,.after-list').forEach(el=>el.style.fontSize=bodySize+'px');if(writingMode==='vertical')clone.querySelector('.book-page')?.classList.add('mini-writing-vertical');",
+    'body size / writing mode freeze'
+  );
+
+  replaceOnce(
+    "function exportCss(){return `<style>\n.hw-minibook,.hw-minibook *{box-sizing:border-box}",
+    "function exportCss(){return `<style>\n.hw-minibook,.hw-minibook *{box-sizing:border-box}\n.hw-minibook .mini-writing-vertical .hw-mb-run-main{flex:1!important;width:100%!important;min-width:0!important;min-height:0!important;overflow:hidden!important;writing-mode:vertical-rl!important;text-orientation:mixed!important;line-break:strict!important}.hw-minibook .mini-writing-vertical .hw-mb-run-title{margin:0!important;margin-block-end:16px!important;max-width:none!important;font-size:26px!important;line-height:1.42!important;letter-spacing:.02em!important}.hw-minibook .mini-writing-vertical .hw-mb-run-quote{margin:0!important;margin-block-end:18px!important;padding:10px 12px!important;border-top:0!important;border-bottom:0!important;border-right:3px solid var(--hw-mb-ink)!important;border-left:1px solid var(--hw-mb-line)!important;font-size:18px!important;line-height:1.75!important}.hw-minibook .mini-writing-vertical .hw-mb-run-body{margin:0!important;max-width:none!important;min-width:0!important;min-height:0!important;line-height:1.9!important;white-space:pre-wrap!important;overflow:hidden!important}.hw-minibook .mini-writing-vertical.hw-mb-run-cont .hw-mb-run-title,.hw-minibook .mini-writing-vertical .hw-mb-run-cont .hw-mb-run-title{font-size:17px!important;color:var(--hw-mb-muted)!important}@media(max-width:560px){.hw-minibook .mini-writing-vertical .hw-mb-run-title{font-size:19px!important;line-height:1.35!important}.hw-minibook .mini-writing-vertical .hw-mb-run-quote{font-size:13px!important;padding:7px 8px!important}.hw-minibook .mini-writing-vertical .hw-mb-run-body{line-height:1.7!important}}",
+    'vertical writing export css'
   );
 
   replaceOnce(
@@ -256,12 +262,12 @@ function patchWordpressExporter() {
   if (html.includes('data-hw-zoom-reset') || html.includes("root.addEventListener('wheel'")) {
     throw new Error('[minibook-wordpress-fix] zoom runtime unexpectedly present');
   }
-  if (!html.includes('var spreadTap=null') || !html.includes("navigate(e.clientX<rect0.left+rect0.width/2?'next':'prev')") || !html.includes('__MINIBOOK_DESIGN__') || !html.includes('左半分タップで次へ') || !html.includes("drag.dir=dx>0?'next':'prev'") || !html.includes('← 次')) {
-    throw new Error('[minibook-wordpress-fix] exporter reverse-binding injection failed');
+  if (!html.includes('var spreadTap=null') || !html.includes("navigate(e.clientX<rect0.left+rect0.width/2?'next':'prev')") || !html.includes("writingMode=doc.defaultView?.__MINIBOOK_DESIGN__?.writingMode") || !html.includes('mini-writing-vertical') || !html.includes('左半分タップで次へ') || !html.includes("drag.dir=dx>0?'next':'prev'") || !html.includes('← 次')) {
+    throw new Error('[minibook-wordpress-fix] exporter vertical / reverse-binding injection failed');
   }
 
   fs.writeFileSync(file, html);
-  console.log('[minibook-wordpress-fix] patched exporter + reversed binding + paged long notes');
+  console.log('[minibook-wordpress-fix] patched exporter + safe vertical writing + reversed binding');
 }
 
 patchMinibookLayout();
