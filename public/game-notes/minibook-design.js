@@ -3,7 +3,7 @@
   window.__MINIBOOK_DESIGN_LAYER__=true;
 
   const STORAGE_KEY='harfway_minibook_design_v1';
-  const DEFAULTS={bodyFontSize:15};
+  const DEFAULTS={bodyFontSize:15,writingMode:'horizontal'};
   const KINSOKU_SELECTOR='.book-page,.page-body,.run-body,.run-quote,.page-title,.run-title,.cover-title,.cover-sub,.after-list,.colophon-body';
   let design={...DEFAULTS};
 
@@ -11,6 +11,9 @@
     const saved=JSON.parse(sessionStorage.getItem(STORAGE_KEY)||'null');
     if(saved&&Number.isFinite(Number(saved.bodyFontSize))){
       design.bodyFontSize=Math.max(12,Math.min(18,Number(saved.bodyFontSize)));
+    }
+    if(saved?.writingMode==='vertical'||saved?.writingMode==='horizontal'){
+      design.writingMode=saved.writingMode;
     }
   }catch{}
 
@@ -33,7 +36,9 @@
   function apply(){
     const size=Math.max(12,Math.min(18,Number(design.bodyFontSize)||15));
     design.bodyFontSize=size;
+    design.writingMode=design.writingMode==='vertical'?'vertical':'horizontal';
     document.documentElement.style.setProperty('--mini-design-body-size',size+'px');
+    document.documentElement.dataset.miniWriting=design.writingMode;
     applyJapaneseTypography(document);
     try{sessionStorage.setItem(STORAGE_KEY,JSON.stringify(design))}catch{}
     expose();
@@ -46,10 +51,70 @@
     style.textContent=`
       .page-body,.run-body,.after-list,.intro-body .page-body{font-size:var(--mini-design-body-size,15px)!important}
       .book-page,.page-body,.run-body,.run-quote,.page-title,.run-title,.cover-title,.cover-sub,.after-list,.colophon-body{line-break:strict;word-break:normal;overflow-wrap:break-word}
+
+      /* Vertical writing is deliberately limited to RUN content.
+         Page chrome, tags and special pages remain horizontal so the fixed B5 layout stays stable. */
+      html[data-mini-writing="vertical"] .run-main{
+        flex:1!important;
+        width:100%!important;
+        min-width:0!important;
+        min-height:0!important;
+        overflow:hidden!important;
+        writing-mode:vertical-rl!important;
+        text-orientation:mixed!important;
+        line-break:strict!important;
+      }
+      html[data-mini-writing="vertical"] .run-main .run-title{
+        margin:0!important;
+        margin-block-end:16px!important;
+        max-width:none!important;
+        font-size:26px!important;
+        line-height:1.42!important;
+        letter-spacing:.02em!important;
+      }
+      html[data-mini-writing="vertical"] .run-main .run-quote{
+        margin:0!important;
+        margin-block-end:18px!important;
+        padding:10px 12px!important;
+        border-top:0!important;
+        border-bottom:0!important;
+        border-right:3px solid var(--book-ink)!important;
+        border-left:1px solid var(--book-line)!important;
+        font-size:18px!important;
+        line-height:1.75!important;
+      }
+      html[data-mini-writing="vertical"] .run-main .run-body{
+        margin:0!important;
+        max-width:none!important;
+        min-width:0!important;
+        min-height:0!important;
+        line-height:1.9!important;
+        white-space:pre-wrap!important;
+        overflow:hidden!important;
+      }
+      html[data-mini-writing="vertical"] .run-cont .run-title{
+        font-size:17px!important;
+        color:var(--book-muted)!important;
+      }
+      html[data-mini-writing="vertical"] .cont-mark{
+        margin:0!important;
+        margin-block-end:12px!important;
+        padding:0 0 0 8px!important;
+        border-top:0!important;
+        border-left:1px solid var(--book-line)!important;
+        writing-mode:vertical-rl!important;
+      }
+      @media(max-width:560px){
+        html[data-mini-writing="vertical"] .run-main .run-title{font-size:19px!important;line-height:1.35!important}
+        html[data-mini-writing="vertical"] .run-main .run-quote{font-size:13px!important;padding:7px 8px!important}
+        html[data-mini-writing="vertical"] .run-main .run-body{line-height:1.7!important}
+      }
+
       #minibook-design-panel .design-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
       #minibook-design-panel .design-title b{font:850 11px ui-monospace,monospace;letter-spacing:.11em;color:#dff238}
       #minibook-design-panel .design-title small{font-size:9px;color:#6d796f}
-      #minibook-design-panel .design-control{display:grid;gap:6px}
+      #minibook-design-panel .design-control{display:grid;gap:6px;margin-bottom:10px}
+      #minibook-design-panel .design-control:last-of-type{margin-bottom:0}
       #minibook-design-panel .design-control label{margin:0;font-size:9px;color:#8f9a91}
     `;
     document.head.appendChild(style);
@@ -80,6 +145,13 @@
     panel.innerHTML=`
       <div class="design-title"><b>DESIGN</b><small>CONTENTとは独立</small></div>
       <div class="design-control">
+        <label for="minibook-design-writing">WRITING</label>
+        <select id="minibook-design-writing">
+          <option value="horizontal">横書き / DEFAULT</option>
+          <option value="vertical">縦書き / RUN本文</option>
+        </select>
+      </div>
+      <div class="design-control">
         <label for="minibook-design-body-size">BODY TEXT</label>
         <select id="minibook-design-body-size">
           <option value="12">12px / SMALL</option>
@@ -90,15 +162,21 @@
           <option value="18">18px / LARGE</option>
         </select>
       </div>
-      <div class="hint">GAME NOTESの取得・PAGE EDITORには触れず、表示デザインだけ変更します。日本語の行頭・行末禁則は常時適用し、長文のページ分割はLAYOUT側で処理します。</div>
+      <div class="hint">縦書きはRUN本文だけに適用し、ヘッダー・フッター・タグ・表紙は横組みを維持します。GAME NOTES取得やPAGE EDITORには触れず、縦書き時はLAYOUT側でページ分割量も安全側へ調整します。</div>
     `;
 
     const format=[...tools.querySelectorAll('.group')].find(group=>group.querySelector('label')?.textContent?.trim()==='FORMAT');
     if(format) format.insertAdjacentElement('afterend',panel);
     else tools.appendChild(panel);
 
+    const writing=panel.querySelector('#minibook-design-writing');
     const select=panel.querySelector('#minibook-design-body-size');
+    writing.value=design.writingMode;
     select.value=String(design.bodyFontSize);
+    writing.addEventListener('change',()=>{
+      design={...design,writingMode:writing.value==='vertical'?'vertical':'horizontal'};
+      apply();
+    });
     select.addEventListener('change',()=>{
       design={...design,bodyFontSize:Number(select.value)||15};
       apply();
