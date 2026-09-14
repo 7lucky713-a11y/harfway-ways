@@ -1,5 +1,7 @@
 import baseHandler from './control-center-health.js';
 
+const WAYS_EDITOR_URL='https://harfway-playback.vercel.app/playback-editor/';
+
 const PREVIEW_PAGE_ITEMS=[
   {
     id:'my-game-shelf',
@@ -42,6 +44,21 @@ async function fetchJson(url,{timeoutMs=3200}={}){
     return {ok:response.ok,status:response.status,data};
   }catch(error){
     return {ok:false,status:0,data:null,error:error?.name==='AbortError'?'timeout':String(error?.message||error)};
+  }finally{clearTimeout(timer)}
+}
+
+async function timedPageFetch(url,{timeoutMs=4500}={}){
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(),timeoutMs);
+  const started=Date.now();
+  try{
+    let response=await fetch(url,{method:'HEAD',redirect:'follow',cache:'no-store',signal:ctrl.signal,headers:{'user-agent':'HARF-WAY-Control-Center-Pages/0.2'}});
+    if(response.status===405||response.status===501){
+      response=await fetch(url,{method:'GET',redirect:'follow',cache:'no-store',signal:ctrl.signal,headers:{'user-agent':'HARF-WAY-Control-Center-Pages/0.2'}});
+    }
+    return {ok:response.ok,status:response.status,latencyMs:Date.now()-started,finalUrl:response.url||url};
+  }catch(error){
+    return {ok:false,status:0,latencyMs:Date.now()-started,error:error?.name==='AbortError'?'timeout':String(error?.message||error)};
   }finally{clearTimeout(timer)}
 }
 
@@ -124,6 +141,11 @@ export default async function handler(req,res){
   await baseHandler(req,captured);
   const base=captured.payload;
   if(!base||captured.statusCode>=400)return res.status(captured.statusCode||500).json(base||{ok:false,error:'base_health_failed'});
+
+  const waysEditorHealth=await timedPageFetch(WAYS_EDITOR_URL);
+  const checks=(Array.isArray(base.checks)?base.checks:[]).map(item=>item?.id==='ways-editor'?{...item,url:WAYS_EDITOR_URL,...waysEditorHealth}:item);
+  base.checks=checks;
+  base.summary={...(base.summary||{}),healthy:checks.filter(item=>item?.ok).length,total:checks.length};
 
   const pageDiscovery=await discoverPages(base?.hub?.items||[]);
   const existing=Array.isArray(base?.hub?.autoItems)?base.hub.autoItems:[];
