@@ -7,6 +7,7 @@
   const key = () => sessionStorage.getItem('harfway_game_notes_key') || '';
   const headers = (extra = {}) => ({ ...extra, ...(key() ? { 'x-admin-key': key() } : {}) });
   const gameName = (id) => id ? (state.games.find(g => g.id === id)?.name || '未登録ゲーム') : '共通 / ゲーム横断';
+  const statusLabel = (value) => value === 'published' ? 'PUBLIC' : value === 'candidate' ? '公開候補' : 'PRIVATE';
 
   function toast(message) {
     const node = $('#toast');
@@ -65,16 +66,24 @@
       grid.innerHTML = `<div class="empty"><b>${state.entries.length ? '条件に合う用語がありません' : 'まだ用語がありません'}</b>${state.entries.length ? '検索条件を変えてみてください。' : '右上の「＋ 用語を追加」から、必要な言葉だけ置いていけます。'}</div>`;
       return;
     }
-    grid.innerHTML = entries.map(entry => `
+    grid.innerHTML = entries.map(entry => {
+      const publicationState = entry.publicationState || 'private';
+      const action = publicationState === 'candidate'
+        ? `<button class="publish" type="button" data-publish="${esc(entry.id)}">公開する</button>`
+        : publicationState === 'published'
+          ? `<button class="unpublish" type="button" data-unpublish="${esc(entry.id)}">公開停止</button>`
+          : '';
+      return `
       <article class="card" data-entry="${esc(entry.id)}">
         <div class="card-head">
-          <div><span class="game-pill">${esc(gameName(entry.gameId))}</span><h2>${esc(entry.term)}</h2></div>
+          <div><div class="pills"><span class="game-pill">${esc(gameName(entry.gameId))}</span><span class="state-pill ${esc(publicationState)}">${esc(statusLabel(publicationState))}</span></div><h2>${esc(entry.term)}</h2></div>
           <button class="edit" type="button" data-edit="${esc(entry.id)}">編集</button>
         </div>
         <p>${esc(entry.description)}</p>
-        ${(entry.relatedTerms || []).length ? `<div class="related">${entry.relatedTerms.map(v => `<span class="chip">↔ ${esc(v)}</span>`).join('')}</div>` : ''}
-      </article>
-    `).join('');
+        ${(entry.relatedTerms || []).length ? `<div class="related">${entry.relatedTerms.map(v => `<button type="button" class="chip" data-search-related="${esc(v)}">↔ ${esc(v)}</button>`).join('')}</div>` : ''}
+        ${action ? `<div class="publication-actions">${action}${publicationState === 'published' ? `<a href="/game-wiki/?entry=${encodeURIComponent(entry.id)}" target="_blank" rel="noopener">公開ページを見る ↗</a>` : ''}</div>` : ''}
+      </article>`;
+    }).join('');
   }
 
   function renderRelated() {
@@ -94,6 +103,11 @@
     $('#term').value = entry?.term || '';
     $('#game').value = entry?.gameId || '';
     $('#description').value = entry?.description || '';
+    $('#publication-candidate').checked = entry?.publicationState === 'candidate';
+    $('#publication-candidate').disabled = entry?.publicationState === 'published';
+    $('#publication-note').textContent = entry?.publicationState === 'published'
+      ? '現在公開中です。保存しても公開状態は維持されます。公開を止める場合は一覧の「公開停止」を使います。'
+      : '公開候補にしても外部には出ません。一覧から「公開する」を押した時だけ公開されます。';
     state.relatedTerms = [...(entry?.relatedTerms || [])];
     renderRelated();
     $('#delete-entry').classList.toggle('hidden', !entry);
@@ -109,6 +123,7 @@
     $('#entry-overlay').setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
     $('#entry-form').reset();
+    $('#publication-candidate').disabled = false;
     state.relatedTerms = [];
     renderRelated();
   }
@@ -123,6 +138,25 @@
       hideLock();
     } catch (error) {
       if (error.message !== 'unauthorized') toast('読み込みに失敗しました');
+    }
+  }
+
+  async function publicationAction(id, action) {
+    const verb = action === 'publish' ? '公開' : '公開停止';
+    if (!confirm(`この用語を${verb}しますか？`)) return;
+    try {
+      const data = await request('', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id, action })
+      });
+      const index = state.entries.findIndex(x => x.id === data.item.id);
+      if (index >= 0) state.entries[index] = data.item;
+      render();
+      toast(action === 'publish' ? '公開Wikiに反映しました' : '公開を停止しました');
+    } catch (error) {
+      if (error.message === 'candidate_required_before_publish') toast('先に「公開候補」として保存してください');
+      else if (error.message !== 'unauthorized') toast(`${verb}できませんでした`);
     }
   }
 
@@ -141,6 +175,17 @@
     renderRelated();
   });
   $('#entry-grid').addEventListener('click', e => {
+    const related = e.target.closest('[data-search-related]');
+    if (related) {
+      $('#search').value = related.dataset.searchRelated || '';
+      render();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    const publish = e.target.closest('[data-publish]');
+    if (publish) return publicationAction(publish.dataset.publish, 'publish');
+    const unpublish = e.target.closest('[data-unpublish]');
+    if (unpublish) return publicationAction(unpublish.dataset.unpublish, 'unpublish');
     const button = e.target.closest('[data-edit]');
     if (!button) return;
     const entry = state.entries.find(x => x.id === button.dataset.edit);
@@ -155,7 +200,8 @@
       term: $('#term').value,
       gameId: $('#game').value,
       description: $('#description').value,
-      relatedTerms: state.relatedTerms
+      relatedTerms: state.relatedTerms,
+      publicationCandidate: $('#publication-candidate').checked
     };
     try {
       const data = await request('', {

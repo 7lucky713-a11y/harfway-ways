@@ -7,6 +7,7 @@ const PREVIEW_BRANCH_ID = 'br-bold-butterfly-aw2ztgbd';
 const SOURCE = 'private-game-notes';
 const GAME_TYPE = 'private_game_note_game';
 const GLOSSARY_TYPE = 'private_game_note_glossary';
+const PUBLIC_STATES = new Set(['private', 'candidate', 'published']);
 
 function clean(value, max = 240) {
   return String(value ?? '').trim().slice(0, max);
@@ -40,6 +41,10 @@ function dbId(entity, id) {
 }
 function privateRecordUrl(entity, id) {
   return `/game-notes/_private/${entity}/${encodeURIComponent(publicId(id, entity))}`;
+}
+function publicationState(meta) {
+  const state = clean(meta?.publicationState, 20).toLowerCase();
+  return PUBLIC_STATES.has(state) ? state : 'private';
 }
 
 function databaseConfig() {
@@ -106,6 +111,8 @@ function toEntry(row) {
     description: row.body_text || '',
     gameId: clean(meta.gameId, 160),
     relatedTerms: normalizeList(meta.relatedTerms),
+    publicationState: publicationState(meta),
+    publishedAt: clean(meta.publishedAt, 80) || null,
     createdAt: meta.createdAt || (row.created_at ? new Date(row.created_at).toISOString() : null),
     updatedAt: row.updated_at || null
   };
@@ -182,10 +189,16 @@ async function saveEntry(sql, body) {
     `;
     currentMeta = current[0]?.metadata && typeof current[0].metadata === 'object' ? current[0].metadata : {};
   }
+  const currentPublicationState = publicationState(currentMeta);
+  const nextPublicationState = currentPublicationState === 'published'
+    ? 'published'
+    : (body.publicationCandidate ? 'candidate' : 'private');
   const metadata = JSON.stringify({
     ...currentMeta,
     gameId,
     relatedTerms,
+    publicationState: nextPublicationState,
+    publishedAt: currentPublicationState === 'published' ? (clean(currentMeta.publishedAt, 80) || new Date().toISOString()) : null,
     createdAt: clean(currentMeta.createdAt, 60) || new Date().toISOString()
   });
   const rows = await sql`
@@ -207,6 +220,53 @@ async function saveEntry(sql, body) {
     error.status = 409;
     throw error;
   }
+  return toEntry(rows[0]);
+}
+
+async function changePublication(sql, body) {
+  const id = clean(body.id, 160);
+  const action = clean(body.action, 24).toLowerCase();
+  if (!id) {
+    const error = new Error('id_required');
+    error.status = 400;
+    throw error;
+  }
+  if (!['publish', 'unpublish'].includes(action)) {
+    const error = new Error('invalid_publication_action');
+    error.status = 400;
+    throw error;
+  }
+  const dbid = dbId('glossary', id);
+  const current = await sql`
+    SELECT id, title, body_text, metadata, created_at, updated_at
+    FROM core.contents
+    WHERE id=${dbid} AND source=${SOURCE} AND content_type=${GLOSSARY_TYPE} AND status<>'archived'
+    LIMIT 1
+  `;
+  if (!current[0]) {
+    const error = new Error('glossary_not_found');
+    error.status = 404;
+    throw error;
+  }
+  const meta = current[0].metadata && typeof current[0].metadata === 'object' ? current[0].metadata : {};
+  if (action === 'publish' && publicationState(meta) !== 'candidate') {
+    const error = new Error('candidate_required_before_publish');
+    error.status = 409;
+    throw error;
+  }
+  const now = new Date().toISOString();
+  const nextMeta = JSON.stringify({
+    ...meta,
+    publicationState: action === 'publish' ? 'published' : 'private',
+    publishedAt: action === 'publish' ? now : null,
+    ...(action === 'unpublish' ? { unpublishedAt: now } : {})
+  });
+  const rows = await sql`
+    UPDATE core.contents
+    SET metadata=CAST(${nextMeta} AS jsonb), updated_at=now()
+    WHERE id=${dbid} AND source=${SOURCE} AND content_type=${GLOSSARY_TYPE} AND status<>'archived'
+    RETURNING id, title, body_text, metadata, created_at, updated_at
+  `;
   return toEntry(rows[0]);
 }
 
@@ -242,8 +302,13 @@ export default async function handler(req, res) {
     }
 
     const body = parseBody(req);
-    if (req.method === 'POST' || req.method === 'PATCH') {
+    if (req.method === 'POST') {
       const item = await saveEntry(context.sql, body);
+      return res.status(200).json({ ok: true, item });
+    }
+    if (req.method === 'PATCH') {
+      const action = clean(body.action, 24).toLowerCase();
+      const item = action ? await changePublication(context.sql, body) : await saveEntry(context.sql, body);
       return res.status(200).json({ ok: true, item });
     }
     if (req.method === 'DELETE') {
