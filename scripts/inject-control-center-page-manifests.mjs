@@ -10,6 +10,7 @@ const replacements=[
   ["<code>/harfway-tool.json</code>","<code>/harfway-tool.json + /harfway-tools.json</code>"],
   ["fetch('/api/control-center-health').then(r=>r.json())","fetch('/api/control-center-health-pages').then(r=>r.json())"],
   ["x.syncSource==='manifest'?'AUTO / MANIFEST':'AUTO / HUB'","x.syncSource==='manifest'?'AUTO / MANIFEST':x.syncSource==='page-manifest'?'AUTO / PAGE':x.syncSource==='preview-page-manifest'?'PREVIEW / PAGE':'AUTO / HUB'"],
+  ["https://harfway-playback-editor.vercel.app/","/playback-editor/"],
   ["Production v0.3 — AUTO SYNC稼働中。今後のHARF-WAY関連ツールはHUB新規ID＋harfway-tool.jsonを標準にし、CONTROL CENTERへ自動同期します。","Production v0.4 — PROJECT + PAGE AUTO SYNC。新規Projectはharfway-tool.json、既存Project内の複数ページはharfway-tools.jsonでCONTROL CENTERへ自動同期します。"]
 ];
 
