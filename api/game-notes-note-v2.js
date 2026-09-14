@@ -9,6 +9,7 @@ const NOTE_TYPE = 'private_game_note';
 const GAME_TYPE = 'private_game_note_game';
 const TYPE_TYPE = 'private_game_note_type';
 const FACET_TYPE = 'private_game_note_facet';
+const GLOSSARY_TYPE = 'private_game_note_glossary';
 const TARGET_GAME_IDS = new Set([
   'a10e6a8c-95a7-4480-adcb-bf6f8c8054e2',
   'c5dd23a5-4951-4123-881d-c71df1c446b3'
@@ -33,6 +34,19 @@ function normalizeList(value, maxItems = 40, maxLength = 100) {
     if (seen.has(key)) continue;
     seen.add(key);
     result.push(v);
+    if (result.length >= maxItems) break;
+  }
+  return result;
+}
+function normalizeGlossaryIds(value, maxItems = 40) {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set();
+  const result = [];
+  for (const item of value) {
+    const id = clean(item, 160).replace(/^game-notes:glossary:/, '');
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    result.push(id);
     if (result.length >= maxItems) break;
   }
   return result;
@@ -182,6 +196,16 @@ async function normalizeFacetsForSave(sql, body, currentMeta = {}) {
   }
   return result;
 }
+async function validatedGlossaryIds(sql, value) {
+  const requested = normalizeGlossaryIds(value);
+  if (!requested.length) return [];
+  const rows = await sql`
+    SELECT id FROM core.contents
+    WHERE source=${SOURCE} AND content_type=${GLOSSARY_TYPE} AND status<>'archived'
+  `;
+  const allowed = new Set(rows.map(row => publicId(row.id, 'glossary')));
+  return requested.filter(id => allowed.has(id));
+}
 function toNote(row) {
   const meta = row.metadata && typeof row.metadata === 'object' ? row.metadata : {};
   const facets = normalizedFacetObject(meta);
@@ -198,6 +222,7 @@ function toNote(row) {
     media: Array.isArray(meta.media) ? meta.media : [],
     outputStatus: meta.outputStatus || 'private',
     exportedTo: Array.isArray(meta.exportedTo) ? meta.exportedTo : [],
+    glossaryEntryIds: normalizeGlossaryIds(meta.glossaryEntryIds),
     createdAt: meta.createdAt || (row.created_at ? new Date(row.created_at).toISOString() : null),
     updatedAt: row.updated_at || null,
     monsterTrainRun: meta?.gameSpecific?.monsterTrain2 || null
@@ -247,6 +272,8 @@ async function saveNote(sql, body) {
   }
 
   const facets = await normalizeFacetsForSave(sql, body, currentMeta);
+  const relationInput = Array.isArray(body.glossaryEntryIds) ? body.glossaryEntryIds : currentMeta.glossaryEntryIds;
+  const glossaryEntryIds = await validatedGlossaryIds(sql, relationInput);
   const title = clean(body.title, 280) || clean(text.replace(/\s+/g, ' '), 60);
   const outputStatus = ['private', 'candidate', 'exported'].includes(body.outputStatus) ? body.outputStatus : 'private';
   const gameSpecific = currentMeta.gameSpecific && typeof currentMeta.gameSpecific === 'object' && !Array.isArray(currentMeta.gameSpecific)
@@ -272,6 +299,7 @@ async function saveNote(sql, body) {
     media: validMedia(body.media),
     outputStatus,
     exportedTo: normalizeList(body.exportedTo, 20, 80),
+    glossaryEntryIds,
     createdAt: clean(body.createdAt, 60) || clean(currentMeta.createdAt, 60) || new Date().toISOString(),
     gameSpecific
   });

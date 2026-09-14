@@ -6,6 +6,7 @@ const PRODUCTION_BRANCH_ID = 'br-noisy-boat-awncea92';
 const PREVIEW_BRANCH_ID = 'br-bold-butterfly-aw2ztgbd';
 const SOURCE = 'private-game-notes';
 const GAME_TYPE = 'private_game_note_game';
+const NOTE_TYPE = 'private_game_note';
 const GLOSSARY_TYPE = 'private_game_note_glossary';
 
 function clean(value, max = 240) {
@@ -31,7 +32,7 @@ function normalizeList(value, maxItems = 20, maxLength = 100) {
   }
   return result;
 }
-function normalizeIdList(value, maxItems = 30) {
+function normalizeIdList(value, maxItems = 40) {
   if (!Array.isArray(value)) return [];
   const seen = new Set();
   const result = [];
@@ -124,6 +125,17 @@ function toEntry(row) {
     updatedAt: row.updated_at || null
   };
 }
+function toNoteSummary(row) {
+  const meta = row.metadata && typeof row.metadata === 'object' ? row.metadata : {};
+  return {
+    id: publicId(row.id, 'note'),
+    title: row.title || '',
+    gameId: clean(meta.gameId, 160),
+    glossaryEntryIds: normalizeIdList(meta.glossaryEntryIds),
+    createdAt: meta.createdAt || (row.created_at ? new Date(row.created_at).toISOString() : null),
+    updatedAt: row.updated_at || null
+  };
+}
 
 function makeRelationsSymmetric(entries) {
   const byId = new Map(entries.map(entry => [entry.id, entry]));
@@ -148,19 +160,22 @@ async function listAll(sql) {
     FROM core.contents
     WHERE source=${SOURCE}
       AND status<>'archived'
-      AND content_type IN (${GAME_TYPE}, ${GLOSSARY_TYPE})
+      AND content_type IN (${GAME_TYPE}, ${GLOSSARY_TYPE}, ${NOTE_TYPE})
     ORDER BY updated_at DESC
   `;
   const games = [];
   const entries = [];
+  const notes = [];
   for (const row of rows) {
     if (row.content_type === GAME_TYPE) games.push(toGame(row));
     if (row.content_type === GLOSSARY_TYPE) entries.push(toEntry(row));
+    if (row.content_type === NOTE_TYPE) notes.push(toNoteSummary(row));
   }
   games.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
   entries.sort((a, b) => a.term.localeCompare(b.term, 'ja'));
+  notes.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
   makeRelationsSymmetric(entries);
-  return { games, entries };
+  return { games, entries, notes };
 }
 
 async function assertGameExists(sql, gameId) {
@@ -209,6 +224,24 @@ async function syncReciprocalRelations(sql, currentId, desiredIds) {
       UPDATE core.contents
       SET metadata=CAST(${nextMeta} AS jsonb), updated_at=now()
       WHERE id=${row.id} AND source=${SOURCE} AND content_type=${GLOSSARY_TYPE} AND status<>'archived'
+    `;
+  }
+}
+
+async function removeNoteReferences(sql, entryId) {
+  const rows = await sql`
+    SELECT id, metadata FROM core.contents
+    WHERE source=${SOURCE} AND content_type=${NOTE_TYPE} AND status<>'archived'
+  `;
+  for (const row of rows) {
+    const meta = row.metadata && typeof row.metadata === 'object' ? row.metadata : {};
+    const current = normalizeIdList(meta.glossaryEntryIds);
+    if (!current.includes(entryId)) continue;
+    const nextMeta = JSON.stringify({ ...meta, glossaryEntryIds: current.filter(id => id !== entryId) });
+    await sql`
+      UPDATE core.contents
+      SET metadata=CAST(${nextMeta} AS jsonb)
+      WHERE id=${row.id} AND source=${SOURCE} AND content_type=${NOTE_TYPE} AND status<>'archived'
     `;
   }
 }
@@ -292,6 +325,7 @@ async function archiveEntry(sql, id) {
   `;
   if (!rows[0]) return false;
   await syncReciprocalRelations(sql, publicEntryId, []);
+  await removeNoteReferences(sql, publicEntryId);
   return true;
 }
 

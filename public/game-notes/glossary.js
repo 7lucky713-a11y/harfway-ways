@@ -2,13 +2,32 @@
   const API = '/api/game-notes-glossary';
   const $ = (s, root = document) => root.querySelector(s);
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const state = { games: [], entries: [], selectedRelatedIds: [] };
+  const state = { games: [], entries: [], notes: [], selectedRelatedIds: [] };
 
   const key = () => sessionStorage.getItem('harfway_game_notes_key') || '';
   const headers = (extra = {}) => ({ ...extra, ...(key() ? { 'x-admin-key': key() } : {}) });
   const gameName = (id) => id ? (state.games.find(g => g.id === id)?.name || '未登録ゲーム') : '共通 / ゲーム横断';
   const entryById = (id) => state.entries.find(entry => entry.id === id) || null;
   const relationNames = (entry) => (entry.relatedEntryIds || []).map(id => entryById(id)?.term).filter(Boolean);
+  const fmt = (value) => {
+    try { return new Intl.DateTimeFormat('ja-JP', { year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date(value)); }
+    catch { return ''; }
+  };
+
+  function installStyles() {
+    if ($('#glossary-note-link-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'glossary-note-link-styles';
+    style.textContent = `
+      .related-notes{margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08)}
+      .related-notes-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}.related-notes-head b{font:850 10px ui-monospace,monospace;letter-spacing:.08em;color:#8f9d92}.related-notes-head span{font-size:10px;color:#6f7a71}
+      .related-note-list{display:grid;gap:7px}.related-note{display:grid;grid-template-columns:78px minmax(0,1fr) auto;gap:9px;align-items:center;padding:9px 10px;border:1px solid rgba(255,255,255,.08);border-radius:9px;background:#111512;text-decoration:none;color:inherit}
+      .related-note:hover{border-color:rgba(223,242,56,.4);background:#151b17}.related-note time{font:750 10px ui-monospace,monospace;color:#78847b}.related-note strong{font-size:12px;line-height:1.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.related-note em{font-style:normal;color:#dff238;font-size:12px}
+      .related-note-more{margin-top:8px;font-size:10px;color:#77827a}
+      @media(max-width:650px){.related-note{grid-template-columns:1fr auto}.related-note time{grid-column:1/-1}.related-note strong{white-space:normal}}
+    `;
+    document.head.appendChild(style);
+  }
 
   function toast(message) {
     const node = $('#toast');
@@ -47,6 +66,12 @@
     if ([...form.options].some(o => o.value === currentForm)) form.value = currentForm;
   }
 
+  function notesForEntry(entry) {
+    return state.notes
+      .filter(note => Array.isArray(note.glossaryEntryIds) && note.glossaryEntryIds.includes(entry.id))
+      .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+  }
+
   function filteredEntries() {
     const q = ($('#search').value || '').trim().toLocaleLowerCase('ja');
     const game = $('#game-filter').value || 'all';
@@ -54,7 +79,8 @@
       if (game === 'common' && entry.gameId) return false;
       if (game !== 'all' && game !== 'common' && entry.gameId !== game) return false;
       if (!q) return true;
-      const haystack = [entry.term, entry.description, gameName(entry.gameId), ...relationNames(entry), ...(entry.relatedTerms || [])].join(' ').toLocaleLowerCase('ja');
+      const noteTitles = notesForEntry(entry).map(note => note.title || '');
+      const haystack = [entry.term, entry.description, gameName(entry.gameId), ...relationNames(entry), ...(entry.relatedTerms || []), ...noteTitles].join(' ').toLocaleLowerCase('ja');
       return haystack.includes(q);
     });
   }
@@ -68,6 +94,18 @@
     return linked + legacy;
   }
 
+  function relatedNotesMarkup(entry) {
+    const notes = notesForEntry(entry);
+    if (!notes.length) return '';
+    const visible = notes.slice(0, 6);
+    return `
+      <div class="related-notes">
+        <div class="related-notes-head"><b>RELATED NOTES</b><span>${notes.length}件</span></div>
+        <div class="related-note-list">${visible.map(note => `<a class="related-note" href="/game-notes/?note=${encodeURIComponent(note.id)}"><time>${esc(fmt(note.createdAt))}</time><strong>${esc(note.title || '無題')}</strong><em>→</em></a>`).join('')}</div>
+        ${notes.length > visible.length ? `<div class="related-note-more">ほか ${notes.length - visible.length}件</div>` : ''}
+      </div>`;
+  }
+
   function render() {
     const entries = filteredEntries();
     $('#entry-count').textContent = entries.length;
@@ -78,6 +116,7 @@
     }
     grid.innerHTML = entries.map(entry => {
       const related = relatedMarkup(entry);
+      const noteLinks = relatedNotesMarkup(entry);
       return `
       <article class="card" data-entry="${esc(entry.id)}">
         <div class="card-head">
@@ -86,6 +125,7 @@
         </div>
         <p>${esc(entry.description)}</p>
         ${related ? `<div class="related">${related}</div>` : ''}
+        ${noteLinks}
       </article>`;
     }).join('');
   }
@@ -167,6 +207,7 @@
       const data = await request();
       state.games = Array.isArray(data.games) ? data.games : [];
       state.entries = Array.isArray(data.entries) ? data.entries : [];
+      state.notes = Array.isArray(data.notes) ? data.notes : [];
       fillGames();
       render();
       hideLock();
@@ -177,6 +218,7 @@
     }
   }
 
+  installStyles();
   $('#open-entry').addEventListener('click', () => openEditor());
   $('#close-entry').addEventListener('click', closeEditor);
   $('#cancel-entry').addEventListener('click', closeEditor);
