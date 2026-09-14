@@ -2,6 +2,7 @@ import baseHandler from './playback-editor-page.js';
 
 const LABEL_PREFIX = '__ways_label:';
 const TYPE_PREFIX = '__ways_type:';
+const PREVIEW_MODE = process.env.VERCEL_ENV !== 'production';
 
 const LABEL_STYLE = `
 <style id="ways-label-style">
@@ -9,6 +10,7 @@ const LABEL_STYLE = `
 .ways-label-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
 .ways-label-head strong{display:block;font-size:12px}.ways-label-head small{display:block;margin-top:3px;color:#8f939b;font-size:10px;line-height:1.45}
 .ways-label-head-actions{display:flex;align-items:center;gap:7px}.ways-label-count{display:inline-flex;align-items:center;border:1px solid #3b3e45;color:#9da1a9;border-radius:999px;padding:4px 7px;font-size:9px;font-weight:900;white-space:nowrap}
+.ways-label-save{font-size:9px;font-weight:900;color:#737a74;white-space:nowrap}.ways-label-save[data-state="saving"]{color:#ffd36a}.ways-label-save[data-state="saved"]{color:#b9ff78}.ways-label-save[data-state="error"]{color:#ff9aa3}
 .ways-label-manage{border:1px solid #48501d;color:var(--a);border-radius:999px;padding:5px 8px;font-size:9px;font-weight:900;text-decoration:none;white-space:nowrap}
 .ways-label-chips{display:flex;flex-wrap:wrap;gap:7px;min-height:28px}
 .ways-label-chip{border:1px solid #3b3e45;background:#111317;color:#aeb2ba;border-radius:999px;padding:7px 9px;font-size:10px;font-weight:850;cursor:pointer}
@@ -17,7 +19,7 @@ const LABEL_STYLE = `
 .ways-label-add{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:10px}
 .ways-label-add input{min-width:0;border:1px solid #3b3e45;background:#070809;color:#f3f3ef;border-radius:9px;padding:9px 10px;font-size:11px;outline:none}
 .ways-label-add input:focus{border-color:var(--a)}.ways-label-add button{border:1px solid var(--a);background:var(--a);color:#111;border-radius:9px;padding:9px 12px;font-size:10px;font-weight:950;cursor:pointer}
-@media(max-width:700px){.ways-label-panel{padding:12px}.ways-label-add{grid-template-columns:1fr}.ways-label-add button{width:100%}.ways-label-head{display:block}.ways-label-head-actions{margin-top:9px}}
+@media(max-width:700px){.ways-label-panel{padding:12px}.ways-label-add{grid-template-columns:1fr}.ways-label-add button{width:100%}.ways-label-head{display:block}.ways-label-head-actions{margin-top:9px;flex-wrap:wrap}}
 </style>`;
 
 const LABEL_SCRIPT = `
@@ -26,7 +28,9 @@ const LABEL_SCRIPT = `
   const LABEL_PREFIX='${LABEL_PREFIX}';
   const TYPE_PREFIX='${TYPE_PREFIX}';
   const CATALOG_API='/api/ways-labels';
+  const PREVIEW_MODE=${PREVIEW_MODE ? 'true' : 'false'};
   let catalog=[];
+  let autoSaveTimer=0,autoSaving=false,autoSavePending=false;
   const current=()=>window.__peCur?.()||null;
   const state=()=>window.__peState?.()||{games:[]};
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -54,22 +58,58 @@ const LABEL_SCRIPT = `
     const input=document.querySelector('#editor [data-k="description"]');
     if(input)input.dispatchEvent(new Event('input',{bubbles:true}));
   }
+  function setAutoSaveState(text,stateName='idle'){
+    const node=document.querySelector('.ways-label-save');if(!node)return;
+    node.textContent=text;node.dataset.state=stateName;
+  }
+  const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  async function waitForEditorSave(){
+    const started=Date.now();
+    while(Date.now()-started<12000){
+      const text=String(document.querySelector('#state')?.textContent||'');
+      if(text.startsWith('保存エラー'))return{ok:false,text};
+      if(text.includes('NEON 保存済み'))return{ok:true,text};
+      await wait(120);
+    }
+    return{ok:false,text:'保存確認タイムアウト'};
+  }
+  async function runAutoSave(){
+    if(autoSaving){autoSavePending=true;return}
+    autoSaving=true;autoSavePending=false;
+    try{
+      if(PREVIEW_MODE){setAutoSaveState('PREVIEW / 自動保存確認','saved');return}
+      const button=document.querySelector('#save');
+      if(!button){setAutoSaveState('自動保存できません','error');return}
+      setAutoSaveState('保存中…','saving');
+      button.click();
+      const result=await waitForEditorSave();
+      setAutoSaveState(result.ok?'保存済み':'保存失敗',result.ok?'saved':'error');
+    }finally{
+      autoSaving=false;
+      if(autoSavePending){autoSavePending=false;scheduleAutoSave()}
+    }
+  }
+  function scheduleAutoSave(){
+    clearTimeout(autoSaveTimer);
+    setAutoSaveState(PREVIEW_MODE?'PREVIEW / 自動保存待ち':'自動保存待ち','saving');
+    autoSaveTimer=setTimeout(runAutoSave,250);
+  }
   function toggleLabel(key){
     const g=current();if(!g)return;
     const cur=rawLabelsOf(g);const has=cur.includes(key);
     setLabels(g,has?cur.filter(x=>x!==key):[...cur,key]);
-    markDirty();refresh();
+    markDirty();refresh();scheduleAutoSave();
   }
   function addLabel(box){
     const input=box?.querySelector('[data-ways-label-input]');if(!input)return;
     const name=String(input.value||'').trim().replace(/\\s+/g,' ').slice(0,40);if(!name)return;
     const g=current();if(!g)return;
     if(!catalog.some(x=>x.key===name))catalog.push({key:name,name,description:'',count:0,managed:false});
-    setLabels(g,[...rawLabelsOf(g),name]);input.value='';markDirty();refresh();
+    setLabels(g,[...rawLabelsOf(g),name]);input.value='';markDirty();refresh();scheduleAutoSave();
   }
   function makePanel(){
     const box=document.createElement('section');box.className='ways-label-panel';
-    box.innerHTML='<div class="ways-label-head"><div><strong>LABEL</strong><small>テーマ別の特化コーナー。複数選択できます。</small></div><div class="ways-label-head-actions"><span class="ways-label-count">0 LABELS</span><a class="ways-label-manage" href="/ways-labels-admin/" target="_top">LABEL管理 ↗</a></div></div><div class="ways-label-chips"></div><div class="ways-label-add"><input type="text" maxlength="40" data-ways-label-input placeholder="新しいLABEL名"><button type="button" data-ways-label-add>＋ LABELを追加</button></div>';
+    box.innerHTML='<div class="ways-label-head"><div><strong>LABEL</strong><small>テーマ別の特化コーナー。複数選択できます。</small></div><div class="ways-label-head-actions"><span class="ways-label-save" data-state="idle">${PREVIEW_MODE ? 'PREVIEW / 自動保存' : '自動保存'}</span><span class="ways-label-count">0 LABELS</span><a class="ways-label-manage" href="/ways-labels-admin/" target="_top">LABEL管理 ↗</a></div></div><div class="ways-label-chips"></div><div class="ways-label-add"><input type="text" maxlength="40" data-ways-label-input placeholder="新しいLABEL名"><button type="button" data-ways-label-add>＋ LABELを追加</button></div>';
     box.addEventListener('click',e=>{const chip=e.target.closest('[data-ways-label]');if(chip){toggleLabel(decodeURIComponent(chip.dataset.waysLabel||''));return}if(e.target.closest('[data-ways-label-add]'))addLabel(box)});
     box.querySelector('[data-ways-label-input]')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addLabel(box)}});
     return box;
