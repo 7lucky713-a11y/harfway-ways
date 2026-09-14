@@ -108,7 +108,7 @@
     selectedRoot.innerHTML = state.selectedIds.map(id => {
       const entry = entryById(id);
       if (!entry) return '';
-      return `<span class="note-glossary-chip">${esc(entry.term)}<a href="/game-notes/glossary/?entry=${encodeURIComponent(entry.id)}" target="_blank" rel="noopener" title="Glossaryで見る">↗</a><button type="button" data-remove-glossary="${esc(entry.id)}" aria-label="${esc(entry.term)}を外す">×</button></span>`;
+      return `<span class="note-glossary-chip">${esc(entry.term)}<a href="/game-notes/glossary/?entry=${encodeURIComponent(entry.id)}" title="Glossaryで見る">↗</a><button type="button" data-remove-glossary="${esc(entry.id)}" aria-label="${esc(entry.term)}を外す">×</button></span>`;
     }).join('');
 
     if (!state.ready) {
@@ -122,7 +122,7 @@
       picker.innerHTML = '<option value="">登録済みGlossaryがありません</option>';
       picker.disabled = true;
       add.disabled = true;
-      help.innerHTML = '<a href="/game-notes/glossary/" target="_blank" rel="noopener">Glossaryで用語を追加する ↗</a>';
+      help.innerHTML = '<a href="/game-notes/glossary/">Glossaryで用語を追加する ↗</a>';
       return;
     }
 
@@ -208,13 +208,18 @@
     return response;
   };
 
-  function readerGlossaryHtml(noteId) {
+  function readerGlossaryState(noteId) {
     const note = state.notes.get(String(noteId));
-    if (!note) return '';
+    if (!note) return { entries: [], signature: '' };
     const entries = (note.glossaryEntryIds || []).map(entryById).filter(Boolean);
+    const signature = entries.map(entry => `${entry.id}:${entry.term}`).join('|');
+    return { entries, signature };
+  }
+
+  function readerGlossaryHtml(noteId, entries, signature) {
     if (!entries.length) return '';
     return `
-      <section class="reader-glossary" id="reader-glossary-links" data-note-id="${esc(noteId)}">
+      <section class="reader-glossary" id="reader-glossary-links" data-note-id="${esc(noteId)}" data-signature="${esc(signature)}">
         <div class="reader-glossary-head"><b>RELATED GLOSSARY</b><span>${entries.length} terms</span></div>
         <div class="reader-glossary-links">${entries.map(entry => `<a href="/game-notes/glossary/?entry=${encodeURIComponent(entry.id)}">${esc(entry.term)} →</a>`).join('')}</div>
       </section>
@@ -225,12 +230,22 @@
     readerQueued = false;
     const article = $('#reader-article');
     if (!article) return;
-    $('#reader-glossary-links', article)?.remove();
-    if (!state.ready || !pendingReaderNoteId) return;
-    const html = readerGlossaryHtml(pendingReaderNoteId);
-    if (!html) return;
+    const existing = $('#reader-glossary-links', article);
+    if (!state.ready || !pendingReaderNoteId) {
+      existing?.remove();
+      return;
+    }
+    const { entries, signature } = readerGlossaryState(pendingReaderNoteId);
+    if (!entries.length) {
+      existing?.remove();
+      return;
+    }
+    if (existing && existing.dataset.noteId === String(pendingReaderNoteId) && existing.dataset.signature === signature) return;
+    const html = readerGlossaryHtml(pendingReaderNoteId, entries, signature);
     const copy = $('.reader-copy', article);
-    if (copy) copy.insertAdjacentHTML('afterend', html);
+    if (!copy) return;
+    existing?.remove();
+    copy.insertAdjacentHTML('afterend', html);
   }
   function queueReaderRender() {
     if (readerQueued) return;
