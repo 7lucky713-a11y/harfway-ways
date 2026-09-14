@@ -1,5 +1,6 @@
 ---
 const title = 'HARF-WAY PLAYBACK EDITOR';
+const isProduction = process.env.VERCEL_ENV === 'production';
 ---
 <!doctype html>
 <html lang="ja">
@@ -11,9 +12,398 @@ const title = 'HARF-WAY PLAYBACK EDITOR';
     <style is:global>
       html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#080808}
       #editorFrame{display:block;width:100%;height:100vh;border:0;background:#080808}
+      .csv-launch{position:fixed;z-index:90;right:18px;bottom:18px;border:1px solid #efff3d;background:#efff3d;color:#111;border-radius:999px;padding:11px 15px;font:900 12px/1 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;box-shadow:0 8px 30px #0009;cursor:pointer}
+      .csv-modal{position:fixed;z-index:100;inset:0;background:#000d;display:none;padding:20px;overflow:auto;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;color:#f5f5f0}
+      .csv-modal.on{display:block}.csv-shell{width:min(1180px,100%);margin:0 auto;background:#0d0d0f;border:1px solid #35353b;border-radius:18px;overflow:hidden}
+      .csv-head{display:flex;gap:14px;align-items:flex-start;justify-content:space-between;padding:18px 20px;border-bottom:1px solid #28282d}
+      .csv-head h2{margin:3px 0 4px;font-size:25px}.csv-k{font-size:9px;letter-spacing:.16em;color:#efff3d;font-weight:950}.csv-sub{margin:0;color:#94949c;font-size:11px;line-height:1.6}
+      .csv-close,.csv-btn{border:1px solid #3b3b42;background:#17171a;color:#fff;border-radius:9px;padding:9px 12px;font-weight:850;cursor:pointer}.csv-btn.primary{background:#efff3d;color:#111;border-color:#efff3d}.csv-btn:disabled{opacity:.45;cursor:not-allowed}
+      .csv-body{padding:18px 20px 22px}.csv-drop{display:grid;place-items:center;min-height:110px;border:1px dashed #4a4a51;border-radius:13px;background:#111114;text-align:center;padding:16px;cursor:pointer}.csv-drop.drag{border-color:#efff3d;background:#17180f}.csv-drop b{display:block;margin-bottom:5px}.csv-drop span{color:#85858d;font-size:10px}
+      .csv-options{display:flex;gap:16px;flex-wrap:wrap;margin:12px 0 15px;color:#b7b7be;font-size:11px}.csv-options label{display:flex;align-items:center;gap:6px}
+      .csv-status{margin:10px 0;color:#a9a9b1;font-size:11px}.csv-status.ok{color:#b9ff78}.csv-status.warn{color:#ffd36a}.csv-status.err{color:#ff9aa3}
+      .csv-table-wrap{overflow:auto;border:1px solid #2d2d32;border-radius:12px}.csv-table{width:100%;border-collapse:collapse;min-width:900px}.csv-table th,.csv-table td{padding:9px 8px;border-bottom:1px solid #242429;text-align:left;vertical-align:top;font-size:10px}.csv-table th{position:sticky;top:0;background:#151518;color:#8f8f98;font-size:9px;letter-spacing:.08em}.csv-table input[type=text]{width:100%;min-width:140px;border:1px solid #34343a;background:#09090b;color:#fff;border-radius:7px;padding:7px}.csv-pill{display:inline-flex;border:1px solid #3a3a40;border-radius:999px;padding:4px 7px;font-size:9px;font-weight:900}.csv-pill.ok{color:#b9ff78;border-color:#405b35}.csv-pill.warn{color:#ffd36a;border-color:#64562f}.csv-pill.dup{color:#ff9aa3;border-color:#65383d}.csv-mini{display:block;color:#777780;margin-top:4px;max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .csv-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.csv-section{margin-top:22px;padding-top:18px;border-top:1px solid #28282d}.csv-section h3{margin:0 0 5px;font-size:15px}.csv-note{margin:0 0 12px;color:#85858d;font-size:10px;line-height:1.6}
+      .video-drop{border:1px dashed #4a4a51;border-radius:12px;padding:15px;text-align:center;background:#101013;cursor:pointer}.video-drop.drag{border-color:#efff3d}.video-files{display:grid;gap:7px;margin-top:10px}.video-file{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:8px;align-items:center;padding:8px 10px;background:#141417;border-radius:9px;font-size:10px}.video-file select{width:100%;background:#09090b;color:#fff;border:1px solid #37373d;border-radius:7px;padding:7px}
+      .preview-badge{display:inline-flex;margin-left:7px;padding:3px 6px;border-radius:999px;background:#332e13;color:#ffd36a;font-size:8px;font-weight:950}
+      @media(max-width:700px){.csv-modal{padding:8px}.csv-head,.csv-body{padding:14px}.video-file{grid-template-columns:1fr}.csv-launch{right:10px;bottom:10px}}
     </style>
   </head>
-  <body>
+  <body data-csv-production={isProduction ? '1' : '0'}>
     <iframe id="editorFrame" src="/api/playback-editor-page-labels" title="HARF-WAY PLAYBACK EDITOR" allow="autoplay; fullscreen"></iframe>
+    <button id="csvLaunch" class="csv-launch" type="button">CSV IMPORT</button>
+    <div id="csvModal" class="csv-modal" aria-hidden="true">
+      <div class="csv-shell">
+        <div class="csv-head">
+          <div>
+            <div class="csv-k">WAYS / BULK DRAFT IMPORT</div>
+            <h2>CSV IMPORT <span id="csvPreviewBadge" class="preview-badge">PREVIEW</span></h2>
+            <p class="csv-sub">CSVから作品名・Steam URL・Xポストを抽出し、WAYSへ下書き追加。動画はTwidropper回収キュー → MP4をZIP化します。</p>
+          </div>
+          <button id="csvClose" class="csv-close" type="button">閉じる</button>
+        </div>
+        <div class="csv-body">
+          <input id="csvFile" type="file" accept=".csv,text/csv" hidden />
+          <div id="csvDrop" class="csv-drop">
+            <div><b>CSVをドロップ / 選択</b><span>列名が崩れていても、全セルからSteam URL・XポストURLを探します。</span></div>
+          </div>
+          <div class="csv-options">
+            <label><input id="csvAutoGenre" type="checkbox" checked /> ストアから基本ジャンルを自動取得</label>
+            <label><input id="csvUseTags" type="checkbox" /> CSVの post_tags を手動タグへ入れる</label>
+          </div>
+          <div id="csvStatus" class="csv-status">CSVを読み込んでください。</div>
+          <div id="csvTableWrap"></div>
+          <div class="csv-actions">
+            <button id="csvAdd" class="csv-btn primary" type="button" disabled>選択行をDRAFTへ追加</button>
+            <button id="csvRecheck" class="csv-btn" type="button" disabled>重複を再確認</button>
+          </div>
+
+          <section class="csv-section">
+            <h3>VIDEO COLLECTION</h3>
+            <p class="csv-note">各ポストの「COPY + TWIDROPPER」でURLをコピーしてTwidropperを開きます。取得したMP4をここへまとめてドロップし、ゲーム名へ割り当ててZIP化できます。</p>
+            <input id="videoFiles" type="file" accept="video/*,.mp4" multiple hidden />
+            <div id="videoDrop" class="video-drop">取得済みMP4をドロップ / 選択</div>
+            <div id="videoFileList" class="video-files"></div>
+            <div class="csv-actions">
+              <button id="videoZip" class="csv-btn primary" type="button" disabled>動画をZIPにまとめる</button>
+              <button id="videoClear" class="csv-btn" type="button" disabled>動画をクリア</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <script is:inline>
+    (() => {
+      const production = document.body.dataset.csvProduction === '1';
+      const frame = document.querySelector('#editorFrame');
+      const modal = document.querySelector('#csvModal');
+      const $ = (q) => document.querySelector(q);
+      let rows = [];
+      let videoItems = [];
+      let previewGuardObserver = null;
+
+      if (production) $('#csvPreviewBadge')?.remove();
+
+      const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      const normalizeTitle = (v) => String(v || '').trim().normalize('NFKC').toLocaleLowerCase('ja-JP').replace(/\s+/g,' ');
+      const steamId = (v) => (String(v || '').match(/store\.steampowered\.com\/app\/(\d+)/i) || [,''])[1];
+      const safeName = (v) => String(v || 'untitled').normalize('NFKC').replace(/[\\/:*?"<>|]/g,'_').replace(/\s+/g,' ').trim().slice(0,100) || 'untitled';
+
+      function setStatus(text, cls='') {
+        const node = $('#csvStatus');
+        node.textContent = text;
+        node.className = 'csv-status' + (cls ? ' ' + cls : '');
+      }
+
+      function parseCsv(text) {
+        text = String(text || '').replace(/^\uFEFF/, '');
+        const table = [];
+        let row = [], cell = '', quoted = false;
+        for (let i = 0; i < text.length; i++) {
+          const ch = text[i];
+          if (quoted) {
+            if (ch === '"' && text[i+1] === '"') { cell += '"'; i++; }
+            else if (ch === '"') quoted = false;
+            else cell += ch;
+          } else {
+            if (ch === '"') quoted = true;
+            else if (ch === ',') { row.push(cell); cell = ''; }
+            else if (ch === '\n') { row.push(cell.replace(/\r$/,'')); table.push(row); row = []; cell = ''; }
+            else cell += ch;
+          }
+        }
+        if (cell.length || row.length) { row.push(cell.replace(/\r$/,'')); table.push(row); }
+        if (!table.length) return [];
+        const headers = table.shift().map((x,i) => String(x || '').trim() || `column_${i+1}`);
+        return table.filter(r => r.some(x => String(x || '').trim())).map((values, index) => {
+          const obj = {};
+          headers.forEach((h,i) => obj[h] = values[i] ?? '');
+          obj.__row = index + 2;
+          obj.__cells = values;
+          return obj;
+        });
+      }
+
+      function findUrl(values, pattern) {
+        for (const raw of values) {
+          const text = String(raw || '');
+          const match = text.match(pattern);
+          if (match) return match[0].replace(/&amp;/g,'&').replace(/[)"'<>,;]+$/,'');
+        }
+        return '';
+      }
+
+      function mapRow(raw, index) {
+        const values = Object.values(raw).filter(v => typeof v !== 'object');
+        const title = String(raw.post_title || raw.name || raw.Japanese || values.find(v => String(v || '').trim()) || '').trim();
+        const store = findUrl(values, /https?:\/\/store\.steampowered\.com\/app\/\d+\/[^\s<>"']*/i);
+        const post = findUrl(values, /https?:\/\/(?:www\.)?(?:twitter\.com|x\.com)\/[^\/\s<>"']+\/status\/\d+[^\s<>"']*/i).replace(/[?&]ref_src=.*$/,'');
+        const tags = String(raw.post_tags || '').split(',').map(x => x.trim()).filter(Boolean);
+        return { id:`csv-${Date.now()}-${index}`, sourceRow:raw.__row, title, storeUrl:store, postUrl:post, csvTags:tags, selected:true, duplicate:false, duplicateReason:'', genre:'', genreState:'pending' };
+      }
+
+      function editorWindow() {
+        try { return frame.contentWindow; } catch { return null; }
+      }
+      function editorDoc() {
+        try { return frame.contentDocument || frame.contentWindow?.document; } catch { return null; }
+      }
+      function existingGames() {
+        try {
+          const games = editorWindow()?.__peState?.()?.games;
+          return Array.isArray(games) ? games : [];
+        } catch { return []; }
+      }
+
+      function detectDuplicates() {
+        const games = existingGames();
+        for (const row of rows) {
+          const t = normalizeTitle(row.title);
+          const sid = steamId(row.storeUrl);
+          const hit = games.find(g => (t && normalizeTitle(g.title) === t) || (sid && steamId(g.storeUrl || g.store_url) === sid));
+          row.duplicate = Boolean(hit);
+          row.duplicateReason = hit ? `既存: ${hit.title || hit.id}` : '';
+          if (hit) row.selected = false;
+        }
+        renderRows();
+      }
+
+      function renderRows() {
+        $('#csvAdd').disabled = !rows.some(r => r.selected && !r.duplicate && r.title);
+        $('#csvRecheck').disabled = !rows.length;
+        if (!rows.length) { $('#csvTableWrap').innerHTML = ''; return; }
+        $('#csvTableWrap').innerHTML = `<div class="csv-table-wrap"><table class="csv-table"><thead><tr><th>追加</th><th>状態</th><th>ゲーム名</th><th>ストア</th><th>CSVタグ</th><th>Xポスト / 動画回収</th></tr></thead><tbody>${rows.map(r => {
+          const state = r.duplicate ? `<span class="csv-pill dup">重複</span><span class="csv-mini">${esc(r.duplicateReason)}</span>` : (!r.storeUrl ? `<span class="csv-pill warn">STOREなし</span>` : `<span class="csv-pill ok">DRAFT候補</span>`);
+          return `<tr data-row="${esc(r.id)}">
+            <td><input type="checkbox" data-role="pick" ${r.selected && !r.duplicate ? 'checked' : ''} ${r.duplicate ? 'disabled' : ''}></td>
+            <td>${state}<span class="csv-mini">CSV ${r.sourceRow}行目</span></td>
+            <td><input type="text" data-role="title" value="${esc(r.title)}"></td>
+            <td><input type="text" data-role="store" value="${esc(r.storeUrl)}"><span class="csv-mini">${r.genre ? `AUTO: ${esc(r.genre)}` : '基本ジャンルは追加時に自動取得'}</span></td>
+            <td>${r.csvTags.length ? r.csvTags.map(t => `<span class="csv-pill">${esc(t)}</span>`).join(' ') : '<span class="csv-mini">なし</span>'}</td>
+            <td><input type="text" data-role="post" value="${esc(r.postUrl)}">${r.postUrl ? `<button type="button" class="csv-btn" data-role="twidropper" style="margin-top:6px">COPY + TWIDROPPER</button>` : '<span class="csv-mini">ポストURLなし</span>'}</td>
+          </tr>`;
+        }).join('')}</tbody></table></div>`;
+        $('#csvTableWrap').querySelectorAll('tr[data-row]').forEach(tr => {
+          const row = rows.find(r => r.id === tr.dataset.row); if (!row) return;
+          tr.querySelector('[data-role="pick"]')?.addEventListener('change', e => { row.selected = e.target.checked; renderRows(); });
+          tr.querySelector('[data-role="title"]')?.addEventListener('input', e => row.title = e.target.value);
+          tr.querySelector('[data-role="store"]')?.addEventListener('input', e => row.storeUrl = e.target.value);
+          tr.querySelector('[data-role="post"]')?.addEventListener('input', e => row.postUrl = e.target.value);
+          tr.querySelector('[data-role="twidropper"]')?.addEventListener('click', async () => {
+            const win = window.open('https://twidropper.com/','_blank','noopener');
+            try { await navigator.clipboard.writeText(row.postUrl); setStatus(`XポストURLをコピーしました: ${row.title}`,'ok'); }
+            catch { fallbackCopy(row.postUrl); setStatus(`URLをコピーしました: ${row.title}`,'ok'); }
+            if (!win) setStatus('ポップアップがブロックされました。URLはコピー済みです。','warn');
+          });
+        });
+      }
+
+      function fallbackCopy(text) {
+        const ta = document.createElement('textarea'); ta.value = text; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); } catch {}
+        ta.remove();
+      }
+
+      async function resolveGenre(row) {
+        if (!$('#csvAutoGenre').checked || !row.storeUrl) return '';
+        try {
+          row.genreState = 'loading'; renderRows();
+          const response = await fetch('/api/playback-editor-genre', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({storeUrl:row.storeUrl,title:row.title,description:''}) });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+          row.genre = Array.isArray(data.genres) ? data.genres.join(' / ') : '';
+          row.genreState = 'done';
+          renderRows();
+          return row.genre;
+        } catch {
+          row.genreState = 'error'; renderRows(); return '';
+        }
+      }
+
+      function dispatchValue(doc, selector, value, eventName='input') {
+        const el = doc.querySelector(selector);
+        if (!el) return false;
+        el.value = value ?? '';
+        el.dispatchEvent(new Event(eventName,{bubbles:true}));
+        return true;
+      }
+
+      async function addRowToEditor(row) {
+        const doc = editorDoc();
+        if (!doc?.querySelector('#newGame')) throw new Error('Editorにログインしてください。');
+        doc.querySelector('#newGame').click();
+        await sleep(30);
+        dispatchValue(doc,'#editor [data-k="title"]',row.title,'input');
+        dispatchValue(doc,'#editor [data-k="storeUrl"]',row.storeUrl,'input');
+        if (row.genre) dispatchValue(doc,'#editor [data-k="category"]',row.genre,'input');
+        if ($('#csvUseTags').checked && row.csvTags.length) dispatchValue(doc,'#editor [data-k="tags"]',row.csvTags.join(', '),'input');
+        dispatchValue(doc,'#editor [data-k="status"]','draft','change');
+        await sleep(20);
+      }
+
+      async function waitForSave() {
+        const doc = editorDoc(); const started = Date.now();
+        while (Date.now()-started < 15000) {
+          const text = String(doc?.querySelector('#state')?.textContent || '');
+          if (text.startsWith('保存エラー')) throw new Error(text);
+          if (text.includes('NEON 保存済み')) return true;
+          await sleep(120);
+        }
+        throw new Error('保存確認タイムアウト');
+      }
+
+      async function addSelected() {
+        const targets = rows.filter(r => r.selected && !r.duplicate && r.title);
+        if (!targets.length) return;
+        $('#csvAdd').disabled = true;
+        try {
+          setStatus(`基本ジャンルを確認中… 0/${targets.length}`,'warn');
+          for (let i=0;i<targets.length;i++) {
+            await resolveGenre(targets[i]);
+            setStatus(`DRAFTを作成中… ${i+1}/${targets.length}`,'warn');
+            await addRowToEditor(targets[i]);
+          }
+          if (production) {
+            const doc = editorDoc();
+            const save = doc?.querySelector('#save');
+            if (!save) throw new Error('保存ボタンを取得できません。');
+            setStatus('NEONへ一括保存中…','warn');
+            save.click();
+            await waitForSave();
+            setStatus(`${targets.length}件をDRAFTで保存しました。`,'ok');
+            detectDuplicates();
+          } else {
+            setStatus(`PREVIEW: ${targets.length}件をEditorへ仮追加しました。本番DBへは保存していません。`,'ok');
+          }
+        } catch (error) {
+          setStatus(`追加エラー: ${error.message || error}`,'err');
+        } finally {
+          $('#csvAdd').disabled = false;
+        }
+      }
+
+      function installPreviewSaveGuard() {
+        if (production) return;
+        const apply = () => {
+          const doc = editorDoc(); if (!doc?.body) return;
+          const save = doc.querySelector('#save');
+          if (save && !save.dataset.csvGuard) {
+            save.dataset.csvGuard = '1';
+            save.textContent = 'PREVIEW / 保存しない';
+            save.addEventListener('click', (e) => { e.preventDefault(); e.stopImmediatePropagation(); alert('CSV IMPORT PreviewではProductionへ保存しません。'); }, true);
+          }
+        };
+        const doc = editorDoc();
+        if (previewGuardObserver) previewGuardObserver.disconnect();
+        if (doc?.body) {
+          previewGuardObserver = new MutationObserver(apply);
+          previewGuardObserver.observe(doc.body,{childList:true,subtree:true});
+          apply();
+        }
+      }
+
+      async function loadCsv(file) {
+        if (!file) return;
+        try {
+          setStatus('CSVを解析中…','warn');
+          const text = await file.text();
+          const raw = parseCsv(text);
+          rows = raw.map(mapRow).filter(r => r.title || r.storeUrl || r.postUrl);
+          detectDuplicates();
+          setStatus(`${rows.length}件を検出しました。Steam URL ${rows.filter(r=>r.storeUrl).length}件 / Xポスト ${rows.filter(r=>r.postUrl).length}件`,'ok');
+          renderVideoFiles();
+        } catch (error) { setStatus(`CSV解析エラー: ${error.message || error}`,'err'); }
+      }
+
+      function addVideoFiles(files) {
+        const list = [...(files || [])].filter(f => String(f.type || '').startsWith('video/') || /\.mp4$/i.test(f.name));
+        if (!list.length) return;
+        const candidates = rows.filter(r => r.title);
+        const one = candidates.length === 1 ? candidates[0] : null;
+        list.forEach((file, index) => {
+          const fallback = one || candidates[Math.min(index,candidates.length-1)] || null;
+          videoItems.push({id:`v-${Date.now()}-${Math.random()}`,file,rowId:fallback?.id || ''});
+        });
+        renderVideoFiles();
+      }
+
+      function renderVideoFiles() {
+        $('#videoZip').disabled = !videoItems.length;
+        $('#videoClear').disabled = !videoItems.length;
+        const candidates = rows.filter(r => r.title);
+        $('#videoFileList').innerHTML = videoItems.map(item => `<div class="video-file" data-video="${esc(item.id)}"><div><b>${esc(item.file.name)}</b><span class="csv-mini">${(item.file.size/1024/1024).toFixed(1)} MB</span></div><select>${candidates.map(r=>`<option value="${esc(r.id)}" ${item.rowId===r.id?'selected':''}>${esc(r.title)}</option>`).join('')}</select></div>`).join('');
+        $('#videoFileList').querySelectorAll('[data-video]').forEach(node => {
+          const item = videoItems.find(v => v.id === node.dataset.video); if (!item) return;
+          node.querySelector('select')?.addEventListener('change',e => item.rowId=e.target.value);
+        });
+      }
+
+      const crcTable = (() => {
+        const table = new Uint32Array(256);
+        for (let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);table[n]=c>>>0}
+        return table;
+      })();
+      const crc32 = (bytes) => { let c=0xFFFFFFFF; for(const b of bytes)c=crcTable[(c^b)&0xFF]^(c>>>8); return (c^0xFFFFFFFF)>>>0; };
+      function u16(n){const a=new Uint8Array(2);new DataView(a.buffer).setUint16(0,n,true);return a}
+      function u32(n){const a=new Uint8Array(4);new DataView(a.buffer).setUint32(0,n>>>0,true);return a}
+      function dosDateTime(date=new Date()){let year=Math.max(1980,date.getFullYear());return {time:(date.getHours()<<11)|(date.getMinutes()<<5)|(date.getSeconds()>>1),date:((year-1980)<<9)|((date.getMonth()+1)<<5)|date.getDate()}}
+      function concat(parts){const size=parts.reduce((n,p)=>n+p.length,0),out=new Uint8Array(size);let o=0;for(const p of parts){out.set(p,o);o+=p.length}return out}
+      async function makeZip(entries) {
+        const enc=new TextEncoder(), localParts=[], centralParts=[]; let offset=0;
+        for (const entry of entries) {
+          const name=enc.encode(entry.name), data=entry.bytes instanceof Uint8Array?entry.bytes:new Uint8Array(entry.bytes), crc=crc32(data), dt=dosDateTime(entry.date||new Date());
+          const local=concat([u32(0x04034b50),u16(20),u16(0x0800),u16(0),u16(dt.time),u16(dt.date),u32(crc),u32(data.length),u32(data.length),u16(name.length),u16(0),name]);
+          localParts.push(local,data);
+          const central=concat([u32(0x02014b50),u16(20),u16(20),u16(0x0800),u16(0),u16(dt.time),u16(dt.date),u32(crc),u32(data.length),u32(data.length),u16(name.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(offset),name]);
+          centralParts.push(central); offset += local.length + data.length;
+        }
+        const central=concat(centralParts), local=concat(localParts);
+        const end=concat([u32(0x06054b50),u16(0),u16(0),u16(entries.length),u16(entries.length),u32(central.length),u32(local.length),u16(0)]);
+        return new Blob([local,central,end],{type:'application/zip'});
+      }
+
+      function csvCell(v){const s=String(v??'');return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s}
+      async function buildVideoZip() {
+        if (!videoItems.length) return;
+        $('#videoZip').disabled = true;
+        try {
+          setStatus(`ZIPを作成中… 0/${videoItems.length}`,'warn');
+          const counts = new Map(), entries=[], manifest=[['game','source_post','original_file','zip_file']];
+          for (let i=0;i<videoItems.length;i++) {
+            const item=videoItems[i], row=rows.find(r=>r.id===item.rowId), title=row?.title||'unassigned';
+            const num=(counts.get(item.rowId)||0)+1; counts.set(item.rowId,num);
+            const ext=(item.file.name.match(/\.[A-Za-z0-9]+$/)||['.mp4'])[0];
+            const zipName=`videos/${String(i+1).padStart(3,'0')}_${safeName(title)}_${String(num).padStart(2,'0')}${ext}`;
+            entries.push({name:zipName,bytes:new Uint8Array(await item.file.arrayBuffer()),date:new Date(item.file.lastModified||Date.now())});
+            manifest.push([title,row?.postUrl||'',item.file.name,zipName]);
+            setStatus(`ZIPを作成中… ${i+1}/${videoItems.length}`,'warn');
+          }
+          const manifestText='\uFEFF'+manifest.map(r=>r.map(csvCell).join(',')).join('\r\n');
+          entries.push({name:'manifest.csv',bytes:new TextEncoder().encode(manifestText),date:new Date()});
+          const blob=await makeZip(entries), url=URL.createObjectURL(blob), a=document.createElement('a');
+          a.href=url;a.download=`ways-video-collection-${new Date().toISOString().slice(0,10)}.zip`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
+          setStatus(`ZIPを作成しました。動画 ${videoItems.length}件 + manifest.csv`,'ok');
+        } catch (error) { setStatus(`ZIP作成エラー: ${error.message || error}`,'err'); }
+        finally { $('#videoZip').disabled=false; }
+      }
+
+      $('#csvLaunch').addEventListener('click',()=>{modal.classList.add('on');modal.setAttribute('aria-hidden','false');detectDuplicates();installPreviewSaveGuard()});
+      $('#csvClose').addEventListener('click',()=>{modal.classList.remove('on');modal.setAttribute('aria-hidden','true')});
+      $('#csvDrop').addEventListener('click',()=>$('#csvFile').click());
+      $('#csvFile').addEventListener('change',e=>loadCsv(e.target.files?.[0]));
+      ['dragenter','dragover'].forEach(type=>$('#csvDrop').addEventListener(type,e=>{e.preventDefault();$('#csvDrop').classList.add('drag')}));
+      ['dragleave','drop'].forEach(type=>$('#csvDrop').addEventListener(type,e=>{$('#csvDrop').classList.remove('drag');if(type==='drop'){e.preventDefault();loadCsv(e.dataTransfer.files?.[0])}}));
+      $('#csvAdd').addEventListener('click',addSelected);
+      $('#csvRecheck').addEventListener('click',detectDuplicates);
+      $('#videoDrop').addEventListener('click',()=>$('#videoFiles').click());
+      $('#videoFiles').addEventListener('change',e=>addVideoFiles(e.target.files));
+      ['dragenter','dragover'].forEach(type=>$('#videoDrop').addEventListener(type,e=>{e.preventDefault();$('#videoDrop').classList.add('drag')}));
+      ['dragleave','drop'].forEach(type=>$('#videoDrop').addEventListener(type,e=>{$('#videoDrop').classList.remove('drag');if(type==='drop'){e.preventDefault();addVideoFiles(e.dataTransfer.files)}}));
+      $('#videoZip').addEventListener('click',buildVideoZip);
+      $('#videoClear').addEventListener('click',()=>{videoItems=[];renderVideoFiles()});
+      frame.addEventListener('load',()=>setTimeout(()=>{detectDuplicates();installPreviewSaveGuard()},250));
+    })();
+    </script>
   </body>
 </html>
