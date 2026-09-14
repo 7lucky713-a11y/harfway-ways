@@ -8,6 +8,9 @@ const SOURCE = 'private-game-notes';
 const GAME_TYPE = 'private_game_note_game';
 const NOTE_TYPE = 'private_game_note';
 const GLOSSARY_TYPE = 'private_game_note_glossary';
+const ARTICLE_SOURCE = 'archive-salvager';
+const ARTICLE_TYPE = 'article';
+const WAYS_LIVE_URL = 'https://harfway-playback.vercel.app/api/games-live';
 
 function clean(value, max = 240) {
   return String(value ?? '').trim().slice(0, max);
@@ -38,6 +41,19 @@ function normalizeIdList(value, maxItems = 40) {
   const result = [];
   for (const item of value) {
     const id = clean(item, 160).replace(/^game-notes:glossary:/, '');
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    result.push(id);
+    if (result.length >= maxItems) break;
+  }
+  return result;
+}
+function normalizeReferenceIds(value, maxItems = 60, maxLength = 220) {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set();
+  const result = [];
+  for (const item of value) {
+    const id = clean(item, maxLength);
     if (!id || seen.has(id)) continue;
     seen.add(id);
     result.push(id);
@@ -121,6 +137,8 @@ function toEntry(row) {
     gameId: clean(meta.gameId, 160),
     relatedEntryIds: normalizeIdList(meta.relatedEntryIds),
     relatedTerms: normalizeList(meta.relatedTerms),
+    relatedWaysIds: normalizeReferenceIds(meta.relatedWaysIds),
+    relatedArticleIds: normalizeReferenceIds(meta.relatedArticleIds),
     createdAt: meta.createdAt || (row.created_at ? new Date(row.created_at).toISOString() : null),
     updatedAt: row.updated_at || null
   };
@@ -134,6 +152,16 @@ function toNoteSummary(row) {
     glossaryEntryIds: normalizeIdList(meta.glossaryEntryIds),
     createdAt: meta.createdAt || (row.created_at ? new Date(row.created_at).toISOString() : null),
     updatedAt: row.updated_at || null
+  };
+}
+function toArticleSummary(row) {
+  const meta = row.metadata && typeof row.metadata === 'object' ? row.metadata : {};
+  const hints = Array.isArray(meta.nameHints) ? meta.nameHints.map(item => item?.name) : [];
+  return {
+    id: clean(row.id, 220),
+    title: row.title || '',
+    url: clean(row.url, 1600),
+    gameHints: normalizeList(hints, 8, 180)
   };
 }
 
@@ -154,6 +182,37 @@ function makeRelationsSymmetric(entries) {
   return entries;
 }
 
+async function listWaysCatalog() {
+  const response = await fetch(WAYS_LIVE_URL, {
+    headers: { accept: 'application/json' },
+    cache: 'no-store'
+  });
+  if (!response.ok) {
+    const error = new Error('ways_catalog_unavailable');
+    error.status = 503;
+    throw error;
+  }
+  const data = await response.json().catch(() => ({}));
+  const rows = Array.isArray(data.entries) ? data.entries : [];
+  const result = [];
+  const seen = new Set();
+  for (const item of rows) {
+    const id = clean(item?.id, 220);
+    if (!id || seen.has(id) || String(item?.status || 'published') === 'archived') continue;
+    seen.add(id);
+    result.push({
+      id,
+      title: clean(item?.title, 280),
+      thumbnailUrl: clean(item?.thumbnailUrl, 1600),
+      category: clean(item?.category, 280),
+      coreId: clean(item?.coreId, 220),
+      articleUrl: clean(item?.articleUrl, 1600),
+      url: `/?game=${encodeURIComponent(id)}`
+    });
+  }
+  return result.sort((a, b) => a.title.localeCompare(b.title, 'ja'));
+}
+
 async function listAll(sql) {
   const rows = await sql`
     SELECT id, content_type, title, body_text, metadata, created_at, updated_at
@@ -162,6 +221,15 @@ async function listAll(sql) {
       AND status<>'archived'
       AND content_type IN (${GAME_TYPE}, ${GLOSSARY_TYPE}, ${NOTE_TYPE})
     ORDER BY updated_at DESC
+  `;
+  const articleRows = await sql`
+    SELECT id, title, url, metadata
+    FROM core.contents
+    WHERE source=${ARTICLE_SOURCE}
+      AND content_type=${ARTICLE_TYPE}
+      AND status<>'archived'
+    ORDER BY updated_at DESC
+    LIMIT 500
   `;
   const games = [];
   const entries = [];
@@ -174,8 +242,18 @@ async function listAll(sql) {
   games.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
   entries.sort((a, b) => a.term.localeCompare(b.term, 'ja'));
   notes.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+  const articles = articleRows.map(toArticleSummary).sort((a, b) => a.title.localeCompare(b.title, 'ja'));
   makeRelationsSymmetric(entries);
-  return { games, entries, notes };
+
+  let ways = [];
+  let waysCatalogAvailable = true;
+  try {
+    ways = await listWaysCatalog();
+  } catch (error) {
+    console.error('[game-notes-glossary] WAYS catalog', error?.message || error);
+    waysCatalogAvailable = false;
+  }
+  return { games, entries, notes, articles, ways, waysCatalogAvailable };
 }
 
 async function assertGameExists(sql, gameId) {
@@ -201,6 +279,47 @@ async function validatedRelatedIds(sql, currentId, value) {
   `;
   const allowed = new Set(rows.map(row => publicId(row.id, 'glossary')));
   return requested.filter(id => allowed.has(id));
+}
+
+async function validatedArticleIds(sql, value, currentValue = []) {
+  const requested = normalizeReferenceIds(value);
+  const current = new Set(normalizeReferenceIds(currentValue));
+  if (!requested.length) return [];
+  const rows = await sql`
+    SELECT id FROM core.contents
+    WHERE source=${ARTICLE_SOURCE} AND content_type=${ARTICLE_TYPE} AND status<>'archived'
+  `;
+  const allowed = new Set(rows.map(row => clean(row.id, 220)));
+  const invalidNew = requested.filter(id => !allowed.has(id) && !current.has(id));
+  if (invalidNew.length) {
+    const error = new Error('invalid_article_reference');
+    error.status = 400;
+    throw error;
+  }
+  return requested.filter(id => allowed.has(id) || current.has(id));
+}
+
+async function validatedWaysIds(value, currentValue = []) {
+  const requested = normalizeReferenceIds(value);
+  const current = new Set(normalizeReferenceIds(currentValue));
+  if (!requested.length) return [];
+  let ways;
+  try {
+    ways = await listWaysCatalog();
+  } catch (cause) {
+    if (requested.every(id => current.has(id))) return requested;
+    const error = new Error('ways_catalog_unavailable');
+    error.status = 503;
+    throw error;
+  }
+  const allowed = new Set(ways.map(item => item.id));
+  const invalidNew = requested.filter(id => !allowed.has(id) && !current.has(id));
+  if (invalidNew.length) {
+    const error = new Error('invalid_ways_reference');
+    error.status = 400;
+    throw error;
+  }
+  return requested.filter(id => allowed.has(id) || current.has(id));
 }
 
 async function syncReciprocalRelations(sql, currentId, desiredIds) {
@@ -284,11 +403,17 @@ async function saveEntry(sql, body) {
   }
 
   const relationInput = Array.isArray(body.relatedEntryIds) ? body.relatedEntryIds : currentMeta.relatedEntryIds;
+  const waysInput = Array.isArray(body.relatedWaysIds) ? body.relatedWaysIds : currentMeta.relatedWaysIds;
+  const articleInput = Array.isArray(body.relatedArticleIds) ? body.relatedArticleIds : currentMeta.relatedArticleIds;
   const relatedEntryIds = await validatedRelatedIds(sql, currentId, relationInput);
+  const relatedWaysIds = await validatedWaysIds(waysInput, currentMeta.relatedWaysIds);
+  const relatedArticleIds = await validatedArticleIds(sql, articleInput, currentMeta.relatedArticleIds);
   const metadata = JSON.stringify({
     ...currentMeta,
     gameId,
     relatedEntryIds,
+    relatedWaysIds,
+    relatedArticleIds,
     relatedTerms: normalizeList(currentMeta.relatedTerms),
     createdAt: clean(currentMeta.createdAt, 60) || new Date().toISOString()
   });
