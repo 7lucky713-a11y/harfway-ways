@@ -11,17 +11,15 @@ const GLOSSARY_TYPE = 'private_game_note_glossary';
 function clean(value, max = 240) {
   return String(value ?? '').trim().slice(0, max);
 }
-function normalizeList(value, maxItems = 20, maxLength = 100) {
+function normalizeIdList(value, maxItems = 30) {
   if (!Array.isArray(value)) return [];
   const seen = new Set();
   const result = [];
   for (const item of value) {
-    const v = clean(item, maxLength);
-    if (!v) continue;
-    const key = v.toLocaleLowerCase('ja');
-    if (seen.has(key)) continue;
-    seen.add(key);
-    result.push(v);
+    const id = clean(item, 160).replace(/^game-notes:glossary:/, '');
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    result.push(id);
     if (result.length >= maxItems) break;
   }
   return result;
@@ -69,19 +67,53 @@ async function databaseContext() {
   return { sql, production: config.production };
 }
 
-function toPublicEntry(row) {
+function basePublicEntry(row) {
   const meta = row.metadata && typeof row.metadata === 'object' ? row.metadata : {};
+  const id = publicId(row.id, 'glossary');
   return {
-    id: publicId(row.id, 'glossary'),
+    id,
     term: row.title || '',
     description: row.body_text || '',
     gameId: clean(meta.gameId, 160),
     gameName: row.game_name || '',
-    relatedTerms: normalizeList(meta.relatedTerms),
+    relatedEntryIds: normalizeIdList(meta.relatedEntryIds),
     publishedAt: clean(meta.publishedAt, 80) || null,
     updatedAt: row.updated_at || null,
-    url: `/game-wiki/?entry=${encodeURIComponent(publicId(row.id, 'glossary'))}`
+    url: `/game-wiki/?entry=${encodeURIComponent(id)}`
   };
+}
+
+function connectPublishedEntries(entries) {
+  const byId = new Map(entries.map(entry => [entry.id, entry]));
+  const links = new Map(entries.map(entry => [entry.id, new Set()]));
+  for (const entry of entries) {
+    for (const targetId of entry.relatedEntryIds || []) {
+      if (!targetId || targetId === entry.id || !byId.has(targetId)) continue;
+      links.get(entry.id).add(targetId);
+      links.get(targetId).add(entry.id);
+    }
+  }
+  return entries.map(entry => ({
+    id: entry.id,
+    term: entry.term,
+    description: entry.description,
+    gameId: entry.gameId,
+    gameName: entry.gameName,
+    publishedAt: entry.publishedAt,
+    updatedAt: entry.updatedAt,
+    url: entry.url,
+    relatedEntries: [...(links.get(entry.id) || [])]
+      .map(id => byId.get(id))
+      .filter(Boolean)
+      .sort((a, b) => a.term.localeCompare(b.term, 'ja'))
+      .map(target => ({
+        id: target.id,
+        term: target.term,
+        gameId: target.gameId,
+        gameName: target.gameName,
+        url: target.url
+      }))
+  }));
 }
 
 async function listPublished(sql) {
@@ -103,7 +135,7 @@ async function listPublished(sql) {
       AND COALESCE(c.metadata->>'publicationState','private')='published'
     ORDER BY COALESCE(c.metadata->>'publishedAt', c.updated_at::text) DESC, c.title ASC
   `;
-  return rows.map(toPublicEntry);
+  return connectPublishedEntries(rows.map(basePublicEntry));
 }
 
 export default async function handler(req, res) {

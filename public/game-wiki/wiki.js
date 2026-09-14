@@ -7,16 +7,6 @@
   const gameName = (entry) => entry.gameName || '共通 / ゲーム横断';
   const normalize = (v) => String(v || '').trim().toLocaleLowerCase('ja');
 
-  function entryByTerm(term, sourceEntry = null) {
-    const key = normalize(term);
-    if (!key) return null;
-    const sameGame = state.entries.find(entry => normalize(entry.term) === key && sourceEntry?.gameId && entry.gameId === sourceEntry.gameId);
-    if (sameGame) return sameGame;
-    return state.entries.find(entry => normalize(entry.term) === key && !entry.gameId)
-      || state.entries.find(entry => normalize(entry.term) === key)
-      || null;
-  }
-
   function fillGameFilter() {
     const select = $('#game-filter');
     const current = select.value || 'all';
@@ -34,17 +24,14 @@
       if (game === 'common' && entry.gameId) return false;
       if (game !== 'all' && game !== 'common' && entry.gameId !== game) return false;
       if (!q) return true;
-      const haystack = normalize([entry.term, entry.description, gameName(entry), ...(entry.relatedTerms || [])].join(' '));
+      const related = (entry.relatedEntries || []).map(item => item.term);
+      const haystack = normalize([entry.term, entry.description, gameName(entry), ...related].join(' '));
       return haystack.includes(q);
     });
   }
 
   function relatedMarkup(entry) {
-    return (entry.relatedTerms || []).map(term => {
-      const target = entryByTerm(term, entry);
-      if (target) return `<button class="related linked" type="button" data-entry-link="${esc(target.id)}">${esc(term)} ↗</button>`;
-      return `<span class="related">${esc(term)}</span>`;
-    }).join('');
+    return (entry.relatedEntries || []).map(target => `<button class="related linked" type="button" data-entry-link="${esc(target.id)}">${esc(target.term)} ↗</button>`).join('');
   }
 
   function openEntry(id, push = true) {
@@ -58,7 +45,7 @@
         <div class="article-meta"><span>${esc(gameName(entry))}</span><span>HARF-WAY GAME WIKI</span></div>
         <h1>${esc(entry.term)}</h1>
         <div class="article-copy">${esc(entry.description)}</div>
-        ${(entry.relatedTerms || []).length ? `<section class="connections"><small>RELATED / 関連語</small><div>${relatedMarkup(entry)}</div></section>` : ''}
+        ${(entry.relatedEntries || []).length ? `<section class="connections"><small>RELATED / 関連語</small><div>${relatedMarkup(entry)}</div></section>` : ''}
       </article>`;
     $('#detail-back').addEventListener('click', () => closeEntry(true));
     $('#detail').querySelectorAll('[data-entry-link]').forEach(button => button.addEventListener('click', () => openEntry(button.dataset.entryLink, true)));
@@ -86,7 +73,7 @@
         <div class="term-meta"><span>${esc(gameName(entry))}</span></div>
         <h2>${esc(entry.term)}</h2>
         <p>${esc(entry.description)}</p>
-        ${(entry.relatedTerms || []).length ? `<div class="term-related">${(entry.relatedTerms || []).slice(0, 4).map(v => `<span>${esc(v)}</span>`).join('')}</div>` : ''}
+        ${(entry.relatedEntries || []).length ? `<div class="term-related">${(entry.relatedEntries || []).slice(0, 4).map(v => `<span>${esc(v.term)}</span>`).join('')}</div>` : ''}
         <div class="read-more">読む →</div>
       </article>`).join('');
   }

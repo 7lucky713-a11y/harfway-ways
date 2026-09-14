@@ -32,6 +32,19 @@ function normalizeList(value, maxItems = 20, maxLength = 100) {
   }
   return result;
 }
+function normalizeIdList(value, maxItems = 30) {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set();
+  const result = [];
+  for (const item of value) {
+    const id = clean(item, 160).replace(/^game-notes:glossary:/, '');
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    result.push(id);
+    if (result.length >= maxItems) break;
+  }
+  return result;
+}
 function publicId(id, entity) {
   return String(id || '').replace(new RegExp(`^game-notes:${entity}:`), '');
 }
@@ -110,12 +123,30 @@ function toEntry(row) {
     term: row.title || '',
     description: row.body_text || '',
     gameId: clean(meta.gameId, 160),
+    relatedEntryIds: normalizeIdList(meta.relatedEntryIds),
     relatedTerms: normalizeList(meta.relatedTerms),
     publicationState: publicationState(meta),
     publishedAt: clean(meta.publishedAt, 80) || null,
     createdAt: meta.createdAt || (row.created_at ? new Date(row.created_at).toISOString() : null),
     updatedAt: row.updated_at || null
   };
+}
+
+function makeRelationsSymmetric(entries) {
+  const byId = new Map(entries.map(entry => [entry.id, entry]));
+  const links = new Map(entries.map(entry => [entry.id, new Set()]));
+  for (const entry of entries) {
+    for (const targetId of entry.relatedEntryIds || []) {
+      if (!targetId || targetId === entry.id || !byId.has(targetId)) continue;
+      links.get(entry.id).add(targetId);
+      links.get(targetId).add(entry.id);
+    }
+  }
+  for (const entry of entries) {
+    entry.relatedEntryIds = [...(links.get(entry.id) || [])]
+      .sort((a, b) => (byId.get(a)?.term || '').localeCompare(byId.get(b)?.term || '', 'ja'));
+  }
+  return entries;
 }
 
 async function listAll(sql) {
@@ -135,6 +166,7 @@ async function listAll(sql) {
   }
   games.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
   entries.sort((a, b) => a.term.localeCompare(b.term, 'ja'));
+  makeRelationsSymmetric(entries);
   return { games, entries };
 }
 
@@ -153,11 +185,47 @@ async function assertGameExists(sql, gameId) {
   }
 }
 
+async function validatedRelatedIds(sql, currentId, value) {
+  const requested = normalizeIdList(value).filter(id => id !== currentId);
+  if (!requested.length) return [];
+  const rows = await sql`
+    SELECT id FROM core.contents
+    WHERE source=${SOURCE} AND content_type=${GLOSSARY_TYPE} AND status<>'archived'
+  `;
+  const allowed = new Set(rows.map(row => publicId(row.id, 'glossary')));
+  return requested.filter(id => allowed.has(id));
+}
+
+async function syncReciprocalRelations(sql, currentId, desiredIds) {
+  const desired = new Set(normalizeIdList(desiredIds));
+  const rows = await sql`
+    SELECT id, metadata
+    FROM core.contents
+    WHERE source=${SOURCE} AND content_type=${GLOSSARY_TYPE} AND status<>'archived'
+  `;
+  for (const row of rows) {
+    const targetId = publicId(row.id, 'glossary');
+    if (!targetId || targetId === currentId) continue;
+    const meta = row.metadata && typeof row.metadata === 'object' ? row.metadata : {};
+    const existing = normalizeIdList(meta.relatedEntryIds).filter(id => id !== targetId);
+    const hasCurrent = existing.includes(currentId);
+    const shouldHaveCurrent = desired.has(targetId);
+    if (hasCurrent === shouldHaveCurrent) continue;
+    const next = existing.filter(id => id !== currentId);
+    if (shouldHaveCurrent) next.push(currentId);
+    const nextMeta = JSON.stringify({ ...meta, relatedEntryIds: normalizeIdList(next) });
+    await sql`
+      UPDATE core.contents
+      SET metadata=CAST(${nextMeta} AS jsonb), updated_at=now()
+      WHERE id=${row.id} AND source=${SOURCE} AND content_type=${GLOSSARY_TYPE} AND status<>'archived'
+    `;
+  }
+}
+
 async function saveEntry(sql, body) {
   const term = clean(body.term || body.title, 180);
   const description = clean(body.description || body.body, 12000);
   const gameId = clean(body.gameId, 160);
-  const relatedTerms = normalizeList(body.relatedTerms);
   if (!term || !description) {
     const error = new Error('term_description_required');
     error.status = 400;
@@ -166,6 +234,7 @@ async function saveEntry(sql, body) {
   await assertGameExists(sql, gameId);
 
   const id = dbId('glossary', body.id);
+  const currentId = publicId(id, 'glossary');
   const duplicate = await sql`
     SELECT id FROM core.contents
     WHERE source=${SOURCE} AND content_type=${GLOSSARY_TYPE} AND status<>'archived'
@@ -189,6 +258,10 @@ async function saveEntry(sql, body) {
     `;
     currentMeta = current[0]?.metadata && typeof current[0].metadata === 'object' ? current[0].metadata : {};
   }
+
+  const relationInput = Array.isArray(body.relatedEntryIds) ? body.relatedEntryIds : currentMeta.relatedEntryIds;
+  const relatedEntryIds = await validatedRelatedIds(sql, currentId, relationInput);
+  const relatedTerms = Array.isArray(body.relatedTerms) ? normalizeList(body.relatedTerms) : normalizeList(currentMeta.relatedTerms);
   const currentPublicationState = publicationState(currentMeta);
   const nextPublicationState = currentPublicationState === 'published'
     ? 'published'
@@ -196,11 +269,13 @@ async function saveEntry(sql, body) {
   const metadata = JSON.stringify({
     ...currentMeta,
     gameId,
+    relatedEntryIds,
     relatedTerms,
     publicationState: nextPublicationState,
     publishedAt: currentPublicationState === 'published' ? (clean(currentMeta.publishedAt, 80) || new Date().toISOString()) : null,
     createdAt: clean(currentMeta.createdAt, 60) || new Date().toISOString()
   });
+
   const rows = await sql`
     INSERT INTO core.contents (id, content_type, title, url, excerpt, body_text, status, source, metadata, created_at, updated_at)
     VALUES (${id}, ${GLOSSARY_TYPE}, ${term}, ${privateRecordUrl('glossary', id)}, ${description.slice(0, 280)}, ${description}, 'active', ${SOURCE}, CAST(${metadata} AS jsonb), now(), now())
@@ -220,6 +295,8 @@ async function saveEntry(sql, body) {
     error.status = 409;
     throw error;
   }
+
+  await syncReciprocalRelations(sql, currentId, relatedEntryIds);
   return toEntry(rows[0]);
 }
 
@@ -271,19 +348,22 @@ async function changePublication(sql, body) {
 }
 
 async function archiveEntry(sql, id) {
-  const dbid = dbId('glossary', id);
+  const publicEntryId = clean(id, 160).replace(/^game-notes:glossary:/, '');
+  const dbid = dbId('glossary', publicEntryId);
   const rows = await sql`
     UPDATE core.contents SET status='archived', updated_at=now()
     WHERE id=${dbid} AND source=${SOURCE} AND content_type=${GLOSSARY_TYPE} AND status<>'archived'
     RETURNING id
   `;
-  return Boolean(rows[0]);
+  if (!rows[0]) return false;
+  await syncReciprocalRelations(sql, publicEntryId, []);
+  return true;
 }
 
 export default async function handler(req, res) {
   archiveCors(res);
   res.setHeader('Cache-Control', 'no-store, private');
-  res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow,noarchive');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(204).end();
 

@@ -2,12 +2,14 @@
   const API = '/api/game-notes-glossary';
   const $ = (s, root = document) => root.querySelector(s);
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const state = { games: [], entries: [], relatedTerms: [] };
+  const state = { games: [], entries: [], selectedRelatedIds: [] };
 
   const key = () => sessionStorage.getItem('harfway_game_notes_key') || '';
   const headers = (extra = {}) => ({ ...extra, ...(key() ? { 'x-admin-key': key() } : {}) });
   const gameName = (id) => id ? (state.games.find(g => g.id === id)?.name || '未登録ゲーム') : '共通 / ゲーム横断';
   const statusLabel = (value) => value === 'published' ? 'PUBLIC' : value === 'candidate' ? '公開候補' : 'PRIVATE';
+  const entryById = (id) => state.entries.find(entry => entry.id === id) || null;
+  const relationNames = (entry) => (entry.relatedEntryIds || []).map(id => entryById(id)?.term).filter(Boolean);
 
   function toast(message) {
     const node = $('#toast');
@@ -53,9 +55,18 @@
       if (game === 'common' && entry.gameId) return false;
       if (game !== 'all' && game !== 'common' && entry.gameId !== game) return false;
       if (!q) return true;
-      const haystack = [entry.term, entry.description, gameName(entry.gameId), ...(entry.relatedTerms || [])].join(' ').toLocaleLowerCase('ja');
+      const haystack = [entry.term, entry.description, gameName(entry.gameId), ...relationNames(entry), ...(entry.relatedTerms || [])].join(' ').toLocaleLowerCase('ja');
       return haystack.includes(q);
     });
+  }
+
+  function relatedMarkup(entry) {
+    const linked = (entry.relatedEntryIds || []).map(id => {
+      const target = entryById(id);
+      return target ? `<button type="button" class="chip linked" data-open-related="${esc(target.id)}">↔ ${esc(target.term)}</button>` : '';
+    }).join('');
+    const legacy = (entry.relatedTerms || []).map(term => `<span class="chip legacy">${esc(term)}</span>`).join('');
+    return linked + legacy;
   }
 
   function render() {
@@ -73,6 +84,7 @@
         : publicationState === 'published'
           ? `<button class="unpublish" type="button" data-unpublish="${esc(entry.id)}">公開停止</button>`
           : '';
+      const related = relatedMarkup(entry);
       return `
       <article class="card" data-entry="${esc(entry.id)}">
         <div class="card-head">
@@ -80,21 +92,41 @@
           <button class="edit" type="button" data-edit="${esc(entry.id)}">編集</button>
         </div>
         <p>${esc(entry.description)}</p>
-        ${(entry.relatedTerms || []).length ? `<div class="related">${entry.relatedTerms.map(v => `<button type="button" class="chip" data-search-related="${esc(v)}">↔ ${esc(v)}</button>`).join('')}</div>` : ''}
+        ${related ? `<div class="related">${related}</div>` : ''}
         ${action ? `<div class="publication-actions">${action}${publicationState === 'published' ? `<a href="/game-wiki/?entry=${encodeURIComponent(entry.id)}" target="_blank" rel="noopener">公開ページを見る ↗</a>` : ''}</div>` : ''}
       </article>`;
     }).join('');
   }
 
-  function renderRelated() {
-    $('#related-chips').innerHTML = state.relatedTerms.map((v, i) => `<button type="button" data-related-remove="${i}">${esc(v)} ×</button>`).join('');
+  function renderRelatedPicker() {
+    const picker = $('#related-picker');
+    const currentId = $('#entry-id').value || '';
+    const selected = new Set(state.selectedRelatedIds);
+    const currentGame = $('#game').value || '';
+    const candidates = state.entries
+      .filter(entry => entry.id !== currentId && !selected.has(entry.id))
+      .sort((a, b) => {
+        const aSame = a.gameId === currentGame ? 0 : 1;
+        const bSame = b.gameId === currentGame ? 0 : 1;
+        if (aSame !== bSame) return aSame - bSame;
+        return a.term.localeCompare(b.term, 'ja');
+      });
+    picker.innerHTML = '<option value="">既存Glossaryから選択</option>' + candidates.map(entry => `<option value="${esc(entry.id)}">${esc(entry.term)} — ${esc(gameName(entry.gameId))}</option>`).join('');
+    $('#add-related').disabled = !candidates.length;
   }
 
-  function addRelated(value = $('#related-input').value) {
-    const v = String(value || '').trim().slice(0, 100);
-    if (!v) return;
-    if (!state.relatedTerms.some(x => x.toLocaleLowerCase('ja') === v.toLocaleLowerCase('ja'))) state.relatedTerms.push(v);
-    $('#related-input').value = '';
+  function renderRelated() {
+    $('#related-chips').innerHTML = state.selectedRelatedIds.map(id => {
+      const target = entryById(id);
+      return target ? `<button type="button" data-related-remove="${esc(id)}">${esc(target.term)} ×</button>` : '';
+    }).join('');
+    renderRelatedPicker();
+  }
+
+  function addRelated() {
+    const id = $('#related-picker').value || '';
+    if (!id || state.selectedRelatedIds.includes(id)) return;
+    state.selectedRelatedIds.push(id);
     renderRelated();
   }
 
@@ -108,7 +140,7 @@
     $('#publication-note').textContent = entry?.publicationState === 'published'
       ? '現在公開中です。保存しても公開状態は維持されます。公開を止める場合は一覧の「公開停止」を使います。'
       : '公開候補にしても外部には出ません。一覧から「公開する」を押した時だけ公開されます。';
-    state.relatedTerms = [...(entry?.relatedTerms || [])];
+    state.selectedRelatedIds = [...(entry?.relatedEntryIds || [])];
     renderRelated();
     $('#delete-entry').classList.toggle('hidden', !entry);
     $('#dialog-title').textContent = entry ? '用語を編集' : '用語を追加';
@@ -124,8 +156,24 @@
     document.body.style.overflow = '';
     $('#entry-form').reset();
     $('#publication-candidate').disabled = false;
-    state.relatedTerms = [];
+    state.selectedRelatedIds = [];
     renderRelated();
+  }
+
+  function focusEntry(id, push = true) {
+    const entry = entryById(id);
+    if (!entry) return;
+    $('#search').value = '';
+    $('#game-filter').value = 'all';
+    render();
+    requestAnimationFrame(() => {
+      const card = document.querySelector(`[data-entry="${CSS.escape(id)}"]`);
+      if (!card) return;
+      document.querySelectorAll('.card.focused').forEach(node => node.classList.remove('focused'));
+      card.classList.add('focused');
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    if (push) history.pushState({ entry: id }, '', `/game-notes/glossary/?entry=${encodeURIComponent(id)}`);
   }
 
   async function load() {
@@ -136,6 +184,8 @@
       fillGames();
       render();
       hideLock();
+      const entryId = new URLSearchParams(location.search).get('entry');
+      if (entryId) focusEntry(entryId, false);
     } catch (error) {
       if (error.message !== 'unauthorized') toast('読み込みに失敗しました');
     }
@@ -145,14 +195,12 @@
     const verb = action === 'publish' ? '公開' : '公開停止';
     if (!confirm(`この用語を${verb}しますか？`)) return;
     try {
-      const data = await request('', {
+      await request('', {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ id, action })
       });
-      const index = state.entries.findIndex(x => x.id === data.item.id);
-      if (index >= 0) state.entries[index] = data.item;
-      render();
+      await load();
       toast(action === 'publish' ? '公開Wikiに反映しました' : '公開を停止しました');
     } catch (error) {
       if (error.message === 'candidate_required_before_publish') toast('先に「公開候補」として保存してください');
@@ -166,29 +214,24 @@
   $('#entry-overlay').addEventListener('click', e => { if (e.target === $('#entry-overlay')) closeEditor(); });
   $('#search').addEventListener('input', render);
   $('#game-filter').addEventListener('change', render);
-  $('#add-related').addEventListener('click', () => addRelated());
-  $('#related-input').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addRelated(); } });
+  $('#game').addEventListener('change', renderRelatedPicker);
+  $('#add-related').addEventListener('click', addRelated);
   $('#related-chips').addEventListener('click', e => {
     const button = e.target.closest('[data-related-remove]');
     if (!button) return;
-    state.relatedTerms.splice(Number(button.dataset.relatedRemove), 1);
+    state.selectedRelatedIds = state.selectedRelatedIds.filter(id => id !== button.dataset.relatedRemove);
     renderRelated();
   });
   $('#entry-grid').addEventListener('click', e => {
-    const related = e.target.closest('[data-search-related]');
-    if (related) {
-      $('#search').value = related.dataset.searchRelated || '';
-      render();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
+    const related = e.target.closest('[data-open-related]');
+    if (related) return focusEntry(related.dataset.openRelated, true);
     const publish = e.target.closest('[data-publish]');
     if (publish) return publicationAction(publish.dataset.publish, 'publish');
     const unpublish = e.target.closest('[data-unpublish]');
     if (unpublish) return publicationAction(unpublish.dataset.unpublish, 'unpublish');
     const button = e.target.closest('[data-edit]');
     if (!button) return;
-    const entry = state.entries.find(x => x.id === button.dataset.edit);
+    const entry = entryById(button.dataset.edit);
     if (entry) openEditor(entry);
   });
 
@@ -200,22 +243,18 @@
       term: $('#term').value,
       gameId: $('#game').value,
       description: $('#description').value,
-      relatedTerms: state.relatedTerms,
+      relatedEntryIds: state.selectedRelatedIds,
       publicationCandidate: $('#publication-candidate').checked
     };
     try {
-      const data = await request('', {
+      await request('', {
         method: id ? 'PATCH' : 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      const item = data.item;
-      const index = state.entries.findIndex(x => x.id === item.id);
-      if (index >= 0) state.entries[index] = item; else state.entries.push(item);
-      state.entries.sort((a, b) => a.term.localeCompare(b.term, 'ja'));
       closeEditor();
-      render();
-      toast(id ? '更新しました' : '用語を追加しました');
+      await load();
+      toast(id ? '更新しました。関連語も双方向で同期しました' : '用語を追加しました');
     } catch (error) {
       if (error.message === 'duplicate_glossary_term') toast('同じゲームに同名の用語があります');
       else if (error.message !== 'unauthorized') toast('保存できませんでした');
@@ -227,9 +266,9 @@
     if (!id || !confirm('この用語を削除しますか？')) return;
     try {
       await request('', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id }) });
-      state.entries = state.entries.filter(x => x.id !== id);
       closeEditor();
-      render();
+      history.replaceState({}, '', '/game-notes/glossary/');
+      await load();
       toast('削除しました');
     } catch (error) {
       if (error.message !== 'unauthorized') toast('削除できませんでした');
@@ -246,6 +285,10 @@
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && $('#entry-overlay').classList.contains('on')) closeEditor();
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); $('#search').focus(); }
+  });
+  addEventListener('popstate', () => {
+    const entryId = new URLSearchParams(location.search).get('entry');
+    if (entryId) focusEntry(entryId, false);
   });
 
   load();
