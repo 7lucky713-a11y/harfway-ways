@@ -7,7 +7,6 @@
   const key = () => sessionStorage.getItem('harfway_game_notes_key') || '';
   const headers = (extra = {}) => ({ ...extra, ...(key() ? { 'x-admin-key': key() } : {}) });
   const gameName = (id) => id ? (state.games.find(g => g.id === id)?.name || '未登録ゲーム') : '共通 / ゲーム横断';
-  const statusLabel = (value) => value === 'published' ? 'PUBLIC' : value === 'candidate' ? '公開候補' : 'PRIVATE';
   const entryById = (id) => state.entries.find(entry => entry.id === id) || null;
   const relationNames = (entry) => (entry.relatedEntryIds || []).map(id => entryById(id)?.term).filter(Boolean);
 
@@ -78,22 +77,15 @@
       return;
     }
     grid.innerHTML = entries.map(entry => {
-      const publicationState = entry.publicationState || 'private';
-      const action = publicationState === 'candidate'
-        ? `<button class="publish" type="button" data-publish="${esc(entry.id)}">公開する</button>`
-        : publicationState === 'published'
-          ? `<button class="unpublish" type="button" data-unpublish="${esc(entry.id)}">公開停止</button>`
-          : '';
       const related = relatedMarkup(entry);
       return `
       <article class="card" data-entry="${esc(entry.id)}">
         <div class="card-head">
-          <div><div class="pills"><span class="game-pill">${esc(gameName(entry.gameId))}</span><span class="state-pill ${esc(publicationState)}">${esc(statusLabel(publicationState))}</span></div><h2>${esc(entry.term)}</h2></div>
+          <div><span class="game-pill">${esc(gameName(entry.gameId))}</span><h2>${esc(entry.term)}</h2></div>
           <button class="edit" type="button" data-edit="${esc(entry.id)}">編集</button>
         </div>
         <p>${esc(entry.description)}</p>
         ${related ? `<div class="related">${related}</div>` : ''}
-        ${action ? `<div class="publication-actions">${action}${publicationState === 'published' ? `<a href="/game-wiki/?entry=${encodeURIComponent(entry.id)}" target="_blank" rel="noopener">公開ページを見る ↗</a>` : ''}</div>` : ''}
       </article>`;
     }).join('');
   }
@@ -135,11 +127,6 @@
     $('#term').value = entry?.term || '';
     $('#game').value = entry?.gameId || '';
     $('#description').value = entry?.description || '';
-    $('#publication-candidate').checked = entry?.publicationState === 'candidate';
-    $('#publication-candidate').disabled = entry?.publicationState === 'published';
-    $('#publication-note').textContent = entry?.publicationState === 'published'
-      ? '現在公開中です。保存しても公開状態は維持されます。公開を止める場合は一覧の「公開停止」を使います。'
-      : '公開候補にしても外部には出ません。一覧から「公開する」を押した時だけ公開されます。';
     state.selectedRelatedIds = [...(entry?.relatedEntryIds || [])];
     renderRelated();
     $('#delete-entry').classList.toggle('hidden', !entry);
@@ -155,7 +142,6 @@
     $('#entry-overlay').setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
     $('#entry-form').reset();
-    $('#publication-candidate').disabled = false;
     state.selectedRelatedIds = [];
     renderRelated();
   }
@@ -191,23 +177,6 @@
     }
   }
 
-  async function publicationAction(id, action) {
-    const verb = action === 'publish' ? '公開' : '公開停止';
-    if (!confirm(`この用語を${verb}しますか？`)) return;
-    try {
-      await request('', {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ id, action })
-      });
-      await load();
-      toast(action === 'publish' ? '公開Wikiに反映しました' : '公開を停止しました');
-    } catch (error) {
-      if (error.message === 'candidate_required_before_publish') toast('先に「公開候補」として保存してください');
-      else if (error.message !== 'unauthorized') toast(`${verb}できませんでした`);
-    }
-  }
-
   $('#open-entry').addEventListener('click', () => openEditor());
   $('#close-entry').addEventListener('click', closeEditor);
   $('#cancel-entry').addEventListener('click', closeEditor);
@@ -225,10 +194,6 @@
   $('#entry-grid').addEventListener('click', e => {
     const related = e.target.closest('[data-open-related]');
     if (related) return focusEntry(related.dataset.openRelated, true);
-    const publish = e.target.closest('[data-publish]');
-    if (publish) return publicationAction(publish.dataset.publish, 'publish');
-    const unpublish = e.target.closest('[data-unpublish]');
-    if (unpublish) return publicationAction(unpublish.dataset.unpublish, 'unpublish');
     const button = e.target.closest('[data-edit]');
     if (!button) return;
     const entry = entryById(button.dataset.edit);
@@ -243,8 +208,7 @@
       term: $('#term').value,
       gameId: $('#game').value,
       description: $('#description').value,
-      relatedEntryIds: state.selectedRelatedIds,
-      publicationCandidate: $('#publication-candidate').checked
+      relatedEntryIds: state.selectedRelatedIds
     };
     try {
       await request('', {
