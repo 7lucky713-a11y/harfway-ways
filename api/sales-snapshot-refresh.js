@@ -106,14 +106,16 @@ export default async function handler(req, res) {
     const selectedIds = selectedRows.map((row) => String(row.appid));
     const rowByAppid = new Map(selectedRows.map((row) => [String(row.appid), row]));
 
-    const priceResult = await getSteamPrices(selectedIds, { force: true });
+    const priceResult = await getSteamPrices(selectedIds, true);
     const checkedAt = new Date().toISOString();
     let successfulChecks = 0;
     let failedChecks = 0;
 
     for (const appid of selectedIds) {
       const row = rowByAppid.get(appid) || {};
-      const price = priceResult?.prices?.[appid];
+      const price = priceResult instanceof Map
+        ? priceResult.get(appid)
+        : priceResult?.prices?.[appid];
       if (!price?.ok) {
         failedChecks += 1;
         continue;
