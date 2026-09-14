@@ -50,9 +50,9 @@
       list.innerHTML = '<div class="ways-label-menu-empty">まだLABELがありません。編集エディターから作成できます。</div>';
       return;
     }
-    list.innerHTML = catalog.map(({ name, count }) => `
+    list.innerHTML = catalog.map(({ name, count, description }) => `
       <button type="button" class="ways-label-choice${name === activeLabel ? ' on' : ''}" data-ways-label-choice="${encodeURIComponent(name)}">
-        <span>${esc(name)}</span><small>${Number(count || labelCount(name))} GAMES</small>
+        <span>${esc(name)}</span>${description ? `<em>${esc(description)}</em>` : ''}<small>${Number(count || labelCount(name))} GAMES</small>
       </button>`).join('');
   }
 
@@ -174,7 +174,12 @@
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data?.ok) throw new Error(data?.error || `HTTP ${response.status}`);
       catalog = Array.isArray(data.labels) ? data.labels
-        .map(x => ({ name: String(x?.name || '').trim(), count: Number(x?.count || 0) }))
+        .map(x => ({
+          key: String(x?.key || x?.name || '').trim(),
+          name: String(x?.name || x?.key || '').trim(),
+          description: String(x?.description || '').trim(),
+          count: Number(x?.count || 0)
+        }))
         .filter(x => x.name) : [];
       assignments = data.assignments && typeof data.assignments === 'object' ? data.assignments : {};
       return true;
@@ -199,7 +204,8 @@
       if (hydrateItems()) {
         renderShelfContext();
         renderMenu();
-        if (initialLabel && catalog.some(x => x.name === initialLabel)) setLabel(initialLabel);
+        const initial = catalog.find(x => x.name === initialLabel || x.key === initialLabel);
+        if (initial) setLabel(initial.name);
         else syncLabelUI();
         return;
       }
@@ -215,7 +221,7 @@
   style.textContent = `
     .ways-labels-pill.open{border-color:var(--accent);color:var(--accent)}
     .ways-label-menu{position:fixed;z-index:80;right:32px;top:108px;width:min(430px,calc(100vw - 40px));max-height:min(62vh,560px);overflow:auto;border:1px solid #363940;background:#0b0c0ef5;box-shadow:0 24px 70px #000c;padding:14px;display:none;backdrop-filter:blur(14px)}
-    .ways-label-menu.open{display:block}.ways-label-menu-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:2px 2px 12px;border-bottom:1px solid #292c31}.ways-label-menu-head b{display:block;color:var(--accent);font-size:11px;letter-spacing:.12em}.ways-label-menu-head span{display:block;color:#8f939b;font-size:10px;margin-top:5px}.ways-label-menu-head button{border:1px solid #3b3e45;background:#111214;color:#ddd;width:30px;height:30px;cursor:pointer}.ways-label-menu-list{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding-top:12px}.ways-label-choice{border:1px solid #33363c;background:#111214;color:#e8e8e3;text-align:left;padding:12px;cursor:pointer;min-width:0}.ways-label-choice:hover{border-color:var(--accent)}.ways-label-choice.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:#171a0e}.ways-label-choice span{display:block;font-size:11px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ways-label-choice small{display:block;color:#767b83;font:8px ui-monospace,monospace;margin-top:7px}.ways-label-choice.on small{color:#b8c47f}.ways-label-menu-empty{grid-column:1/-1;color:#747981;font-size:10px;line-height:1.7;padding:14px 4px}
+    .ways-label-menu.open{display:block}.ways-label-menu-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:2px 2px 12px;border-bottom:1px solid #292c31}.ways-label-menu-head b{display:block;color:var(--accent);font-size:11px;letter-spacing:.12em}.ways-label-menu-head span{display:block;color:#8f939b;font-size:10px;margin-top:5px}.ways-label-menu-head button{border:1px solid #3b3e45;background:#111214;color:#ddd;width:30px;height:30px;cursor:pointer}.ways-label-menu-list{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding-top:12px}.ways-label-choice{border:1px solid #33363c;background:#111214;color:#e8e8e3;text-align:left;padding:12px;cursor:pointer;min-width:0}.ways-label-choice:hover{border-color:var(--accent)}.ways-label-choice.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:#171a0e}.ways-label-choice span{display:block;font-size:11px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ways-label-choice em{display:block;color:#959aa2;font-size:9px;font-style:normal;line-height:1.55;margin-top:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.ways-label-choice small{display:block;color:#767b83;font:8px ui-monospace,monospace;margin-top:7px}.ways-label-choice.on small{color:#b8c47f}.ways-label-menu-empty{grid-column:1/-1;color:#747981;font-size:10px;line-height:1.7;padding:14px 4px}
     @media(max-width:899px){.ways-label-menu{left:12px;right:12px;top:94px;width:auto;max-height:55vh}.ways-label-menu-list{grid-template-columns:1fr}.ways-mobile-type [data-ways-labels-open].active{border-color:var(--accent);background:var(--accent);color:#111}}
   `;
   document.head.appendChild(style);
