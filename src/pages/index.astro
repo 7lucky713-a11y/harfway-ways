@@ -7,8 +7,12 @@ const source = raw
   .replace(/const API\s*=\s*['"]\/api\/games['"]\s*;/g, "const API='/api/games-live';")
   .replace(
     "let items=[],filtered=[],selected=0,muted=true,userPaused=false,activeTag='',mobileMuted=true,orientationOverride='auto';",
-    "let activeContentType=new URLSearchParams(location.search).get('view')==='tip'?'tip':'discover';let items=[],filtered=[],selected=0,muted=true,userPaused=false,activeTag='',mobileMuted=true,orientationOverride='auto';"
+    "let activeContentType=new URLSearchParams(location.search).get('view')==='tip'?'tip':'discover';let items=[],filtered=[],selected=0,muted=false,userPaused=false,activeTag='',mobileMuted=false,orientationOverride='auto';"
   )
+  .replace('<video id="mainVideo" muted playsinline loop preload="auto"></video>', '<video id="mainVideo" playsinline loop preload="auto"></video>')
+  .replace('<button id="sound" class="icon" title="音声">🔇</button>', '<button id="sound" class="icon" title="音声">🔊</button>')
+  .replace('<button id="mSound">SOUND OFF</button>', '<button id="mSound" class="on">SOUND ON</button>')
+  .replaceAll('<video muted playsinline loop preload="none"', '<video playsinline loop preload="none"')
   .replace(
     'const SHELF_SIZE=10,MOBILE_INITIAL=2,MOBILE_BATCH=2;',
     "let SHELF_SIZE=10;const MOBILE_INITIAL=2,MOBILE_BATCH=2;window.__WAYS_SET_SHELF_SIZE=(n)=>{const next=Math.max(1,Number(n)||10);if(SHELF_SIZE===next)return;SHELF_SIZE=next;shelfPage=Math.floor(selected/SHELF_SIZE);if(innerWidth>=900&&mainReady)renderShelfPage(true);else{updateShelfPager();renderShelfContext()}};"
