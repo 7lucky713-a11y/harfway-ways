@@ -39,6 +39,28 @@ function stableId(key) {
   return `ways-label:${createHash('sha1').update(String(key || '')).digest('hex').slice(0, 20)}`;
 }
 
+function renameLabelInState(state, fromKey, toKey) {
+  const games = Array.isArray(state?.games) ? state.games : [];
+  let affectedGames = 0;
+  for (const game of games) {
+    const before = labelsOf(game);
+    if (!before.includes(fromKey)) continue;
+    affectedGames += 1;
+
+    if (Array.isArray(game.tags)) {
+      game.tags = [...new Set(game.tags.map(tag => {
+        const text = String(tag || '');
+        if (!text.toLowerCase().startsWith(LABEL_PREFIX)) return tag;
+        return decodeLabel(text) === fromKey ? LABEL_PREFIX + encodeURIComponent(toKey) : tag;
+      }))];
+    }
+    if (Array.isArray(game.labels)) {
+      game.labels = [...new Set(game.labels.map(label => String(label || '').trim() === fromKey ? toKey : label).filter(Boolean))];
+    }
+  }
+  return affectedGames;
+}
+
 async function loadEditorState(adminKey) {
   const response = await fetch(`${EDITOR_URL}/api/proxy?target=state`, {
     method: 'GET',
@@ -57,6 +79,31 @@ async function loadEditorState(adminKey) {
     throw error;
   }
   return data?.state || { games: [] };
+}
+
+async function saveEditorState(adminKey, state) {
+  const response = await fetch(`${EDITOR_URL}/api/proxy?target=state`, {
+    method: 'POST',
+    cache: 'no-store',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      'x-showcase-admin-key': adminKey
+    },
+    body: JSON.stringify({ state })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (response.status === 401 || response.status === 403) {
+    const error = new Error('invalid_admin_key');
+    error.status = 401;
+    throw error;
+  }
+  if (!response.ok) {
+    const error = new Error(data?.error || `editor_state_save_${response.status}`);
+    error.status = 502;
+    throw error;
+  }
+  return data;
 }
 
 export default async function handler(req, res) {
@@ -89,7 +136,9 @@ export default async function handler(req, res) {
         ok: true,
         preview: true,
         persisted: false,
-        label: { key, name, description, count }
+        renamed: key !== name,
+        affectedGames: count,
+        label: { oldKey: key, key: name, name, description, count }
       });
     }
 
@@ -98,12 +147,15 @@ export default async function handler(req, res) {
     const sql = neon(url);
 
     const duplicate = await sql`
-      SELECT id, title
+      SELECT id, title, metadata
       FROM core.contents
       WHERE content_type = 'ways_label'
         AND source = 'ways-label-editor'
         AND status = 'active'
-        AND lower(title) = lower(${name})
+        AND (
+          lower(title) = lower(${name})
+          OR lower(COALESCE(metadata->>'key', '')) = lower(${name})
+        )
         AND COALESCE(metadata->>'key', '') <> ${key}
       LIMIT 1
     `;
@@ -118,9 +170,12 @@ export default async function handler(req, res) {
       LIMIT 1
     `;
 
+    const affectedGames = key === name ? count : renameLabelInState(state, key, name);
+    if (key !== name) await saveEditorState(adminKey, state);
+
     const metadata = {
       ...(existing[0]?.metadata && typeof existing[0].metadata === 'object' ? existing[0].metadata : {}),
-      key
+      key: name
     };
     const metadataJson = JSON.stringify(metadata);
 
@@ -136,7 +191,7 @@ export default async function handler(req, res) {
         WHERE id = ${existing[0].id}
       `;
     } else {
-      const id = stableId(key);
+      const id = stableId(name);
       await sql`
         INSERT INTO core.contents (
           id, content_type, title, url, excerpt, body_text, featured_image_url,
@@ -159,7 +214,9 @@ export default async function handler(req, res) {
       ok: true,
       preview: false,
       persisted: true,
-      label: { key, name, description, count }
+      renamed: key !== name,
+      affectedGames,
+      label: { oldKey: key, key: name, name, description, count: affectedGames }
     });
   } catch (error) {
     console.error('[ways-label-admin]', error);
