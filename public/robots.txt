@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://harfway-playback.vercel.app/sitemap.xml
