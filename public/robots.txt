@@ -5,4 +5,4 @@ Disallow: /api/game-notes
 Disallow: /api/game-notes-glossary
 Disallow: /api/game-notes-media
 
-Sitemap: https://harfway-playback.vercel.app/sitemap.xml
+Sitemap: https://ways.harf-way.com/sitemap.xml
