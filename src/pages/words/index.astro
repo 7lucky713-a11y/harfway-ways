@@ -8,7 +8,7 @@ const isProduction = process.env.VERCEL_ENV === 'production';
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="robots" content={isProduction ? 'index,follow' : 'noindex,nofollow,noarchive'} />
   <meta name="theme-color" content="#171815" />
-  <title>ことばノート / HARF-WAY</title>
+  <title>用語解説 / HARF-WAY</title>
   <style is:global>
     :root{--bg:#171815;--paper:#f3efe4;--ink:#252720;--muted:#74776e;--line:#cbc5b7;--accent:#dff238}
     *{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:#f4f1e8;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif}a{color:inherit}.shell{width:min(860px,calc(100% - 22px));margin:auto;padding:24px 0 64px}.index.hidden{display:none}.detail{display:none}.detail.on{display:block}.back{display:inline-block;margin:0 0 12px;text-decoration:none;color:#b8beb3;font-size:12px;font-weight:800}.paper{background:var(--paper);color:var(--ink);border:1px solid #d7d1c3;box-shadow:0 22px 70px #0006}.head{padding:28px 30px 24px;border-bottom:1px solid var(--ink)}.head-top{display:flex;justify-content:space-between;gap:20px;align-items:baseline;margin-bottom:9px;color:#6b6f67;font-size:10px;font-weight:800}.head h1{margin:0;font-family:"Hiragino Mincho ProN","Yu Mincho",YuMincho,serif;font-size:clamp(40px,7vw,68px);line-height:1;letter-spacing:-.06em}.head p{margin:14px 0 0;max-width:560px;color:#6d7169;font-size:12px;line-height:1.8}.navline{display:flex;gap:16px;flex-wrap:wrap;margin-top:15px;font-size:10px;font-weight:850}.navline a{text-decoration:none;border-bottom:1px solid #767a70;padding-bottom:2px}.feed{padding:0 30px}.word{display:block;padding:24px 0 26px;border-bottom:1px solid var(--line);text-decoration:none}.word:last-child{border-bottom:0}.word-meta{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:10px;color:#6f736b;font-size:10px;font-weight:800}.word-game{color:var(--ink);font-size:12px}.word h2{margin:0 0 9px;font-family:"Hiragino Mincho ProN","Yu Mincho",YuMincho,serif;font-size:25px;line-height:1.35}.word p{margin:0;font-family:"Hiragino Mincho ProN","Yu Mincho",YuMincho,serif;font-size:17px;line-height:1.9;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}.word-foot{display:flex;gap:12px;flex-wrap:wrap;margin-top:13px;color:#7b7e76;font-size:9px;font-weight:800}.word:hover h2{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px}.single{padding:0 30px 34px}.single-meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:18px 0;border-bottom:1px solid var(--line);color:#6e726a;font-size:10px;font-weight:800}.single-meta strong{color:var(--ink);font-size:12px}.single-body{padding:34px 0 38px;border-bottom:1px solid var(--line)}.single-copy{margin:0;font-family:"Hiragino Mincho ProN","Yu Mincho",YuMincho,serif;font-size:clamp(18px,2.2vw,21px);line-height:1.9;white-space:pre-wrap;max-width:34em}.section{padding:28px 0 0}.section h3{margin:0 0 6px;font-size:14px}.section>p{margin:0 0 15px;color:#74786f;font-size:10px}.related-list{display:grid;border-top:1px solid var(--line)}.related-link{display:grid;grid-template-columns:120px minmax(0,1fr) auto;gap:12px;align-items:center;padding:13px 0;border-bottom:1px solid var(--line);text-decoration:none}.related-link small{color:#797d74;font-size:9px}.related-link strong{font-size:13px;line-height:1.5}.related-link span{font-size:12px}.media-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.media{border:1px solid var(--line);background:#ebe5d8}.media video{display:block;width:100%;aspect-ratio:16/9;object-fit:contain;background:#050505}.caption{padding:10px 11px 12px}.caption strong{display:block;font-size:12px;margin-bottom:7px}.caption a{font-size:10px;font-weight:900;text-decoration:none;border-bottom:1px solid #44483f}.foot{margin-top:16px;text-align:center;color:#777d73;font-size:9px}.empty,.loading{padding:44px 20px;text-align:center;color:#7f847a}
@@ -21,15 +21,15 @@ const isProduction = process.env.VERCEL_ENV === 'production';
       <div class="paper">
         <header class="head">
           <div class="head-top"><span>HARF-WAY</span><span>ゲームの中で拾ったことば</span></div>
-          <h1>ことばノート</h1>
-          <p>ゲームを遊びながら覚えた固有名詞や仕組みを、自分なりの説明で残した小さなことば集です。辞典ではなく、遊んだ記録の延長として置いています。</p>
+          <h1>用語解説</h1>
+          <p>ゲームを遊びながら覚えた固有名詞や仕組みを、自分なりの説明で残した小さな用語集です。辞典ではなく、遊んだ記録の延長として置いています。</p>
           <div class="navline"><a href="/notes/">プレイノートを見る →</a></div>
         </header>
-        <div id="words-list" class="feed"><div class="loading">公開中のことばを読み込み中…</div></div>
+        <div id="words-list" class="feed"><div class="loading">公開中の用語を読み込み中…</div></div>
       </div>
     </section>
-    <section class="detail" id="detail-view"><a class="back" href="/words/">← ことばノート一覧へ</a><div id="detail-root"><div class="loading">ことばを読み込み中…</div></div></section>
-    <div class="foot">HARF-WAY / ことばノート</div>
+    <section class="detail" id="detail-view"><a class="back" href="/words/">← 用語解説一覧へ</a><div id="detail-root"><div class="loading">用語を読み込み中…</div></div></section>
+    <div class="foot">HARF-WAY / 用語解説</div>
   </main>
 <script>
 (() => {
@@ -42,19 +42,19 @@ const isProduction = process.env.VERCEL_ENV === 'production';
   async function render(){
     try{
       const words=await json(API),entries=words.entries||[];
-      if(!id){document.getElementById('words-list').innerHTML=entries.length?entries.map(card).join(''):'<div class="empty">公開中のことばはまだありません。</div>';return}
+      if(!id){document.getElementById('words-list').innerHTML=entries.length?entries.map(card).join(''):'<div class="empty">公開中の用語はまだありません。</div>';return}
       document.getElementById('index-view').classList.add('hidden');document.getElementById('detail-view').classList.add('on');
-      const n=entries.find(x=>String(x.id)===String(id));if(!n){document.getElementById('detail-root').innerHTML='<div class="empty">このことばは見つかりませんでした。</div>';return}
-      document.title=`${n.term||'ことばノート'} / HARF-WAY`;
+      const n=entries.find(x=>String(x.id)===String(id));if(!n){document.getElementById('detail-root').innerHTML='<div class="empty">この用語は見つかりませんでした。</div>';return}
+      document.title=`${n.term||'用語解説'} / HARF-WAY`;
       const [notesData,waysData]=await Promise.all([json(NOTES).catch(()=>({entries:[]})),json(WAYS).catch(()=>({entries:[]}))]);
       const notes=Array.isArray(notesData.entries)?notesData.entries:[],ways=Array.isArray(waysData.entries)?waysData.entries:[];
       const relatedNotes=(n.relatedPublicNoteIds||[]).map(rid=>notes.find(x=>String(x.id)===String(rid))).filter(Boolean);
       const relatedWays=(n.relatedWaysIds||[]).map(rid=>ways.find(x=>String(x.id)===String(rid))).filter(Boolean);
       const relatedWords=(n.relatedPublicGlossaryIds||[]).map(rid=>entries.find(x=>String(x.id)===String(rid))).filter(Boolean);
-      const noteHtml=relatedNotes.length?`<section class="section"><h3>関連するプレイノート</h3><p>このことばが紐づいている、公開済みのプレイ記録です。</p><div class="related-list">${relatedNotes.map(x=>`<a class="related-link" href="/notes/?note=${encodeURIComponent(x.id)}"><small>${esc(fmt(x.publishedAt))}</small><strong>${esc(x.title||'無題')}</strong><span>→</span></a>`).join('')}</div></section>`:'';
-      const wordHtml=relatedWords.length?`<section class="section"><h3>関連することば</h3><div class="related-list">${relatedWords.map(x=>`<a class="related-link" href="/words/?word=${encodeURIComponent(x.id)}"><small>${esc(x.gameName||'共通')}</small><strong>${esc(x.term||'無題')}</strong><span>→</span></a>`).join('')}</div></section>`:'';
-      const mediaHtml=relatedWays.length?`<section class="section"><h3>このことばに紐づく映像</h3><p>Private Glossaryで明示的に紐づけたWAYS動画です。</p><div class="media-grid">${relatedWays.map(x=>`<article class="media"><video controls playsinline preload="metadata" ${x.thumbnailUrl?`poster="${esc(x.thumbnailUrl)}"`:''} src="${esc(x.video||'')}"></video><div class="caption"><strong>${esc(x.title||'')}</strong><a href="/?game=${encodeURIComponent(x.id)}">WAYSで見る →</a></div></article>`).join('')}</div></section>`:'';
-      document.getElementById('detail-root').innerHTML=`<article class="paper"><header class="head"><div class="head-top"><span>HARF-WAY</span><span>ことばノート</span></div><h1>${esc(n.term||'無題')}</h1></header><div class="single"><div class="single-meta"><strong>${esc(n.gameName||'共通 / ゲーム横断')}</strong><span>${esc(fmt(n.publishedAt))}</span></div><section class="single-body"><p class="single-copy">${esc(n.description||'')}</p></section>${noteHtml}${wordHtml}${mediaHtml}</div></article>`;
+      const noteHtml=relatedNotes.length?`<section class="section"><h3>関連するプレイノート</h3><p>この用語が紐づいている、公開済みのプレイ記録です。</p><div class="related-list">${relatedNotes.map(x=>`<a class="related-link" href="/notes/?note=${encodeURIComponent(x.id)}"><small>${esc(fmt(x.publishedAt))}</small><strong>${esc(x.title||'無題')}</strong><span>→</span></a>`).join('')}</div></section>`:'';
+      const wordHtml=relatedWords.length?`<section class="section"><h3>関連する用語</h3><div class="related-list">${relatedWords.map(x=>`<a class="related-link" href="/words/?word=${encodeURIComponent(x.id)}"><small>${esc(x.gameName||'共通')}</small><strong>${esc(x.term||'無題')}</strong><span>→</span></a>`).join('')}</div></section>`:'';
+      const mediaHtml=relatedWays.length?`<section class="section"><h3>この用語に紐づく映像</h3><p>Private Glossaryで明示的に紐づけたWAYS動画です。</p><div class="media-grid">${relatedWays.map(x=>`<article class="media"><video controls playsinline preload="metadata" ${x.thumbnailUrl?`poster="${esc(x.thumbnailUrl)}"`:''} src="${esc(x.video||'')}"></video><div class="caption"><strong>${esc(x.title||'')}</strong><a href="/?game=${encodeURIComponent(x.id)}">WAYSで見る →</a></div></article>`).join('')}</div></section>`:'';
+      document.getElementById('detail-root').innerHTML=`<article class="paper"><header class="head"><div class="head-top"><span>HARF-WAY</span><span>用語解説</span></div><h1>${esc(n.term||'無題')}</h1></header><div class="single"><div class="single-meta"><strong>${esc(n.gameName||'共通 / ゲーム横断')}</strong><span>${esc(fmt(n.publishedAt))}</span></div><section class="single-body"><p class="single-copy">${esc(n.description||'')}</p></section>${noteHtml}${wordHtml}${mediaHtml}</div></article>`;
     }catch{document.getElementById(id?'detail-root':'words-list').innerHTML='<div class="empty">読み込みに失敗しました。</div>'}
   }
   render();
