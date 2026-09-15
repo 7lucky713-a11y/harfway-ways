@@ -1,5 +1,6 @@
 ---
 const title = 'MEW LOG — Mewgenics Play Archive';
+const isProduction = process.env.VERCEL_ENV === 'production';
 ---
 <!doctype html>
 <html lang="ja">
@@ -7,7 +8,8 @@ const title = 'MEW LOG — Mewgenics Play Archive';
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="description" content="Mewgenicsのプレイ日記、画像、動画、ビルド、キャラメモを蓄積するHARF-WAYの個人プレイアーカイブ。" />
-  <link rel="canonical" href="https://harfway-playback.vercel.app/mew-log/" />
+  {!isProduction && <meta name="robots" content="noindex,nofollow,noarchive" />}
+  <link rel="canonical" href="https://ways.harf-way.com/mew-log/" />
   <title>{title}</title>
   <style is:global>
     :root{

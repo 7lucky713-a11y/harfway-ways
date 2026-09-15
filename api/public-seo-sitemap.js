@@ -8,7 +8,14 @@ export default async function handler(req,res){
   try{
     const {sql}=await publicDatabaseContext();
     const [notes,words]=await Promise.all([listPublicNotes(sql),listPublicWords(sql)]);
-    const nodes=[urlNode(req,'/notes/'),urlNode(req,'/words/')];
+    const nodes=[
+      urlNode(req,'/'),
+      urlNode(req,'/archive/'),
+      urlNode(req,'/sales'),
+      urlNode(req,'/mew-log/'),
+      urlNode(req,'/notes/'),
+      urlNode(req,'/words/')
+    ];
     for(const note of notes)nodes.push(urlNode(req,note.url,isoDate(note.snapshotUpdatedAt||note.publishedAt)));
     for(const word of words)nodes.push(urlNode(req,word.url,isoDate(word.snapshotUpdatedAt||word.publishedAt)));
     const xml=`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${nodes.join('')}</urlset>`;

@@ -48,6 +48,13 @@
     { "source": "/_next/static/:path*", "destination": "/api/ads-portal-proxy?path=/_next/static/:path*" }
   ],
   "headers": [
+    { "source": "/", "headers": [{ "key": "Link", "value": "<https://ways.harf-way.com/>; rel=\"canonical\"" }] },
+    { "source": "/sales", "headers": [{ "key": "Link", "value": "<https://ways.harf-way.com/sales>; rel=\"canonical\"" }] },
+    { "source": "/sales/", "headers": [{ "key": "Link", "value": "<https://ways.harf-way.com/sales>; rel=\"canonical\"" }] },
+    { "source": "/archive", "headers": [{ "key": "Link", "value": "<https://ways.harf-way.com/archive/>; rel=\"canonical\"" }] },
+    { "source": "/archive/", "headers": [{ "key": "Link", "value": "<https://ways.harf-way.com/archive/>; rel=\"canonical\"" }] },
+    { "source": "/entrance", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }] },
+    { "source": "/entrance/", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }] },
     { "source": "/game-notes", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }] },
     { "source": "/game-notes/:path*", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }] },
     { "source": "/api/game-notes", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }] },
