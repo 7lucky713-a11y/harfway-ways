@@ -38,18 +38,17 @@ const isProduction = process.env.VERCEL_ENV === 'production';
     .single-body{padding:34px 0 38px;border-bottom:1px solid var(--line)}
     .single-body h2{margin:0 0 18px;font-size:14px;color:#696d65}
     .single-copy{margin:0;font-family:"Hiragino Mincho ProN","Yu Mincho",YuMincho,serif;font-size:clamp(18px,2.2vw,21px);line-height:1.9;white-space:pre-wrap;max-width:34em}
-    .related-section{padding:28px 0 0}
-    .related-section h3{margin:0 0 6px;font-size:14px}.related-section>p{margin:0 0 15px;color:#74786f;font-size:10px}
-    .related-list{display:grid;border-top:1px solid var(--line)}
-    .related-link{display:grid;grid-template-columns:120px minmax(0,1fr) auto;gap:12px;align-items:center;padding:13px 0;border-bottom:1px solid var(--line);text-decoration:none}
-    .related-link small{color:#797d74;font-size:9px}.related-link strong{font-size:13px;line-height:1.5}.related-link span{font-size:12px}
+    .term-tags{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:12px 0 0}
+    .term-tags-label{color:#777b73;font-size:9px;font-weight:900}
+    .term-tag{display:inline-flex;align-items:center;padding:5px 8px;border:1px solid #bbb5a7;border-radius:999px;background:#ebe5d8;color:#3f433b;font-size:10px;font-weight:850;line-height:1;text-decoration:none}
+    .term-tag:hover{border-color:#4b5046;background:#e3ddcf}
     .media-section{padding:28px 0 0}
     .media-section h3{margin:0 0 6px;font-size:14px}.media-section>p{margin:0 0 16px;color:#74786f;font-size:10px}
     .media-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
     .media{border:1px solid var(--line);background:#ebe5d8}.media video{display:block;width:100%;aspect-ratio:16/9;object-fit:contain;background:#050505}
     .caption{padding:10px 11px 12px}.caption strong{display:block;font-size:12px;margin-bottom:7px}.caption a{font-size:10px;font-weight:900;text-decoration:none;border-bottom:1px solid #44483f}
     .foot{margin-top:16px;text-align:center;color:#777d73;font-size:9px}.empty,.loading{padding:44px 20px;text-align:center;color:#7f847a}
-    @media(max-width:700px){.shell{width:min(100% - 12px,860px);padding-top:10px}.head,.feed,.single{padding-left:17px;padding-right:17px}.head{padding-top:22px;padding-bottom:18px}.note{padding:21px 0}.note-state{margin-left:0}.note p{font-size:17px}.single-copy{font-size:18px;line-height:1.85}.single-meta .state{margin-left:0}.related-link{grid-template-columns:1fr auto}.related-link small{grid-column:1/-1}.media-grid{grid-template-columns:1fr}}
+    @media(max-width:700px){.shell{width:min(100% - 12px,860px);padding-top:10px}.head,.feed,.single{padding-left:17px;padding-right:17px}.head{padding-top:22px;padding-bottom:18px}.note{padding:21px 0}.note-state{margin-left:0}.note p{font-size:17px}.single-copy{font-size:18px;line-height:1.85}.single-meta .state{margin-left:0}.media-grid{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -105,7 +104,7 @@ const isProduction = process.env.VERCEL_ENV === 'production';
       const [xs, glossaryEntries]=await Promise.all([ways(),words()]);
       const related=(n.relatedWaysIds||[]).map(rid=>xs.find(x=>String(x.id)===String(rid))).filter(Boolean);
       const relatedWords=glossaryEntries.filter(word=>Array.isArray(word.relatedPublicNoteIds)&&word.relatedPublicNoteIds.some(rid=>String(rid)===String(n.id)));
-      const wordLinks=relatedWords.length?`<section class="related-section"><h3>関連する用語</h3><p>このプレイノートに紐づいている、公開済みの用語解説です。</p><div class="related-list">${relatedWords.map(word=>`<a class="related-link" href="/words/?word=${encodeURIComponent(word.id)}"><small>${esc(word.gameName||'共通 / ゲーム横断')}</small><strong>${esc(word.term||'無題')}</strong><span>→</span></a>`).join('')}</div></section>`:'';
+      const wordLinks=relatedWords.length?`<div class="term-tags"><span class="term-tags-label">関連用語</span>${relatedWords.map(word=>`<a class="term-tag" href="/words/?word=${encodeURIComponent(word.id)}">${esc(word.term||'無題')}</a>`).join('')}</div>`:'';
       const media=related.length?`<section class="media-section"><h3>このときの映像</h3><p>メモに紐づいているWAYS動画です。</p><div class="media-grid">${related.map(x=>`<article class="media"><video controls playsinline preload="metadata" ${x.thumbnailUrl?`poster="${esc(x.thumbnailUrl)}"`:''} src="${esc(x.video||'')}"></video><div class="caption"><strong>${esc(x.title||'')}</strong><a href="/?game=${encodeURIComponent(x.id)}">WAYSで見る →</a></div></article>`).join('')}</div></section>`:'';
       document.getElementById('detail-root').innerHTML=`<article class="paper"><header class="head"><div class="head-top"><span>HARF-WAY</span><span>プレイノート</span></div><h1>${esc(n.gameName||'プレイノート')}</h1></header><div class="single"><div class="single-meta"><strong>${esc(n.gameName||'ゲーム名なし')}</strong><span>${esc(fmt(n.publishedAt))}</span><span>${esc(n.typeName||'メモ')}</span><span class="state">まだ途中</span></div><section class="single-body"><h2>${esc(n.title||'無題')}</h2><p class="single-copy">${esc(n.body||'')}</p></section>${wordLinks}${media}</div></article>`;
     }catch{
