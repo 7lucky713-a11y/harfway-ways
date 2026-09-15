@@ -1,0 +1,50 @@
+---
+const isProduction = process.env.VERCEL_ENV === 'production';
+---
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content={isProduction ? 'index,follow' : 'noindex,nofollow,noarchive'} />
+  <meta name="theme-color" content="#101310" />
+  <title>PLAY NOTES / HARF-WAY</title>
+  <style>
+    :root{--bg:#101310;--paper:#f0eee6;--ink:#1c211d;--muted:#687068;--line:#c8c8bd;--accent:#dff238;--dark:#151a16}*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--paper);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif}a{color:inherit}.shell{width:min(1080px,calc(100% - 34px));margin:auto;padding:44px 0 80px}.mast{display:grid;grid-template-columns:1fr auto;gap:24px;align-items:end;border-bottom:1px solid #374039;padding-bottom:22px;margin-bottom:32px}.eyebrow{font:800 11px ui-monospace,monospace;letter-spacing:.18em;color:var(--accent)}h1{margin:7px 0 0;font-size:clamp(42px,8vw,82px);line-height:.88;letter-spacing:-.06em}.mast p{max-width:360px;margin:0;color:#9ba39c;font-size:12px;line-height:1.8;text-align:right}.list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.card{display:block;text-decoration:none;background:#171c18;border:1px solid #303831;border-radius:14px;padding:22px;transition:.15s transform,.15s border-color}.card:hover{transform:translateY(-3px);border-color:#7c8a7d}.card small{font:800 10px ui-monospace,monospace;color:#9ba39c}.card h2{font-size:25px;line-height:1.2;margin:10px 0 12px}.card p{margin:0;color:#bcc3bc;font-size:13px;line-height:1.75;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}.meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.pill{border:1px solid #445045;border-radius:999px;padding:6px 8px;color:#aeb7af;font-size:10px;font-weight:800}.pill.ways{border-color:#788321;color:var(--accent)}.empty{border:1px dashed #3e473f;border-radius:14px;padding:50px 22px;text-align:center;color:#8e978f}.detail{display:none}.detail.on{display:block}.index.hidden{display:none}.back{display:inline-flex;align-items:center;gap:7px;text-decoration:none;color:#b8c1b9;font-size:12px;margin-bottom:22px}.article{background:var(--paper);color:var(--ink);border-radius:18px;overflow:hidden;box-shadow:0 24px 90px #0005}.hero{padding:clamp(30px,7vw,76px);padding-bottom:36px;border-bottom:1px solid var(--line)}.hero .eyebrow{color:#5a665b}.hero h2{font-size:clamp(38px,7vw,72px);line-height:1.05;letter-spacing:-.045em;margin:14px 0 22px;max-width:17ch}.hero-meta{display:flex;gap:12px;flex-wrap:wrap;color:#667067;font-size:12px}.copy{padding:clamp(30px,7vw,76px);font-size:20px;line-height:2;white-space:pre-wrap;max-width:46em}.ways{padding:0 clamp(30px,7vw,76px) clamp(36px,7vw,70px)}.ways-head{border-top:1px solid var(--line);padding-top:26px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:end;gap:16px}.ways-head b{font:900 12px ui-monospace,monospace;letter-spacing:.1em}.ways-head span{font-size:11px;color:#777}.ways-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.ways-card{border:1px solid #c6c8bd;border-radius:12px;overflow:hidden;background:#e7e5dd}.ways-card video{display:block;width:100%;aspect-ratio:16/9;object-fit:contain;background:#050505}.ways-info{padding:13px}.ways-info strong{display:block;font-size:15px;margin-bottom:8px}.ways-info a{display:inline-block;background:#1c211d;color:#f3f2e9;text-decoration:none;border-radius:999px;padding:8px 11px;font-size:10px;font-weight:900}.foot{color:#798179;font-size:10px;text-align:center;margin-top:28px}.loading{padding:40px;text-align:center;color:#929b93}@media(max-width:720px){.shell{width:min(100% - 20px,1080px);padding-top:25px}.mast{grid-template-columns:1fr}.mast p{text-align:left}.list,.ways-grid{grid-template-columns:1fr}.hero{padding:30px 22px 25px}.hero h2{font-size:38px}.copy{padding:28px 22px;font-size:18px;line-height:1.9}.ways{padding:0 22px 32px}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="index" id="index-view">
+      <header class="mast"><div><div class="eyebrow">HARF-WAY / PLAY LOG</div><h1>PLAY<br>NOTES</h1></div><p>遊んでいる途中で拾った、小さな発見や考えごと。レビューになる前の記録を、そのまま読める場所です。</p></header>
+      <div id="notes-list" class="list"><div class="loading">公開メモを読み込み中…</div></div>
+    </section>
+    <section class="detail" id="detail-view"><a class="back" href="/notes/">← PLAY NOTES</a><div id="detail-root"><div class="loading">メモを読み込み中…</div></div></section>
+    <div class="foot">HARF-WAY / NOTES FROM PLAY</div>
+  </main>
+<script>
+(() => {
+  const API='/api/game-note-publications',WAYS='/api/games-live';
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fmt=v=>{try{return new Intl.DateTimeFormat('ja-JP',{year:'numeric',month:'long',day:'numeric'}).format(new Date(v))}catch{return''}};
+  const id=new URLSearchParams(location.search).get('note')||'';
+  async function data(){const r=await fetch(API,{cache:'no-store'});if(!r.ok)throw new Error('notes_load_failed');return r.json()}
+  async function ways(){try{const r=await fetch(WAYS,{cache:'no-store'});const d=await r.json();return Array.isArray(d.entries)?d.entries:[]}catch{return[]}}
+  function card(n){return `<a class="card" href="/notes/?note=${encodeURIComponent(n.id)}"><small>${esc(n.gameName||'PLAY NOTE')} · ${esc(fmt(n.publishedAt))}</small><h2>${esc(n.title||'無題')}</h2><p>${esc(n.body||'')}</p><div class="meta">${n.typeName?`<span class="pill">${esc(n.typeName)}</span>`:''}${n.relatedWaysIds?.length?`<span class="pill ways">WAYS ${n.relatedWaysIds.length}</span>`:''}</div></a>`}
+  async function render(){
+    try{
+      const d=await data(),entries=d.entries||[];
+      if(!id){document.getElementById('notes-list').innerHTML=entries.length?entries.map(card).join(''):'<div class="empty" style="grid-column:1/-1">公開中のPLAY NOTEはまだありません。</div>';return}
+      document.getElementById('index-view').classList.add('hidden');document.getElementById('detail-view').classList.add('on');
+      const n=entries.find(x=>String(x.id)===String(id));if(!n){document.getElementById('detail-root').innerHTML='<div class="empty">この公開メモは見つかりませんでした。</div>';return}
+      document.title=`${n.title||'PLAY NOTE'} / HARF-WAY`;
+      const xs=await ways(),related=(n.relatedWaysIds||[]).map(rid=>xs.find(x=>String(x.id)===String(rid))).filter(Boolean);
+      const relatedHtml=related.length?`<section class="ways"><div class="ways-head"><b>RELATED WAYS</b><span>実際のプレイを見る</span></div><div class="ways-grid">${related.map(x=>`<article class="ways-card"><video controls playsinline preload="metadata" ${x.thumbnailUrl?`poster="${esc(x.thumbnailUrl)}"`:''} src="${esc(x.video||'')}"></video><div class="ways-info"><strong>${esc(x.title||'')}</strong><a href="/?game=${encodeURIComponent(x.id)}">WAYSでこの動画を見る →</a></div></article>`).join('')}</div></section>`:'';
+      document.getElementById('detail-root').innerHTML=`<article class="article"><header class="hero"><div class="eyebrow">PLAY NOTE</div><h2>${esc(n.title||'無題')}</h2><div class="hero-meta"><span>${esc(n.gameName||'')}</span>${n.typeName?`<span>${esc(n.typeName)}</span>`:''}<span>${esc(fmt(n.publishedAt))}</span></div></header><div class="copy">${esc(n.body||'')}</div>${relatedHtml}</article>`;
+    }catch{document.getElementById(id?'detail-root':'notes-list').innerHTML='<div class="empty">読み込みに失敗しました。</div>'}
+  }
+  render();
+})();
+</script>
+</body>
+</html>

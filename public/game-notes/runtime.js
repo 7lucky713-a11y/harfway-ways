@@ -155,7 +155,9 @@
     loadScript('/game-notes/glossary-link.js');
     loadScript('/game-notes/facet-presets.js');
     loadScript('/game-notes/monster-train-fields.js', () => {
-      loadScript('/game-notes/note-glossary-links.js');
+      loadScript('/game-notes/note-glossary-links.js', () => {
+        loadScript('/game-notes/publication-link.js');
+      });
     });
   });
 })();
