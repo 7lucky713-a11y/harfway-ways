@@ -27,6 +27,13 @@
     { "source": "/ads-portal/", "destination": "/api/ads-portal-proxy?path=/" },
     { "source": "/_next/static/:path*", "destination": "/api/ads-portal-proxy?path=/_next/static/:path*" }
   ],
+  "headers": [
+    { "source": "/game-notes", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }] },
+    { "source": "/game-notes/:path*", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }] },
+    { "source": "/api/game-notes", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }] },
+    { "source": "/api/game-notes-glossary", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }] },
+    { "source": "/api/game-notes-media", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }] }
+  ],
   "crons": [
     { "path": "/api/weekly-harfway-cron", "schedule": "0 0,12 * * 1" },
     { "path": "/api/ways-core-sync", "schedule": "*/15 * * * *" },
