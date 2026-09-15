@@ -1,6 +1,5 @@
 User-agent: *
 Allow: /
-Disallow: /game-notes
 Disallow: /api/game-notes
 Disallow: /api/game-notes-glossary
 Disallow: /api/game-notes-media
