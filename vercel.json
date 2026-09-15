@@ -2,21 +2,21 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "redirects": [
     {
-      "source": "/:path*",
+      "source": "/:path(.*)",
       "has": [{ "type": "host", "value": "harfway-playback.vercel.app" }],
-      "destination": "https://ways.harf-way.com/:path*",
+      "destination": "https://ways.harf-way.com/:path",
       "permanent": true
     },
     {
-      "source": "/:path*",
+      "source": "/:path(.*)",
       "has": [{ "type": "host", "value": "harfway-playback-harf-way.vercel.app" }],
-      "destination": "https://ways.harf-way.com/:path*",
+      "destination": "https://ways.harf-way.com/:path",
       "permanent": true
     },
     {
-      "source": "/:path*",
+      "source": "/:path(.*)",
       "has": [{ "type": "host", "value": "harfway-playback-git-production-harf-way.vercel.app" }],
-      "destination": "https://ways.harf-way.com/:path*",
+      "destination": "https://ways.harf-way.com/:path",
       "permanent": true
     }
   ],
