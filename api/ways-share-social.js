@@ -1,6 +1,6 @@
 import waysShareHandler from './ways-share.js';
 
-const PROD_ORIGIN = 'https://harfway-playback.vercel.app';
+const PROD_ORIGIN = 'https://ways.harf-way.com';
 
 function queryValue(value, fallback = '') {
   return String(Array.isArray(value) ? value[0] : (value ?? fallback)).trim();
