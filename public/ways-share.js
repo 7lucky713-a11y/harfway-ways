@@ -3,8 +3,9 @@
   const MODAL_ID = 'hwWaysShareModal';
   const SID_KEY = 'ways_analytics_sid_v1';
   const LIVE = '/api/games-live';
-  const PROD_ORIGIN = 'https://harfway-playback.vercel.app';
-  const IS_PRODUCTION = location.hostname === 'harfway-playback.vercel.app';
+  const PROD_ORIGIN = 'https://ways.harf-way.com';
+  const PROD_HOST = new URL(PROD_ORIGIN).hostname;
+  const IS_PRODUCTION = location.hostname === PROD_HOST;
   let live = [];
   let byId = new Map();
   let currentGame = null;

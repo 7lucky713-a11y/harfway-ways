@@ -1,6 +1,6 @@
 import gamesLiveHandler from './games-live.js';
 
-const PROD_ORIGIN = 'https://harfway-playback.vercel.app';
+const PROD_ORIGIN = 'https://ways.harf-way.com';
 
 function escapeHtml(value = '') {
   return String(value).replace(/[&<>"']/g, (char) => ({
