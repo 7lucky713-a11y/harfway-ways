@@ -10,8 +10,7 @@ export const config = { maxDuration: 300 };
 
 const PROD_BASE = process.env.SALE_WATCH_CATALOG_BASE || 'https://harfway-playback.vercel.app';
 const CATALOG_URL = `${PROD_BASE}/api/sales-catalog`;
-const BATCH_SIZE = 32;
-const BOOTSTRAP_BATCH_SIZE = 96;
+const MAX_DAILY_CATALOG_SIZE = 600;
 const CATALOG_TIMEOUT_MS = 15000;
 
 function productionCronAuthorized(req) {
@@ -59,15 +58,6 @@ function uniqueSteamRows(rows) {
   return [...map.values()].sort((a, b) => stableHash(a.appid) - stableHash(b.appid));
 }
 
-function circularSlice(rows, start, count) {
-  if (!rows.length || count <= 0) return [];
-  const safeStart = ((Number(start || 0) % rows.length) + rows.length) % rows.length;
-  const size = Math.min(count, rows.length);
-  const out = [];
-  for (let i = 0; i < size; i += 1) out.push(rows[(safeStart + i) % rows.length]);
-  return out;
-}
-
 function reconcileStates(states, catalogRows) {
   const allowed = new Set(catalogRows.map((row) => String(row.appid)));
   const next = {};
@@ -99,10 +89,12 @@ export default async function handler(req, res) {
     const snapshot = existing || emptySnapshot();
     snapshot.states = reconcileStates(snapshot.states, catalogRows);
 
+    if (catalogRows.length > MAX_DAILY_CATALOG_SIZE) {
+      throw new Error('daily_catalog_exceeds_safe_limit');
+    }
     const isBootstrap = !existing || Object.keys(snapshot.states).length < 3;
-    const batchSize = isBootstrap ? BOOTSTRAP_BATCH_SIZE : BATCH_SIZE;
-    const cursor = Math.min(Math.max(0, Number(snapshot.cursor || 0)), Math.max(0, catalogRows.length - 1));
-    const selectedRows = circularSlice(catalogRows, cursor, batchSize);
+    // A daily job must refresh the full catalog, not the old 32-game rotating slice.
+    const selectedRows = catalogRows;
     const selectedIds = selectedRows.map((row) => String(row.appid));
     const rowByAppid = new Map(selectedRows.map((row) => [String(row.appid), row]));
 
@@ -135,10 +127,8 @@ export default async function handler(req, res) {
       };
     }
 
-    const rawNextCursor = cursor + selectedRows.length;
-    const wrapped = rawNextCursor >= catalogRows.length;
-    snapshot.cursor = catalogRows.length ? rawNextCursor % catalogRows.length : 0;
-    snapshot.cycle = Number(snapshot.cycle || 0) + (wrapped ? 1 : 0);
+    snapshot.cursor = 0;
+    snapshot.cycle = Number(snapshot.cycle || 0) + 1;
     snapshot.generatedAt = checkedAt;
     snapshot.catalogUpdatedAt = catalog.updatedAt || null;
 

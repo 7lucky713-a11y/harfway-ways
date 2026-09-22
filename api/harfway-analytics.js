@@ -37,9 +37,11 @@ function collection(def){return {enabled:true,provider:'ga4',measurementId:GA4_M
 
 export default async function handler(req,res){
   if(req.method!=='GET')return res.status(405).json({ok:false,error:'method_not_allowed'});
-  res.setHeader('Cache-Control','public, s-maxage=86400, stale-while-revalidate=3600');
-  const days=intParam(req.query?.days,7,1,365);
   const key=String(req.headers['x-showcase-admin-key']||'').trim();
+  // Never place admin-key-dependent reporting in a shared CDN cache.
+  res.setHeader('Cache-Control',key?'private, no-store':'private, max-age=86400');
+  res.setHeader('Vary','x-showcase-admin-key');
+  const days=intParam(req.query?.days,7,1,365);
   try{
     const base=analyticsUrl();
     const [ways,saleWatch,showcase,core,registry]=await Promise.all([

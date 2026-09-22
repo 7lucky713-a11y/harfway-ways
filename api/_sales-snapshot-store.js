@@ -3,7 +3,8 @@ import { neon } from '@neondatabase/serverless';
 export const SALES_SNAPSHOT_ID = 'runtime-sale-watch-live-v1';
 export const SALES_SNAPSHOT_URL = 'runtime://sale-watch/live-v1';
 export const SALES_SNAPSHOT_VERSION = 1;
-export const SALES_PUBLIC_MAX_AGE_HOURS = 8;
+// Daily refresh at 06:07 JST; allow a two-hour buffer for delayed cron execution.
+export const SALES_PUBLIC_MAX_AGE_HOURS = 26;
 
 export function getDatabaseUrl() {
   return (

@@ -31,7 +31,7 @@ async function proxyToStaging(req, res) {
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'method_not_allowed' });
-  res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=3600');
+  res.setHeader('Cache-Control', 'no-store');
 
   if (!shouldUseProductionDb()) return proxyToStaging(req, res);
 
@@ -272,6 +272,8 @@ export default async function handler(req, res) {
       }))
     };
 
+    // Cache successful daily reports only; failed DB reads must not become stale reports.
+    res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=3600');
     return res.status(200).json({
       ok: true,
       days,
