@@ -36,8 +36,8 @@ function showcaseSessions(data){return num(data?.totals?.find?.(x=>x.event_type=
 function collection(def){return {enabled:true,provider:'ga4',measurementId:GA4_MEASUREMENT_ID,serviceName:def.serviceName,contentType:def.contentType,productionUrl:def.productionUrl,source:def.source||'built_in'}}
 
 export default async function handler(req,res){
-  res.setHeader('Cache-Control','no-store');
   if(req.method!=='GET')return res.status(405).json({ok:false,error:'method_not_allowed'});
+  res.setHeader('Cache-Control','public, s-maxage=86400, stale-while-revalidate=3600');
   const days=intParam(req.query?.days,7,1,365);
   const key=String(req.headers['x-showcase-admin-key']||'').trim();
   try{
