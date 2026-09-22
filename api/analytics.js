@@ -30,8 +30,8 @@ async function proxyToStaging(req, res) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Cache-Control', 'no-store');
   if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'method_not_allowed' });
+  res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=3600');
 
   if (!shouldUseProductionDb()) return proxyToStaging(req, res);
 
