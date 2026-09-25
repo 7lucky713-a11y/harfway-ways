@@ -32,6 +32,15 @@
     link.id='game-note-public-index-link';link.className='gn-public-index';link.href='/notes/';link.target='_blank';link.rel='noopener';link.textContent='公開プレイノート ↗';
     const dig=$('#dig',top);if(dig)top.insertBefore(link,dig);else top.appendChild(link);
   }
+  function ensurePageSettingsLink(){
+    if($('#game-note-page-settings-link'))return;
+    const top=$('.main > .top');if(!top)return;
+    const link=document.createElement('a');
+    link.id='game-note-page-settings-link';link.className='gn-public-index';
+    link.href='/game-notes/page-settings/';
+    link.textContent='ページ設定 ⚙';
+    const dig=$('#dig',top);if(dig)top.insertBefore(link,dig);else top.appendChild(link);
+  }
   function ensureControls(){
     const foot=$('#note-form .dialog-foot');if(!foot||$('#game-note-publication'))return;
     const root=document.createElement('div');root.id='game-note-publication';root.className='gn-publication';foot.prepend(root);root.addEventListener('click',onAction);root.addEventListener('input',event=>{const field=event.target.dataset.publicField,id=noteId();if(!field||!id)return;const draft=state.drafts.get(id)||{};draft[field]=event.target.value;state.drafts.set(id,draft)});root.addEventListener('keydown',event=>{if(event.target.matches('[data-public-field]')&&event.key==='Enter')event.preventDefault()});render();
@@ -76,7 +85,7 @@
     if(!confirm(message))return;
     b.disabled=true;try{await mutate(action==='publish'?'POST':'PATCH',id,{seoTitle,publicSlug});state.drafts.delete(id);await refresh();toast(action==='publish'?'公開しました':'公開内容を更新しました')}catch(e){toast(`公開処理に失敗: ${e.message}`,true)}finally{b.disabled=false}
   }
-  installStyles();ensurePublicIndexLink();ensureControls();refresh();
+  installStyles();ensurePublicIndexLink();ensurePageSettingsLink();ensureControls();refresh();
   const overlay=$('#note-overlay');if(overlay)new MutationObserver(()=>{if(noteOpen()){setTimeout(()=>{render();refresh()},0)}}).observe(overlay,{attributes:true,attributeFilter:['class','aria-hidden']});
   let last='';setInterval(()=>{if(!noteOpen())return;const id=noteId();if(id!==last){last=id;render()}},350);
 })();

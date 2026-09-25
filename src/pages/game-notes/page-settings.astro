@@ -1,0 +1,149 @@
+---
+import { DEFAULT_PLAY_NOTES_PAGE_SETTINGS as defaults } from '../../../lib/play-notes-page-settings.js';
+const preview = process.env.VERCEL_ENV !== 'production';
+---
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow,noarchive" />
+  <meta name="referrer" content="same-origin" />
+  <title>プレイノートのページ設定｜HARF-WAY</title>
+  <style is:global>
+    :root{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#111713;color:#eef1eb}
+    *{box-sizing:border-box}body{margin:0;line-height:1.7}a{color:inherit}
+    .shell{width:min(940px,calc(100% - 32px));margin:0 auto;padding:32px 0 90px}
+    .back{color:#b9cbb8;font-size:13px;text-decoration:none}.back:hover{text-decoration:underline}
+    .head{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin:22px 0 26px}.head small{display:block;color:#98b19a;font-size:11px;font-weight:800;letter-spacing:.08em}
+    h1{font-size:clamp(28px,4vw,38px);letter-spacing:-.045em;line-height:1.3;margin:9px 0}h2{font-size:20px;margin:0 0 12px}.sub{font-size:13px;max-width:650px;color:#b4beb4;line-height:1.9}
+    .link{display:inline-flex;padding:10px 14px;border:1px solid #607666;border-radius:8px;text-decoration:none;color:#d2e0d3;font-size:12px}
+    .layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(250px,.76fr);gap:20px;align-items:start}
+    .card{border:1px solid #48584c;border-radius:13px;background:#1c241e;padding:24px}.card>h2{margin-bottom:6px}
+    .help{font-size:12px;color:#a9b9ab;line-height:1.9;margin:0 0 20px}
+    label.field{display:block;margin:0 0 19px;font-size:12px;color:#dae7d9;font-weight:800}.field small{display:block;font-weight:400;margin:4px 0 9px;color:#9cae9e;font-size:11px}
+    .field input,.field textarea,.key{display:block;width:100%;border:1px solid #536a58;background:#111915;border-radius:7px;padding:12px 14px;font-family:inherit;font-size:14px;line-height:1.7;font-weight:400;color:#f0f5ef;outline:none}
+    .field input:focus,.field textarea:focus,.key:focus{outline:2px solid #9dbd9d;outline-offset:1px}.field textarea{resize:vertical;min-height:105px;line-height:1.8}
+    .key-panel{padding:14px;background:#121b16;border:1px solid #384d40;border-radius:9px;margin-bottom:19px}
+    .key-panel label{font-weight:750;font-size:12px}.key-panel small{display:block;color:#9cac9d;font-weight:400;margin:3px 0 8px}.key{margin-top:7px}
+    .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.save,.reset{border:1px solid #9dbd9d;background:#d3e0cb;color:#1b301e;border-radius:8px;padding:11px 17px;cursor:pointer;font-size:12px;font-weight:900}.reset{background:transparent;color:#b9cbb9;border-color:#526a57}.save:disabled,.reset:disabled{opacity:.5;cursor:wait}
+    .status{margin:12px 0 0;font-size:12px;color:#bed2bd}.status.error{color:#e4aaa5}.note{border-top:1px solid #415345;margin-top:20px;padding-top:14px;font-size:11px;color:#a6b4a5;line-height:1.9}
+    .paper{background:#faf9f5;color:#2b302a;border:1px solid #d7dcd1;border-radius:10px;padding:30px 25px;margin-top:17px}
+    .paper .eyebrow{font-size:10px;font-weight:900;letter-spacing:.06em;color:#476950;margin:0 0 11px}.paper h2{font-size:32px;margin:0 0 13px}.paper .intro{font-size:13px;line-height:2;color:#696f67;white-space:pre-line;margin:0 0 29px;padding-bottom:23px;border-bottom:1px solid #dfded6}
+    .paper .about-label{font-size:10px;letter-spacing:.1em;font-weight:900;color:#476950;padding-top:16px;border-top:2px solid #2a302b}
+    .paper h3{font-size:19px;line-height:1.5;margin:16px 0 9px}.paper .about{white-space:pre-line;font-size:13px;line-height:2;color:#697067;margin:0}
+    @media(max-width:750px){.layout{grid-template-columns:1fr}.card{padding:18px}.paper{padding:22px 18px}.shell{padding-top:22px}}
+  </style>
+</head>
+<body>
+<main class="shell">
+  <a class="back" href="/game-notes/">← PRIVATE GAME NOTEBOOK に戻る</a>
+  <div class="head">
+    <div><small>HARF-WAY / PUBLIC PAGE SETTINGS</small><h1>プレイノートのページ設定</h1>
+      <p class="sub">公開一覧ページのコピーとABOUTを、記事本文やPrivate Noteを変更せずに編集できます。</p></div>
+    <a class="link" id="reader-link" href={preview?'/notes/?demo=1':'/notes/'} target="_blank" rel="noopener">公開画面を見る ↗</a>
+  </div>
+  <div class="layout">
+    <section class="card" aria-label="ページの文章を編集">
+      <h2>文章を編集する</h2>
+      <p class="help">4か所を編集して「設定を保存」を押すと、公開一覧ページに反映されます。右側の見本は入力中から更新されます。</p>
+      <form id="settings-form" data-preview={preview?'1':'0'}>
+        <label class="field">短いコピー
+          <small>「プレイノート」の見出しの上に表示</small>
+          <input required maxlength="120" name="eyebrow" value={defaults.eyebrow}/>
+        </label>
+        <label class="field">プレイノートの説明文
+          <small>「プレイノート」の大見出しの下に表示。検索向けdescriptionにも利用</small>
+          <textarea required maxlength="500" name="intro" rows="4">{defaults.intro}</textarea>
+        </label>
+        <label class="field">ABOUTの見出し
+          <small>右側の紹介エリアの見出し</small>
+          <input required maxlength="120" name="aboutTitle" value={defaults.aboutTitle}/>
+        </label>
+        <label class="field">ABOUTの本文
+          <small>右側の紹介エリアの文章</small>
+          <textarea required maxlength="600" name="aboutBody" rows="5">{defaults.aboutBody}</textarea>
+        </label>
+        <div class="key-panel">
+          <label for="admin-key">管理キー</label>
+          <small>{preview?'Previewでは通常、入力不要です。':'Private Game Notebookで解除済みなら自動で引き継ぎます。'}</small>
+          <input class="key" id="admin-key" type="password" autocomplete="off" placeholder="必要な場合のみ入力"/>
+        </div>
+        <div class="actions">
+          <button class="save" type="submit" id="save" disabled>設定を保存</button>
+          <button class="reset" type="button" id="reset" disabled>保存済みの内容に戻す</button>
+        </div>
+        <p id="message" role="status" aria-live="polite" class="status">保存済み設定を読み込んでいます…</p>
+        <p class="note">Private Note・公開記事の本文は変更しません。設定の保存先は{preview?'Preview専用DB':'本番DB'}で、反映まで最大約1分かかることがあります。</p>
+      </form>
+    </section>
+    <aside class="card">
+      <h2>表示イメージ</h2>
+      <p class="help">文章の確認用です。余白や文字の見え方は公開画面も確認してください。</p>
+      <div class="paper">
+        <p class="eyebrow" id="sample-eyebrow"></p>
+        <h2>プレイノート</h2>
+        <p class="intro" id="sample-intro"></p>
+        <div class="about-label">ABOUT</div>
+        <h3 id="sample-about-title"></h3>
+        <p class="about" id="sample-about-body"></p>
+      </div>
+    </aside>
+  </div>
+</main>
+<script is:inline>
+(() => {
+  const form=document.querySelector('#settings-form'),message=document.querySelector('#message');
+  const save=document.querySelector('#save'),reset=document.querySelector('#reset'),keyField=document.querySelector('#admin-key');
+  const names=['eyebrow','intro','aboutTitle','aboutBody'];
+  let saved=null,loading=true;
+  const fromForm=()=>Object.fromEntries(names.map(name=>[name,form.elements.namedItem(name).value.trim()]));
+  const apply=values=>{for(const name of names)form.elements.namedItem(name).value=values[name]||'';updatePreview()};
+  function updatePreview(){
+    const x=fromForm();
+    for(const [name,id] of [['eyebrow','sample-eyebrow'],['intro','sample-intro'],['aboutTitle','sample-about-title'],['aboutBody','sample-about-body']])
+      document.getElementById(id).textContent=x[name];
+    const changed=JSON.stringify(x)!==JSON.stringify(saved);
+    save.disabled=loading||!saved||!form.checkValidity();
+    reset.disabled=loading||!saved||!changed;
+    if(!loading&&saved&&changed)status('未保存の変更があります。');
+  }
+  function status(text,error=false){message.textContent=text;message.classList.toggle('error',error)}
+  for(const name of names)form.elements.namedItem(name).addEventListener('input',updatePreview);
+  reset.addEventListener('click',()=>{if(saved){apply(saved);status('保存済みの内容に戻しました。')}});
+  async function load(){
+    loading=true;save.disabled=true;reset.disabled=true;
+    try{
+      const r=await fetch('/api/play-notes-page-settings',{cache:'no-store'});
+      const data=await r.json().catch(()=>({}));
+      if(!r.ok||!data.ok||!data.settings)throw new Error(data.error||'http_'+r.status);
+      saved=Object.fromEntries(names.map(name=>[name,data.settings[name]||'']));
+      loading=false;apply(saved);
+      status(data.usingDefaults?'現在は初期文章を表示しています。保存すると専用設定になります。':'保存済みの文章を読み込みました。');
+    }catch(e){loading=true;status('設定を取得できませんでした。接続を確認して再読み込みしてください。 ('+e.message+')',true)}
+  }
+  form.addEventListener('submit',async event=>{
+    event.preventDefault();if(loading||!form.reportValidity())return;
+    const payload=fromForm();
+    const key=keyField.value.trim()||sessionStorage.getItem('harfway_game_notes_key')||'';
+    if(form.dataset.preview!=='1'&&!key){status('管理キーを入力するか、Private Game Notebookで解除してください。',true);keyField.focus();return}
+    save.disabled=true;reset.disabled=true;
+    status('設定を保存しています…');
+    try{
+      const r=await fetch('/api/play-notes-page-settings',{method:'PUT',cache:'no-store',
+        headers:{'content-type':'application/json',...(key?{'x-admin-key':key}:{})},body:JSON.stringify(payload)});
+      const data=await r.json().catch(()=>({}));
+      if(!r.ok||!data.ok)throw new Error(data.error||'http_'+r.status);
+      saved=Object.fromEntries(names.map(name=>[name,data.settings[name]||'']));
+      if(keyField.value.trim())sessionStorage.setItem('harfway_game_notes_key',keyField.value.trim());
+      keyField.value='';
+      status('保存しました。公開一覧ページは最大約1分で更新されます。');
+    }catch(e){status(e.message==='invalid_admin_key'||e.message==='admin_key_required'?
+      '管理キーを確認してください。設定は保存されていません。':'保存できませんでした: '+e.message,true)}
+    finally{updatePreview()}
+  });
+  updatePreview();load();
+})();
+</script>
+</body>
+</html>
