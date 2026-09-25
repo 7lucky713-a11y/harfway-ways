@@ -44,7 +44,7 @@ function toSnapshot(row){
     id:publicNoteId(row.id),title:row.title||'',body:row.body_text||'',excerpt:row.excerpt||'',
     gameName:clean(m.gameName,220),typeName:clean(m.typeName,160),sourceNoteId:clean(m.sourceNoteId,180),
     relatedWaysIds:list(m.relatedWaysIds),sourceCreatedAt:m.sourceCreatedAt||null,publishedAt:m.publishedAt||row.created_at||null,
-    snapshotUpdatedAt:m.snapshotUpdatedAt||row.updated_at||null,publicSlug:clean(m.publicSlug,150),seoTitle:clean(m.seoTitle,90)
+    snapshotUpdatedAt:m.snapshotUpdatedAt||row.updated_at||null,publicSlug:clean(m.publicSlug,150),slugHistory:list(m.slugHistory,40,150),seoTitle:clean(m.seoTitle,90)
   };
   item.publicSlug=notePublicSlug(item);item.url=notePublicPath(item);return item;
 }
@@ -84,6 +84,16 @@ function frozenSlug(existing,metadata,newTitle,newGame){
   if(existing)return notePublicSlug({gameName:metadata.gameName||newGame,title:existing.title||newTitle});
   return notePublicSlug({gameName:newGame,title:newTitle});
 }
+async function assertUniqueSlug(sql,noteId,slug,history=[]){
+  const rows=await sql`SELECT id,metadata FROM core.contents WHERE source=${PUBLIC_SOURCE} AND content_type=${PUBLIC_TYPE} AND status='active' AND id<>${snapshotDbId(noteId)}`;
+  if(rows.some(row=>{const m=row.metadata||{};const other=notePublicSlug({publicSlug:m.publicSlug,gameName:m.gameName,title:row.title});return other===slug||history.includes(other)||(Array.isArray(m.slugHistory)&&m.slugHistory.includes(slug))})){
+    const e=new Error('public_slug_conflict');e.status=409;throw e;
+  }
+}
+function nextSlugHistory(old,slug,existing){
+  const previous=existing?notePublicSlug({publicSlug:old.publicSlug,gameName:old.gameName,title:existing.title}):'';
+  return list([...(Array.isArray(old.slugHistory)?old.slugHistory:[]),...(previous&&previous!==slug?[previous]:[])].filter(x=>x!==slug),40,150);
+}
 async function publishSnapshot(sql,noteId,settings={}){
   const note=await sourceNote(sql,noteId),m=note.metadata&&typeof note.metadata==='object'?note.metadata:{};
   const gameName=await dictionaryName(sql,GAME_TYPE,m.gameId,'game');
@@ -93,9 +103,10 @@ async function publishSnapshot(sql,noteId,settings={}){
   const existing=current[0]||null,old=existing?.metadata&&typeof existing.metadata==='object'?existing.metadata:{};
   const title=clean(note.title,280)||'PLAY NOTE',body=clean(note.body_text,30000);
   const publicSlug=requestedSlug(settings.publicSlug)||frozenSlug(existing,old,title,gameName);
+  const slugHistory=nextSlugHistory(old,publicSlug,existing);await assertUniqueSlug(sql,noteId,publicSlug,slugHistory);
   const seoTitle=Object.hasOwn(settings,'seoTitle')?requestedSeoTitle(settings.seoTitle):clean(old.seoTitle,90);
   const now=new Date().toISOString(),publishedAt=old.publishedAt||now;
-  const metadata=JSON.stringify({sourceNoteId:publicNoteId(note.id),gameName,typeName,relatedWaysIds,sourceCreatedAt:m.createdAt||note.created_at||null,publishedAt,snapshotUpdatedAt:now,publicSlug,seoTitle});
+  const metadata=JSON.stringify({sourceNoteId:publicNoteId(note.id),gameName,typeName,relatedWaysIds,sourceCreatedAt:m.createdAt||note.created_at||null,publishedAt,snapshotUpdatedAt:now,publicSlug,slugHistory,seoTitle});
   const url=notePublicPath({id:publicNoteId(note.id),publicSlug});
   const rows=await sql`
     INSERT INTO core.contents(id,content_type,title,url,excerpt,body_text,status,source,metadata,created_at,updated_at)
@@ -112,7 +123,7 @@ async function saveSeoSettings(sql,noteId,settings={}){
   const publicSlug=requestedSlug(settings.publicSlug)||frozenSlug(existing,old,existing.title,old.gameName);
   const seoTitle=Object.hasOwn(settings,'seoTitle')?requestedSeoTitle(settings.seoTitle):clean(old.seoTitle,90);
   const url=notePublicPath({id:publicNoteId(noteId),publicSlug});
-  const metadata=JSON.stringify({...old,publicSlug,seoTitle,snapshotUpdatedAt:new Date().toISOString()});
+  const metadata=JSON.stringify({...old,publicSlug,slugHistory,seoTitle,snapshotUpdatedAt:new Date().toISOString()});
   const updated=await sql`UPDATE core.contents SET url=${url},metadata=CAST(${metadata} AS jsonb),updated_at=now() WHERE id=${snapshotDbId(noteId)} AND source=${PUBLIC_SOURCE} AND content_type=${PUBLIC_TYPE} AND status='active' RETURNING id,title,url,excerpt,body_text,metadata,created_at,updated_at`;
   return toSnapshot(updated[0]);
 }
