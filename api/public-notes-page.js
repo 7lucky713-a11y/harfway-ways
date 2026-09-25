@@ -6,7 +6,7 @@ const BLOG_STYLE="\n:root{--bg:#faf9f5;--ink:#282923;--muted:#777a72;--rule:#dfd
 
 function queryValue(value=''){return String(Array.isArray(value)?value[0]:(value??'')).trim()}
 
-function redirect(res,path){res.setHeader('Location',path);res.setHeader('Cache-Control','no-store');return res.status(308).end('Redirecting')}
+function redirect(res,path){res.setHeader('Location',path);res.setHeader('Cache-Control','no-store');return res.status(301).end('Moved Permanently')}
 
 function navHeader(demo=false){
  return `${demo?'<div class="sample">プレビュー用のサンプルです。実データには接続していません。</div>':''}<header class="site-header"><div class="header-inner"><div class="brand"><a href="https://harf-way.com/">HARF-WAY</a><i>/</i><span>プレイノート</span></div><nav class="nav" aria-label="サイト内メニュー"><a class="active" href="/notes/">プレイノート</a><a href="/words/">用語解説 ↗</a><a href="https://harf-way.com/">HARF-WAY ↗</a></nav></div></header>`;
@@ -84,7 +84,7 @@ async function handler(req,res){
  try{
   const ctx=demo?null:await publicDatabaseContext();
   const notes=demo?previewDemoNotes():await listPublicNotes(ctx.sql);
-  const requestedId=publicNoteId(queryValue(req.query?.id)||queryValue(req.query?.note));
+  const routePart=queryValue(req.query?.id)||queryValue(req.query?.note);const requestedId=publicNoteId(routePart);
   res.setHeader('Content-Type','text/html; charset=utf-8');
   res.setHeader('Cache-Control',demo?'no-store':'public, s-maxage=60, stale-while-revalidate=300');
   res.setHeader('Referrer-Policy','strict-origin-when-cross-origin');
@@ -99,9 +99,9 @@ async function handler(req,res){
    const schema={'@context':'https://schema.org','@type':'CollectionPage',name:'HARF-WAY プレイノート',description,url:absoluteUrl(req,'/notes/'),isPartOf:{'@type':'WebSite',name:'HARF-WAY',url:'https://harf-way.com/'}};
    return res.status(200).end(pageShell(seoHead(req,{title,description,path:'/notes/',type:'website',schema}),listBody(notes,settings,demo),{demo,filters:true}));
   }
-  const note=notes.find(n=>n.id===requestedId);if(!note)return notFound(req,res);
+  const legacyNote=notes.find(n=>n.id===requestedId);const note=legacyNote||notes.find(n=>notePublicSlug(n)===routePart||n.slugHistory?.includes(routePart));if(!note)return notFound(req,res);
   const canonicalSlug=notePublicSlug(note),requestedSlug=queryValue(req.query?.slug);
-  if(queryValue(req.query?.note)||!requestedSlug||requestedSlug!==canonicalSlug)return redirect(res,noteUrl(note,demo));
+  if(queryValue(req.query?.note)||legacyNote||requestedSlug||routePart!==canonicalSlug)return redirect(res,noteUrl(note,demo));
   const words=demo?[]:await listPublicWords(ctx.sql);
   const relatedWords=words.filter(w=>Array.isArray(w.relatedPublicNoteIds)&&w.relatedPublicNoteIds.includes(note.id));
   const waysCatalog=demo?[]:await loadWays(req);
