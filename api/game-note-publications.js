@@ -86,7 +86,7 @@ function frozenSlug(existing,metadata,newTitle,newGame){
 }
 async function assertUniqueSlug(sql,noteId,slug,history=[]){
   const rows=await sql`SELECT id,metadata FROM core.contents WHERE source=${PUBLIC_SOURCE} AND content_type=${PUBLIC_TYPE} AND status='active' AND id<>${snapshotDbId(noteId)}`;
-  if(rows.some(row=>{const m=row.metadata||{};const other=notePublicSlug({publicSlug:m.publicSlug,gameName:m.gameName,title:row.title});return other===slug||history.includes(other)||(Array.isArray(m.slugHistory)&&m.slugHistory.includes(slug))})){
+  if(rows.some(row=>{const m=row.metadata||{};const other=notePublicSlug({publicSlug:m.publicSlug,gameName:m.gameName,title:row.title});const otherHistory=Array.isArray(m.slugHistory)?m.slugHistory:[];return other===slug||history.includes(other)||otherHistory.includes(slug)||history.some(alias=>otherHistory.includes(alias))})){
     const e=new Error('public_slug_conflict');e.status=409;throw e;
   }
 }
