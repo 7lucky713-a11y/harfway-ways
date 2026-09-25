@@ -12,7 +12,8 @@
     const style=document.createElement('style');style.id='game-note-publication-styles';style.textContent=`
       .gn-public-index{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line2);background:#171d19;color:var(--text);border-radius:8px;padding:9px 11px;font-size:12px;font-weight:850;text-decoration:none;white-space:nowrap}
       .gn-public-index:hover{border-color:#647369;color:#fff}
-      .gn-publication{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-right:auto}
+      .gn-publication{display:flex;align-items:center;gap:8px;flex-wrap:wrap;width:100%;flex:1 1 100%;order:-1}
+      #note-form .dialog-foot{flex-wrap:wrap}
       .gn-publication-state{border:1px solid var(--line);border-radius:999px;padding:7px 9px;font:850 10px ui-monospace,monospace;letter-spacing:.06em;color:#859188;background:#111713}
       .gn-publication-state.on{border-color:#dff238;color:#111610;background:#dff238}
       .gn-publication button,.gn-publication a{border:1px solid var(--line2);background:#171d19;color:var(--text);border-radius:8px;padding:9px 11px;font-size:12px;font-weight:850;text-decoration:none;cursor:pointer}
