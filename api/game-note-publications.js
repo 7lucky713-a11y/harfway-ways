@@ -122,6 +122,7 @@ async function saveSeoSettings(sql,noteId,settings={}){
   const existing=rows[0],old=existing.metadata&&typeof existing.metadata==='object'?existing.metadata:{};
   const publicSlug=requestedSlug(settings.publicSlug)||frozenSlug(existing,old,existing.title,old.gameName);
   const seoTitle=Object.hasOwn(settings,'seoTitle')?requestedSeoTitle(settings.seoTitle):clean(old.seoTitle,90);
+  const slugHistory=nextSlugHistory(old,publicSlug,existing);await assertUniqueSlug(sql,noteId,publicSlug,slugHistory);
   const url=notePublicPath({id:publicNoteId(noteId),publicSlug});
   const metadata=JSON.stringify({...old,publicSlug,slugHistory,seoTitle,snapshotUpdatedAt:new Date().toISOString()});
   const updated=await sql`UPDATE core.contents SET url=${url},metadata=CAST(${metadata} AS jsonb),updated_at=now() WHERE id=${snapshotDbId(noteId)} AND source=${PUBLIC_SOURCE} AND content_type=${PUBLIC_TYPE} AND status='active' RETURNING id,title,url,excerpt,body_text,metadata,created_at,updated_at`;
