@@ -95,7 +95,7 @@ async function handler(req,res){
      catch(error){console.warn('[public-notes-page] demo settings fallback:',error?.message||error)}
    }else settings=(await loadPlayNotesPageSettings(ctx.sql)).settings;
    const title='プレイノート｜HARF-WAY';
-   const description=settings.intro;
+   const description='ゲームを遊びながら残した短いプレイ記録。考えがまとまり切る前の気づきも、そのまま読めるHARF-WAYのプレイノートです。';
    const schema={'@context':'https://schema.org','@type':'CollectionPage',name:'HARF-WAY プレイノート',description,url:absoluteUrl(req,'/notes/'),isPartOf:{'@type':'WebSite',name:'HARF-WAY',url:'https://harf-way.com/'}};
    return res.status(200).end(pageShell(seoHead(req,{title,description,path:'/notes/',type:'website',schema}),listBody(notes,settings,demo),{demo,filters:true}));
   }
