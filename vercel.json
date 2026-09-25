@@ -3,67 +3,262 @@
   "redirects": [
     {
       "source": "/:path(.*)",
-      "has": [{ "type": "host", "value": "harfway-playback.vercel.app" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "harfway-playback.vercel.app"
+        }
+      ],
       "destination": "https://ways.harf-way.com/:path",
       "permanent": true
     },
     {
       "source": "/:path(.*)",
-      "has": [{ "type": "host", "value": "harfway-playback-harf-way.vercel.app" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "harfway-playback-harf-way.vercel.app"
+        }
+      ],
       "destination": "https://ways.harf-way.com/:path",
       "permanent": true
     },
     {
       "source": "/:path(.*)",
-      "has": [{ "type": "host", "value": "harfway-playback-git-production-harf-way.vercel.app" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "harfway-playback-git-production-harf-way.vercel.app"
+        }
+      ],
       "destination": "https://ways.harf-way.com/:path",
       "permanent": true
     }
   ],
   "rewrites": [
-    { "source": "/sitemap.xml", "destination": "/api/public-seo-sitemap" },
-    { "source": "/notes/:id/:slug", "destination": "/api/public-notes-page?id=:id&slug=:slug" },
-    { "source": "/notes/:id/:slug/", "destination": "/api/public-notes-page?id=:id&slug=:slug" },
-    { "source": "/notes/:id", "destination": "/api/public-notes-page?id=:id" },
-    { "source": "/notes/:id/", "destination": "/api/public-notes-page?id=:id" },
-    { "source": "/notes", "destination": "/api/public-notes-page" },
-    { "source": "/notes/", "destination": "/api/public-notes-page" },
-    { "source": "/words/:id/:slug", "destination": "/api/public-words-page?id=:id&slug=:slug" },
-    { "source": "/words/:id/:slug/", "destination": "/api/public-words-page?id=:id&slug=:slug" },
-    { "source": "/words/:id", "destination": "/api/public-words-page?id=:id" },
-    { "source": "/words/:id/", "destination": "/api/public-words-page?id=:id" },
-    { "source": "/words", "destination": "/api/public-words-page" },
-    { "source": "/words/", "destination": "/api/public-words-page" },
-    { "source": "/single-game/:game/admin", "destination": "/single-game-shell/admin/?game=:game" },
-    { "source": "/single-game/:game/admin/", "destination": "/single-game-shell/admin/?game=:game" },
-    { "source": "/single-game/:game", "destination": "/single-game-shell/?game=:game" },
-    { "source": "/single-game/:game/", "destination": "/single-game-shell/?game=:game" },
-    { "source": "/share/:id", "destination": "/api/ways-share-social?id=:id&mode=share" },
-    { "source": "/share-image/:id", "destination": "/api/ways-share-image?id=:id" },
-    { "source": "/embed/r2/:token", "destination": "/api/r2-embed?token=:token" },
-    { "source": "/embed/:id", "destination": "/api/ways-share?id=:id&mode=embed" },
-    { "source": "/x-player/:id", "destination": "/api/ways-x-player?id=:id" },
-    { "source": "/ads-portal", "destination": "/api/ads-portal-proxy?path=/" },
-    { "source": "/ads-portal/", "destination": "/api/ads-portal-proxy?path=/" },
-    { "source": "/_next/static/:path*", "destination": "/api/ads-portal-proxy?path=/_next/static/:path*" }
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/public-seo-sitemap"
+    },
+    {
+      "source": "/notes/:id/:slug",
+      "destination": "/api/public-notes-page?id=:id&slug=:slug"
+    },
+    {
+      "source": "/notes/:id/:slug/",
+      "destination": "/api/public-notes-page?id=:id&slug=:slug"
+    },
+    {
+      "source": "/notes/:id",
+      "destination": "/api/public-notes-page?id=:id"
+    },
+    {
+      "source": "/notes/:id/",
+      "destination": "/api/public-notes-page?id=:id"
+    },
+    {
+      "source": "/notes",
+      "destination": "/api/public-notes-page"
+    },
+    {
+      "source": "/notes/",
+      "destination": "/api/public-notes-page"
+    },
+    {
+      "source": "/words/:id/:slug",
+      "destination": "/api/public-words-page?id=:id&slug=:slug"
+    },
+    {
+      "source": "/words/:id/:slug/",
+      "destination": "/api/public-words-page?id=:id&slug=:slug"
+    },
+    {
+      "source": "/words/:id",
+      "destination": "/api/public-words-page?id=:id"
+    },
+    {
+      "source": "/words/:id/",
+      "destination": "/api/public-words-page?id=:id"
+    },
+    {
+      "source": "/words",
+      "destination": "/api/public-words-page"
+    },
+    {
+      "source": "/words/",
+      "destination": "/api/public-words-page"
+    },
+    {
+      "source": "/single-game/:game/admin",
+      "destination": "/single-game-shell/admin/?game=:game"
+    },
+    {
+      "source": "/single-game/:game/admin/",
+      "destination": "/single-game-shell/admin/?game=:game"
+    },
+    {
+      "source": "/single-game/:game",
+      "destination": "/single-game-shell/?game=:game"
+    },
+    {
+      "source": "/single-game/:game/",
+      "destination": "/single-game-shell/?game=:game"
+    },
+    {
+      "source": "/share/:id",
+      "destination": "/api/ways-share-social?id=:id&mode=share"
+    },
+    {
+      "source": "/share-image/:id",
+      "destination": "/api/ways-share-image?id=:id"
+    },
+    {
+      "source": "/embed/r2/:token",
+      "destination": "/api/r2-embed?token=:token"
+    },
+    {
+      "source": "/embed/:id",
+      "destination": "/api/ways-share?id=:id&mode=embed"
+    },
+    {
+      "source": "/x-player/:id",
+      "destination": "/api/ways-x-player?id=:id"
+    },
+    {
+      "source": "/ads-portal",
+      "destination": "/api/ads-portal-proxy?path=/"
+    },
+    {
+      "source": "/ads-portal/",
+      "destination": "/api/ads-portal-proxy?path=/"
+    },
+    {
+      "source": "/_next/static/:path*",
+      "destination": "/api/ads-portal-proxy?path=/_next/static/:path*"
+    }
   ],
   "headers": [
-    { "source": "/", "headers": [{ "key": "Link", "value": "<https://ways.harf-way.com/>; rel=\"canonical\"" }] },
-    { "source": "/sales", "headers": [{ "key": "Link", "value": "<https://ways.harf-way.com/sales>; rel=\"canonical\"" }] },
-    { "source": "/sales/", "headers": [{ "key": "Link", "value": "<https://ways.harf-way.com/sales>; rel=\"canonical\"" }] },
-    { "source": "/archive", "headers": [{ "key": "Link", "value": "<https://ways.harf-way.com/archive/>; rel=\"canonical\"" }] },
-    { "source": "/archive/", "headers": [{ "key": "Link", "value": "<https://ways.harf-way.com/archive/>; rel=\"canonical\"" }] },
-    { "source": "/entrance", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }] },
-    { "source": "/entrance/", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }] },
-    { "source": "/game-notes", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }] },
-    { "source": "/game-notes/:path*", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }] },
-    { "source": "/api/game-notes", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }] },
-    { "source": "/api/game-notes-glossary", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }] },
-    { "source": "/api/game-notes-media", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }] }
+    {
+      "source": "/",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://ways.harf-way.com/>; rel=\"canonical\""
+        }
+      ]
+    },
+    {
+      "source": "/sales",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://ways.harf-way.com/sales>; rel=\"canonical\""
+        }
+      ]
+    },
+    {
+      "source": "/sales/",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://ways.harf-way.com/sales>; rel=\"canonical\""
+        }
+      ]
+    },
+    {
+      "source": "/archive",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://ways.harf-way.com/archive/>; rel=\"canonical\""
+        }
+      ]
+    },
+    {
+      "source": "/archive/",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://ways.harf-way.com/archive/>; rel=\"canonical\""
+        }
+      ]
+    },
+    {
+      "source": "/entrance",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
+        }
+      ]
+    },
+    {
+      "source": "/entrance/",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
+        }
+      ]
+    },
+    {
+      "source": "/game-notes",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
+        }
+      ]
+    },
+    {
+      "source": "/game-notes/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
+        }
+      ]
+    },
+    {
+      "source": "/api/game-notes",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
+        }
+      ]
+    },
+    {
+      "source": "/api/game-notes-glossary",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
+        }
+      ]
+    },
+    {
+      "source": "/api/game-notes-media",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
+        }
+      ]
+    }
   ],
   "crons": [
-    { "path": "/api/weekly-harfway-cron", "schedule": "0 0,12 * * 1" },
-    { "path": "/api/ways-core-sync", "schedule": "*/15 * * * *" },
-    { "path": "/api/sales-snapshot-refresh", "schedule": "7 21 * * *" }
+    {
+      "path": "/api/weekly-harfway-cron",
+      "schedule": "0 0,12 * * 1"
+    },
+    {
+      "path": "/api/ways-core-sync",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/sales-snapshot-refresh",
+      "schedule": "7 21 * * *"
+    }
   ]
 }
