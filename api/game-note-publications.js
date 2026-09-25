@@ -1,5 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import { archiveCors, archiveDatabaseConfig, authorizeArchiveRequest } from './archive-core.js';
+import { notePublicPath, notePublicSlug, slugifyPublic } from '../lib/game-public-seo.js';
 
 const PROJECT_ID='wispy-recipe-34518010';
 const PRODUCTION_BRANCH_ID='br-noisy-boat-awncea92';
@@ -39,12 +40,13 @@ async function authorizeWrite(req,production){if(!production)return;const auth=a
 
 function toSnapshot(row){
   const m=row.metadata&&typeof row.metadata==='object'?row.metadata:{};
-  return{
+  const item={
     id:publicNoteId(row.id),title:row.title||'',body:row.body_text||'',excerpt:row.excerpt||'',
     gameName:clean(m.gameName,220),typeName:clean(m.typeName,160),sourceNoteId:clean(m.sourceNoteId,180),
     relatedWaysIds:list(m.relatedWaysIds),sourceCreatedAt:m.sourceCreatedAt||null,publishedAt:m.publishedAt||row.created_at||null,
-    snapshotUpdatedAt:m.snapshotUpdatedAt||row.updated_at||null,url:row.url||`/notes/?note=${encodeURIComponent(publicNoteId(row.id))}`
+    snapshotUpdatedAt:m.snapshotUpdatedAt||row.updated_at||null,publicSlug:clean(m.publicSlug,150),seoTitle:clean(m.seoTitle,90)
   };
+  item.publicSlug=notePublicSlug(item);item.url=notePublicPath(item);return item;
 }
 async function listSnapshots(sql){
   const rows=await sql`SELECT id,title,url,excerpt,body_text,metadata,created_at,updated_at FROM core.contents WHERE source=${PUBLIC_SOURCE} AND content_type=${PUBLIC_TYPE} AND status='active' ORDER BY COALESCE((metadata->>'publishedAt')::timestamptz,created_at) DESC`;
@@ -64,16 +66,37 @@ async function relatedWaysForNote(sql,meta){
   const rows=await sql`SELECT id,metadata FROM core.contents WHERE source=${PRIVATE_SOURCE} AND content_type=${GLOSSARY_TYPE} AND status<>'archived'`;
   const out=[];for(const row of rows){if(!wanted.has(glossaryPublicId(row.id)))continue;const m=row.metadata&&typeof row.metadata==='object'?row.metadata:{};out.push(...list(m.relatedWaysIds))}return list(out);
 }
-async function publishSnapshot(sql,noteId){
+
+function requestedSlug(value){
+  const raw=clean(value,180);
+  if(!raw)return '';
+  if(!/[\p{L}\p{N}]/u.test(raw)){const e=new Error('invalid_public_slug');e.status=400;throw e}
+  return slugifyPublic(raw,'play-note').slice(0,150);
+}
+function requestedSeoTitle(value){
+  const raw=String(value??'').trim();
+  if(raw.length>90){const e=new Error('seo_title_too_long');e.status=400;throw e}
+  return raw;
+}
+function frozenSlug(existing,metadata,newTitle,newGame){
+  const fixed=clean(metadata.publicSlug,150);
+  if(fixed)return fixed;
+  if(existing)return notePublicSlug({gameName:metadata.gameName||newGame,title:existing.title||newTitle});
+  return notePublicSlug({gameName:newGame,title:newTitle});
+}
+async function publishSnapshot(sql,noteId,settings={}){
   const note=await sourceNote(sql,noteId),m=note.metadata&&typeof note.metadata==='object'?note.metadata:{};
   const gameName=await dictionaryName(sql,GAME_TYPE,m.gameId,'game');
   const typeName=await dictionaryName(sql,TYPE_TYPE,m.typeId,'type');
   const relatedWaysIds=await relatedWaysForNote(sql,m);
-  const current=await sql`SELECT metadata FROM core.contents WHERE id=${snapshotDbId(noteId)} AND source=${PUBLIC_SOURCE} AND content_type=${PUBLIC_TYPE} LIMIT 1`;
-  const old=current[0]?.metadata&&typeof current[0].metadata==='object'?current[0].metadata:{};
+  const current=await sql`SELECT title,metadata FROM core.contents WHERE id=${snapshotDbId(noteId)} AND source=${PUBLIC_SOURCE} AND content_type=${PUBLIC_TYPE} LIMIT 1`;
+  const existing=current[0]||null,old=existing?.metadata&&typeof existing.metadata==='object'?existing.metadata:{};
+  const title=clean(note.title,280)||'PLAY NOTE',body=clean(note.body_text,30000);
+  const publicSlug=requestedSlug(settings.publicSlug)||frozenSlug(existing,old,title,gameName);
+  const seoTitle=Object.hasOwn(settings,'seoTitle')?requestedSeoTitle(settings.seoTitle):clean(old.seoTitle,90);
   const now=new Date().toISOString(),publishedAt=old.publishedAt||now;
-  const metadata=JSON.stringify({sourceNoteId:publicNoteId(note.id),gameName,typeName,relatedWaysIds,sourceCreatedAt:m.createdAt||note.created_at||null,publishedAt,snapshotUpdatedAt:now});
-  const title=clean(note.title,280)||'PLAY NOTE',body=clean(note.body_text,30000),url=`/notes/?note=${encodeURIComponent(publicNoteId(note.id))}`;
+  const metadata=JSON.stringify({sourceNoteId:publicNoteId(note.id),gameName,typeName,relatedWaysIds,sourceCreatedAt:m.createdAt||note.created_at||null,publishedAt,snapshotUpdatedAt:now,publicSlug,seoTitle});
+  const url=notePublicPath({id:publicNoteId(note.id),publicSlug});
   const rows=await sql`
     INSERT INTO core.contents(id,content_type,title,url,excerpt,body_text,status,source,metadata,created_at,updated_at)
     VALUES(${snapshotDbId(noteId)},${PUBLIC_TYPE},${title},${url},${body.slice(0,280)},${body},'active',${PUBLIC_SOURCE},CAST(${metadata} AS jsonb),now(),now())
@@ -81,10 +104,22 @@ async function publishSnapshot(sql,noteId){
     RETURNING id,title,url,excerpt,body_text,metadata,created_at,updated_at`;
   return toSnapshot(rows[0]);
 }
+// Metadata-only edits do not silently republish the newer private source body.
+async function saveSeoSettings(sql,noteId,settings={}){
+  const rows=await sql`SELECT id,title,url,excerpt,body_text,metadata,created_at,updated_at FROM core.contents WHERE id=${snapshotDbId(noteId)} AND source=${PUBLIC_SOURCE} AND content_type=${PUBLIC_TYPE} AND status='active' LIMIT 1`;
+  if(!rows[0]){const e=new Error('public_note_not_found');e.status=404;throw e}
+  const existing=rows[0],old=existing.metadata&&typeof existing.metadata==='object'?existing.metadata:{};
+  const publicSlug=requestedSlug(settings.publicSlug)||frozenSlug(existing,old,existing.title,old.gameName);
+  const seoTitle=Object.hasOwn(settings,'seoTitle')?requestedSeoTitle(settings.seoTitle):clean(old.seoTitle,90);
+  const url=notePublicPath({id:publicNoteId(noteId),publicSlug});
+  const metadata=JSON.stringify({...old,publicSlug,seoTitle,snapshotUpdatedAt:new Date().toISOString()});
+  const updated=await sql`UPDATE core.contents SET url=${url},metadata=CAST(${metadata} AS jsonb),updated_at=now() WHERE id=${snapshotDbId(noteId)} AND source=${PUBLIC_SOURCE} AND content_type=${PUBLIC_TYPE} AND status='active' RETURNING id,title,url,excerpt,body_text,metadata,created_at,updated_at`;
+  return toSnapshot(updated[0]);
+}
 async function unpublish(sql,noteId){const rows=await sql`UPDATE core.contents SET status='archived',updated_at=now() WHERE id=${snapshotDbId(noteId)} AND source=${PUBLIC_SOURCE} AND content_type=${PUBLIC_TYPE} AND status='active' RETURNING id`;return Boolean(rows[0])}
 
 export default async function handler(req,res){
-  archiveCors(res);res.setHeader('Cache-Control','no-store');res.setHeader('Access-Control-Allow-Methods','GET,POST,PATCH,DELETE,OPTIONS');
+  archiveCors(res);res.setHeader('Cache-Control','no-store');res.setHeader('Access-Control-Allow-Methods','GET,POST,PATCH,PUT,DELETE,OPTIONS');
   if(req.method==='OPTIONS')return res.status(204).end();
   try{
     const ctx=await databaseContext();
@@ -95,7 +130,8 @@ export default async function handler(req,res){
     }
     await authorizeWrite(req,ctx.production);
     const body=parseBody(req),noteId=publicNoteId(body.noteId||body.id||'');if(!noteId)return res.status(400).json({ok:false,error:'note_id_required'});
-    if(req.method==='POST'||req.method==='PATCH'){const item=await publishSnapshot(ctx.sql,noteId);return res.status(200).json({ok:true,item})}
+    if(req.method==='POST'||req.method==='PATCH'){const item=await publishSnapshot(ctx.sql,noteId,body);return res.status(200).json({ok:true,item})}
+    if(req.method==='PUT'){const item=await saveSeoSettings(ctx.sql,noteId,body);return res.status(200).json({ok:true,item})}
     if(req.method==='DELETE'){const removed=await unpublish(ctx.sql,noteId);return res.status(removed?200:404).json({ok:removed,removed})}
     return res.status(405).json({ok:false,error:'method_not_allowed'});
   }catch(error){console.error('[game-note-publications]',error?.message||error);return res.status(error?.status||500).json({ok:false,error:error?.message||'game_note_publication_failed',...(error?.details||{})})}
