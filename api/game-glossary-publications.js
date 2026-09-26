@@ -1,5 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import { archiveCors, archiveDatabaseConfig, authorizeArchiveRequest } from './archive-core.js';
+import { wordPublicPath, wordPublicSlug, slugifyPublic } from '../lib/game-public-seo.js';
 
 const PROJECT_ID='wispy-recipe-34518010';
 const PRODUCTION_BRANCH_ID='br-noisy-boat-awncea92';
@@ -46,7 +47,8 @@ function toSnapshot(row){
     relatedWaysIds:list(m.relatedWaysIds),relatedPublicNoteIds:list(m.relatedPublicNoteIds,40,180),
     relatedPublicGlossaryIds:list(m.relatedPublicGlossaryIds,40,180),sourceCreatedAt:m.sourceCreatedAt||null,
     publishedAt:m.publishedAt||row.created_at||null,snapshotUpdatedAt:m.snapshotUpdatedAt||row.updated_at||null,
-    url:row.url||`/words/?word=${encodeURIComponent(wordId(row.id))}`
+    publicSlug:wordPublicSlug({publicSlug:m.publicSlug,gameName:m.gameName,term:row.title}),slugHistory:list(m.slugHistory,40,150),
+    url:wordPublicPath({id:wordId(row.id),publicSlug:m.publicSlug,gameName:m.gameName,term:row.title})
   };
 }
 async function listSnapshots(sql){
@@ -77,15 +79,36 @@ async function relatedPublicGlossaries(sql,sourceMeta){
   const active=new Set(rows.map(row=>wordId(row.metadata?.sourceGlossaryId||'')).filter(Boolean));
   return wanted.filter(id=>active.has(id));
 }
-async function publishSnapshot(sql,id){
+function requestedSlug(value){
+  const raw=clean(value,180);
+  if(!raw)return '';
+  if(!/[\p{L}\p{N}]/u.test(raw)){const e=new Error('invalid_public_slug');e.status=400;throw e}
+  return slugifyPublic(raw,'word').slice(0,110);
+}
+function frozenSlug(row,fallback={}){
+  const m=row?.metadata&&typeof row.metadata==='object'?row.metadata:{};
+  return wordPublicSlug({publicSlug:m.publicSlug,gameName:m.gameName||fallback.gameName,term:row?.title||fallback.term});
+}
+function nextSlugHistory(row,newSlug){
+  const m=row?.metadata&&typeof row.metadata==='object'?row.metadata:{};
+  const history=list(m.slugHistory,40,150),oldSlug=row?frozenSlug(row):'';
+  if(oldSlug&&oldSlug!==newSlug&&history.includes(newSlug)){
+    const e=new Error('historic_slug_reuse_forbidden');e.status=409;throw e
+  }
+  const aliases=oldSlug&&oldSlug!==newSlug?[oldSlug]:[];
+  return list([...history,...aliases].filter(x=>x!==newSlug),40,150);
+}
+async function publishSnapshot(sql,id,settings={}){
   const source=await sourceGlossary(sql,id),m=source.metadata&&typeof source.metadata==='object'?source.metadata:{};
   const publicId=wordId(source.id),game=await gameName(sql,m.gameId);
   const relatedWaysIds=list(m.relatedWaysIds),relatedPublicNoteIds=await relatedPublicNotes(sql,publicId),relatedPublicGlossaryIds=await relatedPublicGlossaries(sql,m);
-  const current=await sql`SELECT metadata FROM core.contents WHERE id=${snapshotDbId(publicId)} AND source=${PUBLIC_SOURCE} AND content_type=${PUBLIC_TYPE} LIMIT 1`;
-  const old=current[0]?.metadata&&typeof current[0].metadata==='object'?current[0].metadata:{};
-  const now=new Date().toISOString(),publishedAt=old.publishedAt||now;
-  const metadata=JSON.stringify({sourceGlossaryId:publicId,gameName:game,relatedWaysIds,relatedPublicNoteIds,relatedPublicGlossaryIds,sourceCreatedAt:m.createdAt||source.created_at||null,publishedAt,snapshotUpdatedAt:now});
-  const term=clean(source.title,280)||'無題のことば',description=clean(source.body_text,30000),url=`/words/?word=${encodeURIComponent(publicId)}`;
+  const current=await sql`SELECT id,title,metadata FROM core.contents WHERE id=${snapshotDbId(publicId)} AND source=${PUBLIC_SOURCE} AND content_type=${PUBLIC_TYPE} LIMIT 1`;
+  const existing=current[0]||null,old=existing?.metadata&&typeof existing.metadata==='object'?existing.metadata:{};
+  const term=clean(source.title,280)||'無題のことば',description=clean(source.body_text,30000);
+  const publicSlug=requestedSlug(settings.publicSlug)||frozenSlug(existing,{term,gameName:game});
+  const slugHistory=nextSlugHistory(existing,publicSlug),now=new Date().toISOString(),publishedAt=old.publishedAt||now;
+  const metadata=JSON.stringify({...old,sourceGlossaryId:publicId,gameName:game,relatedWaysIds,relatedPublicNoteIds,relatedPublicGlossaryIds,sourceCreatedAt:m.createdAt||source.created_at||null,publishedAt,snapshotUpdatedAt:now,publicSlug,slugHistory});
+  const url=wordPublicPath({id:publicId,publicSlug});
   const rows=await sql`
     INSERT INTO core.contents(id,content_type,title,url,excerpt,body_text,status,source,metadata,created_at,updated_at)
     VALUES(${snapshotDbId(publicId)},${PUBLIC_TYPE},${term},${url},${description.slice(0,280)},${description},'active',${PUBLIC_SOURCE},CAST(${metadata} AS jsonb),now(),now())
@@ -93,13 +116,29 @@ async function publishSnapshot(sql,id){
     RETURNING id,title,url,excerpt,body_text,metadata,created_at,updated_at`;
   return toSnapshot(rows[0]);
 }
+// URL-only edits never republish unapproved text from the private glossary.
+async function saveUrlSettings(sql,id,settings={}){
+  const rows=await sql`SELECT id,title,url,excerpt,body_text,metadata,created_at,updated_at FROM core.contents
+    WHERE id=${snapshotDbId(id)} AND source=${PUBLIC_SOURCE} AND content_type=${PUBLIC_TYPE} AND status='active' LIMIT 1`;
+  if(!rows[0]){const e=new Error('public_glossary_not_found');e.status=404;throw e}
+  const existing=rows[0],old=existing.metadata&&typeof existing.metadata==='object'?existing.metadata:{};
+  const publicSlug=requestedSlug(settings.publicSlug)||frozenSlug(existing);
+  const slugHistory=nextSlugHistory(existing,publicSlug),now=new Date().toISOString();
+  const url=wordPublicPath({id:wordId(id),publicSlug});
+  const metadata=JSON.stringify({...old,publicSlug,slugHistory,snapshotUpdatedAt:now});
+  const updated=await sql`UPDATE core.contents SET url=${url},metadata=CAST(${metadata} AS jsonb),updated_at=now()
+    WHERE id=${snapshotDbId(id)} AND source=${PUBLIC_SOURCE} AND content_type=${PUBLIC_TYPE} AND status='active'
+    RETURNING id,title,url,excerpt,body_text,metadata,created_at,updated_at`;
+  if(!updated[0]){const e=new Error('public_glossary_not_found');e.status=404;throw e}
+  return toSnapshot(updated[0]);
+}
 async function unpublish(sql,id){
   const rows=await sql`UPDATE core.contents SET status='archived',updated_at=now() WHERE id=${snapshotDbId(id)} AND source=${PUBLIC_SOURCE} AND content_type=${PUBLIC_TYPE} AND status='active' RETURNING id`;
   return Boolean(rows[0]);
 }
 
 export default async function handler(req,res){
-  archiveCors(res);res.setHeader('Cache-Control','no-store');res.setHeader('Access-Control-Allow-Methods','GET,POST,PATCH,DELETE,OPTIONS');
+  archiveCors(res);res.setHeader('Cache-Control','no-store');res.setHeader('Access-Control-Allow-Methods','GET,POST,PATCH,PUT,DELETE,OPTIONS');
   if(req.method==='OPTIONS')return res.status(204).end();
   try{
     const ctx=await databaseContext();
@@ -110,7 +149,8 @@ export default async function handler(req,res){
     }
     await authorizeWrite(req,ctx.production);
     const body=parseBody(req),id=wordId(body.glossaryId||body.id||'');if(!id)return res.status(400).json({ok:false,error:'glossary_id_required'});
-    if(req.method==='POST'||req.method==='PATCH'){const item=await publishSnapshot(ctx.sql,id);return res.status(200).json({ok:true,item})}
+    if(req.method==='POST'||req.method==='PATCH'){const item=await publishSnapshot(ctx.sql,id,body);return res.status(200).json({ok:true,item})}
+    if(req.method==='PUT'){const item=await saveUrlSettings(ctx.sql,id,body);return res.status(200).json({ok:true,item})}
     if(req.method==='DELETE'){const removed=await unpublish(ctx.sql,id);return res.status(removed?200:404).json({ok:removed,removed})}
     return res.status(405).json({ok:false,error:'method_not_allowed'});
   }catch(error){console.error('[game-glossary-publications]',error?.message||error);return res.status(error?.status||500).json({ok:false,error:error?.message||'game_glossary_publication_failed',...(error?.details||{})})}
