@@ -3,7 +3,7 @@
   const $=selector=>document.querySelector(selector);
   const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const key=()=>sessionStorage.getItem('harfway_private_clips_key')||sessionStorage.getItem('harfway_game_notes_key')||'';
-  const state={clips:[],entries:new Map(),editing:null,busy:false};
+  const state={clips:[],entries:new Map(),editing:null,busy:false,urlDrafts:new Map()};
   const box=document.createElement('section');
   box.id='clip-publication';box.className='clip-publication';box.setAttribute('aria-label','公開設定');
   $('.capture .actions').after(box);
@@ -23,15 +23,18 @@
       return;
     }
     const selected=entry?.typeName||'短文';
+    const draft=state.urlDrafts.has(clip.id)?state.urlDrafts.get(clip.id):(entry?.publicSlug||'');
+    const latestUrl=entry?.url?`${entry.url}?latest=${encodeURIComponent(entry.updatedAt||'now')}`:'';
     box.innerHTML=`
       <div class="pub-heading"><div>${label}<h2>${entry?'公開中の文章':'このCLIPを公開する'}</h2></div>
         <span class="pub-state ${entry?'is-public':''}">${entry?'公開中':'非公開'}</span></div>
       <div class="pub-fields"><label>文章の種類<select id="clip-pub-type">${types.map(type=>`<option ${type===selected?'selected':''}>${esc(type)}</option>`).join('')}</select></label>
       <label class="pub-check"><input type="checkbox" id="clip-pub-tags" ${entry?.tags?.length?'checked':''}><span>タグも公開する</span></label></div>
+      <div class="pub-url"><label for="clip-pub-slug">公開URLの末尾</label><div class="pub-url-input"><span>ways.harf-way.com/notes/</span><input id="clip-pub-slug" type="text" maxlength="110" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="空欄なら自動生成" value="${esc(draft)}" /></div><p>公開後も変更可能。以前のURLからは新しいURLへ転送します。</p></div>
       <div class="pub-preview"><small>公開前に確認</small><strong id="clip-pub-preview-title">${esc(clip.title)}</strong><p id="clip-pub-preview-body">${esc((clip.body||'').slice(0,210))}</p></div>
       <p class="pub-help">現在の<strong>保存済み内容</strong>から公開版を作ります。編集中の変更は先に「更新」で保存してください。画像は非公開のままです。</p>
       <div class="pub-actions"><button type="button" class="primary" data-clip-pub-action="${entry?'update':'publish'}">${entry?'公開内容を更新':'プレイノートに公開'}</button>
-      ${entry?`<a href="${esc(entry.url)}" target="_blank" rel="noopener">公開ページ ↗</a><button type="button" class="danger" data-clip-pub-action="unpublish">公開解除</button>`:''}</div>`;
+      ${entry?`<a href="${esc(latestUrl)}" target="_blank" rel="noopener">公開ページ ↗</a><button type="button" class="ghost" data-clip-pub-action="save-url">URLだけ保存</button><button type="button" class="danger" data-clip-pub-action="unpublish">公開解除</button>`:''}</div>`;
   }
   function updatePreview(){
     if(!state.editing)return;
@@ -53,9 +56,9 @@
       draw();
     }catch(error){notice(error.message,true)}
   }
-  async function mutate(method,clipId,typeName,includeTags){
+  async function mutate(method,clipId,payload={}){
     const response=await fetch(API,{method,cache:'no-store',headers:{'x-admin-key':key(),'content-type':'application/json'},
-      body:JSON.stringify({clipId,typeName,includeTags})});
+      body:JSON.stringify({clipId,...payload})});
     const result=await response.json().catch(()=>({}));
     if(!response.ok)throw new Error(result.error||'公開処理に失敗');
     await refresh();return result;
@@ -64,6 +67,7 @@
   window.addEventListener('private-clips:edit',event=>{state.editing=event.detail.clip||null;draw()});
   $('#clip-title')?.addEventListener('input',updatePreview);
   $('#clip-body')?.addEventListener('input',updatePreview);
+  box.addEventListener('input',event=>{if(event.target.id==='clip-pub-slug'&&state.editing)state.urlDrafts.set(state.editing.id,event.target.value)});
   document.addEventListener('click',async event=>{
     const button=event.target.closest('[data-clip-public-id]');
     if(button){
@@ -75,14 +79,27 @@
     const entry=activeEntry(),clipId=state.editing.id;
     const mode=action.dataset.clipPubAction;
     const prompt=mode==='unpublish'?'公開を解除しますか？ 非公開CLIPは残ります。':
+      mode==='save-url'?'公開URLを保存しますか？ 古いURLからは新しいURLへ転送します。本文は変更されません。':
       mode==='publish'?'保存済みの内容をプレイノートに公開しますか？':'保存済みの内容で公開版を更新しますか？';
     if(!confirm(prompt))return;
     state.busy=true;box.classList.add('is-busy');
     try{
-      await mutate(mode==='unpublish'?'DELETE':entry?'PATCH':'POST',clipId,$('#clip-pub-type')?.value||'短文',!!$('#clip-pub-tags')?.checked);
-      notice(mode==='unpublish'?'公開を解除しました':entry?'公開内容を更新しました':'公開しました');
-    }catch(error){notice(error.message,true)}
-    finally{state.busy=false;box.classList.remove('is-busy')}
+      const publicSlug=$('#clip-pub-slug')?.value.trim()||'';
+      const payload=mode==='save-url'?{publicSlug}:{
+        publicSlug,typeName:$('#clip-pub-type')?.value||'短文',includeTags:!!$('#clip-pub-tags')?.checked
+      };
+      const method=mode==='unpublish'?'DELETE':mode==='save-url'?'PUT':entry?'PATCH':'POST';
+      await mutate(method,clipId,payload);
+      state.urlDrafts.delete(clipId);
+      notice(mode==='unpublish'?'公開を解除しました':mode==='save-url'?'URLを保存しました':entry?'公開内容を更新しました':'公開しました');
+    }catch(error){
+      const messages={
+        public_slug_conflict:'このURLは別の公開記事で使われています。',
+        historic_slug_reuse_forbidden:'以前使用したURLには戻せません。新しいURLを指定してください。',
+        invalid_public_slug:'URLの末尾には日本語か英数字を含めてください。'
+      };
+      notice(messages[error.message]||error.message,true);
+    }finally{state.busy=false;box.classList.remove('is-busy')}
   });
   draw();
 })();

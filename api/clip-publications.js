@@ -21,7 +21,7 @@ function toEntry(row){
   const id=clean(m.sourceClipId,80)||clipId(row.id.replace(/^game-notes:public-note:/,''));
   const item={
     clipId:id,id:`clip-${id}`,title:row.title||'',body:row.body_text||'',
-    typeName:clean(m.typeName,80)||'短文',tags:list(m.tags),publicSlug:clean(m.publicSlug,150),
+    typeName:clean(m.typeName,80)||'短文',tags:list(m.tags),publicSlug:clean(m.publicSlug,150),slugHistory:list(m.slugHistory,40,150),
     publishedAt:m.publishedAt||row.created_at||null,updatedAt:m.snapshotUpdatedAt||row.updated_at||null
   };
   item.url=notePublicPath({publicSlug:item.publicSlug,title:item.title});
@@ -42,7 +42,7 @@ async function sourceClip(sql,id){
   return rows[0];
 }
 async function publishedSnapshot(sql,id){
-  const rows=await sql`SELECT id,title,body_text,metadata,created_at,updated_at
+  const rows=await sql`SELECT id,title,body_text,metadata,created_at,updated_at,status
     FROM core.contents WHERE id=${snapshotId(id)} AND source=${PUBLIC_SOURCE}
       AND content_type=${PUBLIC_TYPE} LIMIT 1`;
   if(rows[0]&&rows[0].metadata?.sourceKind!=='clip'){
@@ -50,10 +50,34 @@ async function publishedSnapshot(sql,id){
   }
   return rows[0]||null;
 }
-async function assertSlugAvailable(sql,id,slug){
+
+function requestedSlug(value){
+  const raw=clean(value,180);
+  if(!raw)return'';
+  if(!/[\p{L}\p{N}]/u.test(raw)){const e=new Error('invalid_public_slug');e.status=400;throw e}
+  return slugifyPublic(raw,'clip').slice(0,110);
+}
+function currentSlug(row){
+  if(!row)return'';
+  const m=row.metadata&&typeof row.metadata==='object'?row.metadata:{};
+  return notePublicSlug({publicSlug:m.publicSlug,gameName:m.gameName,title:row.title});
+}
+function changedSlugHistory(old,previous,slug){
+  const original=currentSlug(old),existing=list(previous.slugHistory,40,150);
+  if(original&&original!==slug&&existing.includes(slug)){
+    const e=new Error('historic_slug_reuse_forbidden');e.status=409;throw e;
+  }
+  return list([...existing,...(original&&original!==slug?[original]:[])].filter(x=>x!==slug),40,150);
+}
+async function assertSlugAvailable(sql,id,slug,history=[]){
   const rows=await sql`SELECT id,title,metadata FROM core.contents WHERE source=${PUBLIC_SOURCE}
     AND content_type=${PUBLIC_TYPE} AND status='active' AND id<>${snapshotId(id)}`;
-  if(rows.some(row=>{const m=row.metadata||{};return notePublicSlug({publicSlug:m.publicSlug,title:row.title,gameName:m.gameName})===slug||(Array.isArray(m.slugHistory)&&m.slugHistory.includes(slug))})){
+  if(rows.some(row=>{
+    const m=row.metadata||{};
+    const current=notePublicSlug({publicSlug:m.publicSlug,title:row.title,gameName:m.gameName});
+    const old=list(m.slugHistory,40,150);
+    return current===slug||old.includes(slug)||history.includes(current)||history.some(alias=>old.includes(alias));
+  })){
     const e=new Error('public_slug_conflict');e.status=409;throw e;
   }
 }
@@ -65,13 +89,14 @@ async function publish(sql,id,body){
   const tags=body.includeTags===true?list(clip.metadata?.tags):[];
   const title=clean(clip.title,280),text=clean(clip.body_text,30000);
   if(!title){const e=new Error('clip_title_required');e.status=400;throw e}
-  const publicSlug=clean(previous.publicSlug,150)||`clip-${slugifyPublic(title,'clip').slice(0,62)}-${id.slice(0,8)}`;
-  await assertSlugAvailable(sql,id,publicSlug);
+  const publicSlug=requestedSlug(body.publicSlug)||currentSlug(old)||`clip-${slugifyPublic(title,'clip').slice(0,62)}-${id.slice(0,8)}`;
+  const slugHistory=changedSlugHistory(old,previous,publicSlug);
+  await assertSlugAvailable(sql,id,publicSlug,slugHistory);
   const now=new Date().toISOString();
   const metadata=JSON.stringify({
-    sourceKind:'clip',sourceClipId:id,typeName,tags,gameName:'',
+    ...previous,sourceKind:'clip',sourceClipId:id,typeName,tags,gameName:'',
     relatedWaysIds:[],sourceCreatedAt:clip.metadata?.createdAt||clip.created_at||null,
-    publicSlug,slugHistory:[],seoTitle:'',publishedAt:previous.publishedAt||now,snapshotUpdatedAt:now
+    publicSlug,slugHistory,seoTitle:previous.seoTitle||'',publishedAt:previous.publishedAt||now,snapshotUpdatedAt:now
   });
   const url=notePublicPath({publicSlug});
   const rows=await sql`INSERT INTO core.contents
@@ -85,6 +110,23 @@ async function publish(sql,id,body){
   if(!rows[0]){const e=new Error('public_clip_conflict');e.status=409;throw e}
   return toEntry(rows[0]);
 }
+// A URL-only edit must never publish newer changes from the private source.
+async function saveUrlSettings(sql,id,body){
+  const old=await publishedSnapshot(sql,id);
+  if(!old||old.status!=='active'){const e=new Error('published_clip_not_found');e.status=404;throw e}
+  const previous=old.metadata&&typeof old.metadata==='object'?old.metadata:{};
+  const publicSlug=requestedSlug(body.publicSlug)||currentSlug(old);
+  const slugHistory=changedSlugHistory(old,previous,publicSlug);
+  await assertSlugAvailable(sql,id,publicSlug,slugHistory);
+  const now=new Date().toISOString(),url=notePublicPath({publicSlug});
+  const metadata=JSON.stringify({...previous,publicSlug,slugHistory,snapshotUpdatedAt:now});
+  const rows=await sql`UPDATE core.contents SET url=${url},metadata=CAST(${metadata} AS jsonb),updated_at=now()
+    WHERE id=${snapshotId(id)} AND source=${PUBLIC_SOURCE} AND content_type=${PUBLIC_TYPE}
+      AND status='active' AND metadata->>'sourceKind'='clip'
+    RETURNING id,title,body_text,metadata,created_at,updated_at`;
+  if(!rows[0]){const e=new Error('published_clip_not_found');e.status=404;throw e}
+  return toEntry(rows[0]);
+}
 async function unpublish(sql,id){
   const rows=await sql`UPDATE core.contents SET status='archived',updated_at=now()
     WHERE id=${snapshotId(id)} AND source=${PUBLIC_SOURCE} AND content_type=${PUBLIC_TYPE}
@@ -93,7 +135,7 @@ async function unpublish(sql,id){
 }
 export default async function handler(req,res){
   archiveCors(res);res.setHeader('Cache-Control','no-store');res.setHeader('X-Robots-Tag','noindex,nofollow,noarchive');
-  res.setHeader('Access-Control-Allow-Methods','GET,POST,PATCH,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods','GET,POST,PATCH,PUT,DELETE,OPTIONS');
   if(req.method==='OPTIONS')return res.status(204).end();
   try{
     const ctx=await publicDatabaseContext();
@@ -101,7 +143,7 @@ export default async function handler(req,res){
       const entries=await listEntries(ctx.sql);
       return res.status(200).json({ok:true,entries,count:entries.length});
     }
-    if(!['POST','PATCH','DELETE'].includes(req.method))return res.status(405).json({ok:false,error:'method_not_allowed'});
+    if(!['POST','PATCH','PUT','DELETE'].includes(req.method))return res.status(405).json({ok:false,error:'method_not_allowed'});
     if(ctx.production){
       const auth=await authorizeArchiveRequest(req);
       if(!auth.ok)return res.status(auth.status||401).json({ok:false,error:auth.error||'unauthorized'});
@@ -111,7 +153,7 @@ export default async function handler(req,res){
       const removed=await unpublish(ctx.sql,id);
       return res.status(removed?200:404).json({ok:removed,removed});
     }
-    const entry=await publish(ctx.sql,id,body);
+    const entry=req.method==='PUT'?await saveUrlSettings(ctx.sql,id,body):await publish(ctx.sql,id,body);
     return res.status(200).json({ok:true,entry});
   }catch(error){
     console.error('[clip-publications]',error?.message||error);

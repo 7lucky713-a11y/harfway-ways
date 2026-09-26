@@ -92,7 +92,7 @@ async function handler(req,res){
   const notes=demo?previewDemoNotes():await listPublicNotes(ctx.sql);
   const routePart=queryValue(req.query?.id)||queryValue(req.query?.note);const requestedId=publicNoteId(routePart);
   res.setHeader('Content-Type','text/html; charset=utf-8');
-  res.setHeader('Cache-Control',demo?'no-store':'public, s-maxage=60, stale-while-revalidate=300');
+  res.setHeader('Cache-Control',demo?'no-store':'public, max-age=0, s-maxage=5, must-revalidate');
   res.setHeader('Referrer-Policy','strict-origin-when-cross-origin');
   if(!requestedId){
    let settings=DEFAULT_PLAY_NOTES_PAGE_SETTINGS;
