@@ -175,6 +175,16 @@ async function archiveClip(sql, id) {
       AND status <> 'archived'
     RETURNING id
   `;
+  // Archiving a source clip must not leave its public snapshot orphaned.
+  if (rows[0]) {
+    const publishedId = 'game-notes:public-note:clip-' + publicId(id);
+    await sql`
+      UPDATE core.contents SET status = 'archived', updated_at = now()
+      WHERE id = ${publishedId} AND source = 'game-note-publications'
+        AND content_type = 'game_note_public_snapshot'
+        AND metadata->>'sourceKind' = 'clip' AND status = 'active'
+    `;
+  }
   return Boolean(rows[0]);
 }
 

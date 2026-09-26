@@ -16,7 +16,7 @@ function footerHtml(){return '<footer class="site-footer"><div class="wrap"><str
 
 function pageShell(head,body,{demo=false,filters=false}={}){
  const theme=head.replace('name="theme-color" content="#171815"','name="theme-color" content="#faf9f5"');
- const filterScript=filters?`<script>(()=>{const entries=[...document.querySelectorAll('.entry[data-game]')],buttons=[...document.querySelectorAll('[data-game-filter]')],empty=document.getElementById('filter-empty'),params=new URLSearchParams(location.search);function apply(game,replace){const matching=buttons.some(b=>b.dataset.gameFilter===game)?game:'all';for(const e of entries)e.hidden=matching!=='all'&&e.dataset.game!==matching;for(const b of buttons){const on=b.dataset.gameFilter===matching;b.classList.toggle('chosen',on);b.setAttribute('aria-pressed',String(on))}if(empty)empty.hidden=entries.some(e=>!e.hidden);if(replace){if(matching==='all')params.delete('game');else params.set('game',matching);history.replaceState(null,'',location.pathname+(params.size?'?'+params.toString():''))}}for(const b of buttons)b.addEventListener('click',()=>apply(b.dataset.gameFilter,true));apply(params.get('game')||'all',false)})();</script>`:'';
+ const filterScript=filters?`<script>(()=>{const entries=[...document.querySelectorAll('.entry[data-game]')],buttons=[...document.querySelectorAll('[data-game-filter]')],empty=document.getElementById('filter-empty'),params=new URLSearchParams(location.search);function apply(game,replace){const matching=buttons.some(b=>b.dataset.gameFilter===game)?game:'all';for(const e of entries)e.hidden=matching!=='all'&&(matching==='__texts__'?Boolean(e.dataset.game):e.dataset.game!==matching);for(const b of buttons){const on=b.dataset.gameFilter===matching;b.classList.toggle('chosen',on);b.setAttribute('aria-pressed',String(on))}if(empty)empty.hidden=entries.some(e=>!e.hidden);if(replace){if(matching==='all')params.delete('game');else params.set('game',matching);history.replaceState(null,'',location.pathname+(params.size?'?'+params.toString():''))}}for(const b of buttons)b.addEventListener('click',()=>apply(b.dataset.gameFilter,true));apply(params.get('game')||'all',false)})();</script>`:'';
  return `<!doctype html><html lang="ja"><head>${theme}<style>${BLOG_STYLE}</style></head><body>${navHeader(demo)}${body}${footerHtml()}${filterScript}</body></html>`;
 }
 
@@ -24,13 +24,15 @@ function noteUrl(note,demo=false){return `${note.url||'/notes/'}${demo?'?demo=1'
 
 function listItem(note,i=0,demo=false){
  const url=escapeHtml(noteUrl(note,demo)),ways=note.relatedWaysIds?.length||0;
- return `<article class="entry ${i===0?'featured':''}" data-game="${escapeHtml(note.gameName||'ゲーム名なし')}"><div class="meta"><span class="game-label">${escapeHtml(note.gameName||'ゲーム名なし')}</span><time datetime="${escapeHtml(isoDate(note.publishedAt))}">${escapeHtml(formatJapaneseDate(note.publishedAt))}</time><span>${escapeHtml(note.typeName||'メモ')}</span>${ways?`<span>映像 ${ways}本</span>`:''}</div><a class="entry-link" href="${url}"><h3>${escapeHtml(note.seoTitle||note.title||'無題')}</h3></a><p>${escapeHtml(excerpt(note.body,310))}</p><a class="read-more" href="${url}">続きを読む <span aria-hidden="true">→</span></a></article>`;
+ const label=note.gameName||note.typeName||'短文';
+ return `<article class="entry ${i===0?'featured':''}" data-game="${escapeHtml(note.gameName||'')}"><div class="meta"><span class="game-label">${escapeHtml(label)}</span><time datetime="${escapeHtml(isoDate(note.publishedAt))}">${escapeHtml(formatJapaneseDate(note.publishedAt))}</time>${note.gameName?`<span>${escapeHtml(note.typeName||'メモ')}</span>`:''}${ways?`<span>映像 ${ways}本</span>`:''}</div><a class="entry-link" href="${url}"><h3>${escapeHtml(note.seoTitle||note.title||'無題')}</h3></a><p>${escapeHtml(excerpt(note.body,310))}</p><a class="read-more" href="${url}">続きを読む <span aria-hidden="true">→</span></a></article>`;
 }
 
 function listSidebar(notes,settings){
- const counts=new Map();for(const n of notes){const g=n.gameName||'ゲーム名なし';counts.set(g,(counts.get(g)||0)+1)}
+ const counts=new Map();for(const n of notes){if(!n.gameName)continue;counts.set(n.gameName,(counts.get(n.gameName)||0)+1)}
  const items=[...counts].sort((a,b)=>b[1]-a[1]).slice(0,20);
- return `<aside class="sidebar"><section class="side-block"><p class="side-label">ABOUT</p><h2>${escapeHtml(settings.aboutTitle)}</h2><p>${escapeHtml(settings.aboutBody)}</p></section><section class="side-block"><p class="side-label">ゲームから探す</p><div class="filter"><button type="button" class="chosen" data-game-filter="all" aria-pressed="true">すべてのゲーム <span>${notes.length}</span></button>${items.map(([g,count])=>`<button type="button" data-game-filter="${escapeHtml(g)}" aria-pressed="false">${escapeHtml(g)} <span>${count}</span></button>`).join('')}</div></section><section class="side-block"><p class="side-label">もっと読む</p><a class="side-link" href="/words/">用語解説へ <span>↗</span></a></section></aside>`;
+ const textCount=notes.filter(n=>!n.gameName).length;
+ return `<aside class="sidebar"><section class="side-block"><p class="side-label">ABOUT</p><h2>${escapeHtml(settings.aboutTitle)}</h2><p>${escapeHtml(settings.aboutBody)}</p></section><section class="side-block"><p class="side-label">文章から探す</p><div class="filter"><button type="button" class="chosen" data-game-filter="all" aria-pressed="true">すべて <span>${notes.length}</span></button>${textCount?`<button type="button" data-game-filter="__texts__" aria-pressed="false">日記・エッセイ・短文 <span>${textCount}</span></button>`:''}${items.map(([g,count])=>`<button type="button" data-game-filter="${escapeHtml(g)}" aria-pressed="false">${escapeHtml(g)} <span>${count}</span></button>`).join('')}</div></section><section class="side-block"><p class="side-label">もっと読む</p><a class="side-link" href="/words/">用語解説へ <span>↗</span></a></section></aside>`;
 }
 
 function listBody(notes,settings,demo=false){
@@ -50,18 +52,22 @@ function mediaHtml(ways){
 
 function detailBody(note,relatedWords,ways,relatedNotes,demo=false){
  const body=bodyHtml(note.body);
- const tags=relatedWords.length?`<div class="tags"><span>関連する用語</span>${relatedWords.map(w=>`<a class="term-tag" href="${escapeHtml(w.url)}">${escapeHtml(w.term||'無題')}</a>`).join('')}</div>`:'';
+ const terms=relatedWords.length?`<div class="tags"><span>関連する用語</span>${relatedWords.map(w=>`<a class="term-tag" href="${escapeHtml(w.url)}">${escapeHtml(w.term||'無題')}</a>`).join('')}</div>`:'';
+ const clipTags=note.tags?.length?`<div class="tags"><span>タグ</span>${note.tags.map(tag=>`<span class="term-tag">${escapeHtml(tag)}</span>`).join('')}</div>`:'';
  const other=relatedNotes.length?`<section class="section"><h2>同じゲームの記録</h2><div class="related-notes">${relatedNotes.map(n=>`<a class="related-note" href="${escapeHtml(noteUrl(n,demo))}"><small>${escapeHtml(formatJapaneseDate(n.publishedAt))}</small>${escapeHtml(n.seoTitle||n.title||'無題')} →</a>`).join('')}</div></section>`:'';
  const listHref='/notes/'+(demo?'?demo=1':'');
- const gameHref='/notes/?game='+encodeURIComponent(note.gameName||'ゲーム名なし')+(demo?'&demo=1':'');
- return `<main class="wrap article-wrap"><a class="back" href="${listHref}">← プレイノートに戻る</a><article class="article"><div class="meta article-meta"><span class="game-label">${escapeHtml(note.gameName||'ゲーム名なし')}</span><time datetime="${escapeHtml(isoDate(note.publishedAt))}">${escapeHtml(formatJapaneseDate(note.publishedAt))}</time><span>${escapeHtml(note.typeName||'メモ')}</span></div><h1>${escapeHtml(note.seoTitle||note.title||'無題')}</h1>${body}<div class="end">${tags}${mediaHtml(ways)}${other}</div></article><nav class="bottom-nav" aria-label="記事の前後"><a href="${listHref}">← プレイノート一覧</a><a href="${escapeHtml(gameHref)}">同じゲームの記録を見る →</a></nav></main>`;
+ const gameHref=note.gameName?'/notes/?game='+encodeURIComponent(note.gameName)+(demo?'&demo=1':''):'/notes/?game=__texts__'+(demo?'&demo=1':'');
+ const otherLabel=note.gameName?'同じゲームの記録を見る':'ほかの文章を読む';
+ const label=note.gameName||note.typeName||'短文';
+ return `<main class="wrap article-wrap"><a class="back" href="${listHref}">← プレイノートに戻る</a><article class="article"><div class="meta article-meta"><span class="game-label">${escapeHtml(label)}</span><time datetime="${escapeHtml(isoDate(note.publishedAt))}">${escapeHtml(formatJapaneseDate(note.publishedAt))}</time>${note.gameName?`<span>${escapeHtml(note.typeName||'メモ')}</span>`:''}</div><h1>${escapeHtml(note.seoTitle||note.title||'無題')}</h1>${body}<div class="end">${terms}${clipTags}${mediaHtml(ways)}${other}</div></article><nav class="bottom-nav" aria-label="記事の前後"><a href="${listHref}">← プレイノート一覧</a><a href="${escapeHtml(gameHref)}">${otherLabel} →</a></nav></main>`;
 }
 
 function previewDemoNotes(){
  const rows=[
  {id:'demo-playnote-one',gameName:'モンスタートレイン2',title:'たった一手の選択を、最後まで引きずっている。',typeName:'メモ',publishedAt:'2026-09-24T13:00:00+09:00',body:'序盤に何気なく選んだカードが、終盤になって思いも寄らない働きをする。\n\nそういう瞬間が好きで、つい同じデッキでもう一周してしまった。もちろん毎回うまくいくわけではない。それでも、この一枚にはまだ出番があるんじゃないかと思ってしまう。\n\nゲームの面白さって、選んだ瞬間ではなく、ずっと後から届くこともある。今日はそういう感覚を忘れないように書いておきたい。'},
  {id:'demo-playnote-two',gameName:'片道勇者',title:'立ち止まれない世界で、何を拾っていくか。',typeName:'プレイ記録',publishedAt:'2026-09-22T13:00:00+09:00',body:'先へ進まなければいけないのに、道端の小さな出来事が気になって仕方ない。\n\n立ち止まれば追いつかれてしまう。だから、ひとつひとつの選択が小さな決断になる。\n\n寄り道のできない世界を歩きながら、あえて寄り道のことを考えていた。'},
- {id:'demo-playnote-three',gameName:'RAM: Random Access Mayhem',title:'使い捨てるからこそ、動かすのが楽しい。',typeName:'アイデア',publishedAt:'2026-09-20T13:00:00+09:00',body:'「強くなる」ことを前提にしないアクション。\n\n敵へ乗り移るたびに、今度は何ができるのかを考える。その場の状況をどう使い切るかが面白い。'}
+ {id:'demo-playnote-three',gameName:'RAM: Random Access Mayhem',title:'使い捨てるからこそ、動かすのが楽しい。',typeName:'アイデア',publishedAt:'2026-09-20T13:00:00+09:00',body:'「強くなる」ことを前提にしないアクション。\n\n敵へ乗り移るたびに、今度は何ができるのかを考える。その場の状況をどう使い切るかが面白い。'},
+  {id:'clip-00000000-0000-4000-8000-000000000001',gameName:'',sourceKind:'clip',typeName:'日記',title:'言葉にしておきたかった一日',publicSlug:'clip-sample-diary-demo',tags:['日記'],publishedAt:'2026-09-19T13:00:00+09:00',body:'ゲームのことを考えていたはずなのに、気づいたら今日の出来事を書いていた。\n\nそういう寄り道も、ここなら残しておける。'},
  ];
  return rows.map((n,i)=>{const enhanced=i===0?{...n,seoTitle:'モンスタートレイン2｜カード選択の面白さを記録',publicSlug:'monster-train-2-card-notes'}:n;return {...enhanced,url:notePublicPath(enhanced),relatedWaysIds:[],snapshotUpdatedAt:n.publishedAt}});
 }
@@ -95,7 +101,7 @@ async function handler(req,res){
      catch(error){console.warn('[public-notes-page] demo settings fallback:',error?.message||error)}
    }else settings=(await loadPlayNotesPageSettings(ctx.sql)).settings;
    const title='プレイノート｜HARF-WAY';
-   const description='ゲームを遊びながら残した短いプレイ記録。考えがまとまり切る前の気づきも、そのまま読めるHARF-WAYのプレイノートです。';
+   const description='ゲームのプレイ記録から、日記、エッセイ、短い思いつきまで。書きかけの気づきを残す個人のテキストメディアです。';
    const schema={'@context':'https://schema.org','@type':'CollectionPage',name:'HARF-WAY プレイノート',description,url:absoluteUrl(req,'/notes/'),isPartOf:{'@type':'WebSite',name:'HARF-WAY',url:'https://harf-way.com/'}};
    return res.status(200).end(pageShell(seoHead(req,{title,description,path:'/notes/',type:'website',schema}),listBody(notes,settings,demo),{demo,filters:true}));
   }
@@ -107,9 +113,9 @@ async function handler(req,res){
   const waysCatalog=demo?[]:await loadWays(req);
   const ways=(note.relatedWaysIds||[]).map(id=>waysCatalog.find(item=>String(item.id)===String(id))).filter(Boolean);
   const relatedNotes=notes.filter(n=>n.id!==note.id&&n.gameName&&n.gameName===note.gameName).slice(0,3);
-  const description=excerpt(`${note.gameName||''}を遊びながら残したプレイノート。${note.body||''}`,158);
-  const title=note.seoTitle?`${note.seoTitle}｜HARF-WAY`:`${note.gameName||'ゲーム'}のプレイノート「${note.title||'無題'}」｜HARF-WAY`;
-  const schema={'@context':'https://schema.org','@type':'BlogPosting',headline:note.seoTitle||`${note.gameName||'ゲーム'} ${note.title||'プレイノート'}`,description,url:absoluteUrl(req,note.url),datePublished:isoDate(note.publishedAt)||undefined,dateModified:isoDate(note.snapshotUpdatedAt)||undefined,about:note.gameName?{'@type':'Thing',name:note.gameName}:undefined,author:{'@type':'Organization',name:'HARF-WAY',url:'https://harf-way.com/'},publisher:{'@type':'Organization',name:'HARF-WAY',url:'https://harf-way.com/'},mainEntityOfPage:absoluteUrl(req,note.url)};
+  const description=excerpt(note.gameName?`${note.gameName}を遊びながら残したプレイノート。${note.body||''}`:`${note.typeName||'短文'}。${note.body||''}`,158);
+  const title=note.seoTitle?`${note.seoTitle}｜HARF-WAY`:note.gameName?`${note.gameName}のプレイノート「${note.title||'無題'}」｜HARF-WAY`:`${note.title||'無題'}｜プレイノート｜HARF-WAY`;
+  const schema={'@context':'https://schema.org','@type':'BlogPosting',headline:note.seoTitle||(note.gameName?`${note.gameName} ${note.title||'プレイノート'}`:note.title||'プレイノート'),description,url:absoluteUrl(req,note.url),datePublished:isoDate(note.publishedAt)||undefined,dateModified:isoDate(note.snapshotUpdatedAt)||undefined,about:note.gameName?{'@type':'Thing',name:note.gameName}:undefined,author:{'@type':'Organization',name:'HARF-WAY',url:'https://harf-way.com/'},publisher:{'@type':'Organization',name:'HARF-WAY',url:'https://harf-way.com/'},mainEntityOfPage:absoluteUrl(req,note.url)};
   return res.status(200).end(pageShell(seoHead(req,{title,description,path:note.url,type:'article',schema}),detailBody(note,relatedWords,ways,relatedNotes,demo),{demo}));
  }catch(error){
   console.error('[public-notes-page]',error?.message||error);

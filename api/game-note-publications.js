@@ -49,7 +49,7 @@ function toSnapshot(row){
   item.publicSlug=notePublicSlug(item);item.url=notePublicPath(item);return item;
 }
 async function listSnapshots(sql){
-  const rows=await sql`SELECT id,title,url,excerpt,body_text,metadata,created_at,updated_at FROM core.contents WHERE source=${PUBLIC_SOURCE} AND content_type=${PUBLIC_TYPE} AND status='active' ORDER BY COALESCE((metadata->>'publishedAt')::timestamptz,created_at) DESC`;
+  const rows=await sql`SELECT id,title,url,excerpt,body_text,metadata,created_at,updated_at FROM core.contents WHERE source=${PUBLIC_SOURCE} AND content_type=${PUBLIC_TYPE} AND status='active' AND COALESCE(metadata->>'sourceKind','note')<>'clip' ORDER BY COALESCE((metadata->>'publishedAt')::timestamptz,created_at) DESC`;
   return rows.map(toSnapshot);
 }
 async function sourceNote(sql,noteId){
