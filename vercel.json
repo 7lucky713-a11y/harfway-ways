@@ -73,12 +73,12 @@
       "destination": "/api/public-words-page?id=:id&slug=:slug"
     },
     {
-      "source": "/words/:id",
-      "destination": "/api/public-words-page?id=:id"
+      "source": "/words/:slug",
+      "destination": "/api/public-words-page?slug=:slug&noTrailing=1"
     },
     {
-      "source": "/words/:id/",
-      "destination": "/api/public-words-page?id=:id"
+      "source": "/words/:slug/",
+      "destination": "/api/public-words-page?slug=:slug"
     },
     {
       "source": "/words",

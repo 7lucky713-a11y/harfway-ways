@@ -83,7 +83,9 @@ function requestedSlug(value){
   const raw=clean(value,180);
   if(!raw)return '';
   if(!/[\p{L}\p{N}]/u.test(raw)){const e=new Error('invalid_public_slug');e.status=400;throw e}
-  return slugifyPublic(raw,'word').slice(0,110);
+  const slug=slugifyPublic(raw,'word').slice(0,110);
+  if(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug)){const e=new Error('reserved_public_slug');e.status=400;throw e}
+  return slug;
 }
 function frozenSlug(row,fallback={}){
   const m=row?.metadata&&typeof row.metadata==='object'?row.metadata:{};
@@ -98,6 +100,18 @@ function nextSlugHistory(row,newSlug){
   const aliases=oldSlug&&oldSlug!==newSlug?[oldSlug]:[];
   return list([...history,...aliases].filter(x=>x!==newSlug),40,150);
 }
+// Slug-only /words/:slug/ URLs need namespace-wide uniqueness, including historical aliases.
+async function assertUniqueSlug(sql,id,slug,history=[]){
+  const rows=await sql`SELECT id,title,metadata FROM core.contents
+    WHERE source=${PUBLIC_SOURCE} AND content_type=${PUBLIC_TYPE} AND id<>${snapshotDbId(id)}`;
+  const requested=[slug,...history].map(value=>slugifyPublic(value,'word',150));
+  if(rows.some(row=>{
+    const m=row.metadata&&typeof row.metadata==='object'?row.metadata:{};
+    const aliases=[wordPublicSlug({publicSlug:m.publicSlug,gameName:m.gameName,term:row.title}),...list(m.slugHistory,40,150)]
+      .map(value=>slugifyPublic(value,'word',150));
+    return aliases.some(value=>requested.includes(value));
+  })){const e=new Error('public_slug_conflict');e.status=409;throw e}
+}
 async function publishSnapshot(sql,id,settings={}){
   const source=await sourceGlossary(sql,id),m=source.metadata&&typeof source.metadata==='object'?source.metadata:{};
   const publicId=wordId(source.id),game=await gameName(sql,m.gameId);
@@ -106,7 +120,9 @@ async function publishSnapshot(sql,id,settings={}){
   const existing=current[0]||null,old=existing?.metadata&&typeof existing.metadata==='object'?existing.metadata:{};
   const term=clean(source.title,280)||'無題のことば',description=clean(source.body_text,30000);
   const publicSlug=requestedSlug(settings.publicSlug)||frozenSlug(existing,{term,gameName:game});
-  const slugHistory=nextSlugHistory(existing,publicSlug),now=new Date().toISOString(),publishedAt=old.publishedAt||now;
+  const slugHistory=nextSlugHistory(existing,publicSlug);
+  await assertUniqueSlug(sql,publicId,publicSlug,slugHistory);
+  const now=new Date().toISOString(),publishedAt=old.publishedAt||now;
   const metadata=JSON.stringify({...old,sourceGlossaryId:publicId,gameName:game,relatedWaysIds,relatedPublicNoteIds,relatedPublicGlossaryIds,sourceCreatedAt:m.createdAt||source.created_at||null,publishedAt,snapshotUpdatedAt:now,publicSlug,slugHistory});
   const url=wordPublicPath({id:publicId,publicSlug});
   const rows=await sql`
@@ -123,7 +139,9 @@ async function saveUrlSettings(sql,id,settings={}){
   if(!rows[0]){const e=new Error('public_glossary_not_found');e.status=404;throw e}
   const existing=rows[0],old=existing.metadata&&typeof existing.metadata==='object'?existing.metadata:{};
   const publicSlug=requestedSlug(settings.publicSlug)||frozenSlug(existing);
-  const slugHistory=nextSlugHistory(existing,publicSlug),now=new Date().toISOString();
+  const slugHistory=nextSlugHistory(existing,publicSlug);
+  await assertUniqueSlug(sql,id,publicSlug,slugHistory);
+  const now=new Date().toISOString();
   const url=wordPublicPath({id:wordId(id),publicSlug});
   const metadata=JSON.stringify({...old,publicSlug,slugHistory,snapshotUpdatedAt:now});
   const updated=await sql`UPDATE core.contents SET url=${url},metadata=CAST(${metadata} AS jsonb),updated_at=now()
