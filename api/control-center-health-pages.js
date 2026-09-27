@@ -22,6 +22,13 @@ const PREVIEW_PAGE_ITEMS=[
       control_center:{sync:true,scope:'page'}
     }
   }
+  ,{
+    id:'input-lab',
+    project_slug:'harfway-playback',
+    public_url:'https://ways.harf-way.com/rsvp/',
+    sync_source:'preview-page-manifest',
+    manifest:{"harfway":true,"id":"input-lab","name":"INPUT LAB","project_slug":"harfway-playback","group":"CREATE","role":"記事インプット・RSVP速読","description":"公開note記事をURLから読み込み、高速表示。文字数・読書時間・重要箇所のメモをまとめて管理。","public_url":"https://ways.harf-way.com/rsvp/","control_center":{"sync":true,"scope":"page"}}
+  }
 ];
 
 function captureResponse(){
