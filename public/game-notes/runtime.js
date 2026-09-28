@@ -150,6 +150,7 @@
   }
   loadScript('/game-notes/runtime-core.js', () => {
     installSortControl();
+    loadScript('/game-notes/note-draft-autosave.js');
     loadScript('/game-notes/workflow-link.js');
     loadScript('/game-notes/minibook-link.js');
     loadScript('/game-notes/glossary-link.js');
