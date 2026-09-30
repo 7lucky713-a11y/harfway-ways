@@ -22,6 +22,14 @@ function pageShell(head,body,{demo=false,filters=false}={}){
 
 function noteUrl(note,demo=false){return `${note.url||'/notes/'}${demo?'?demo=1':''}`}
 
+function notesFallbackImage(req){return absoluteUrl(req,'/api/play-notes-og-image')}
+function noteSocialImage(req,note,ways=[]){
+ const related=ways.find(item=>item?.id&&safeUrl(item.thumbnailUrl));
+ if(!related)return notesFallbackImage(req);
+ const version=String(note.snapshotUpdatedAt||note.publishedAt||'1').slice(0,100);
+ return absoluteUrl(req,`/share-image/${encodeURIComponent(String(related.id))}?v=${encodeURIComponent(version)}`);
+}
+
 function listItem(note,i=0,demo=false){
  const url=escapeHtml(noteUrl(note,demo)),ways=note.relatedWaysIds?.length||0;
  const label=note.gameName||note.typeName||'短文';
@@ -103,7 +111,7 @@ async function handler(req,res){
    const title='プレイノート｜HARF-WAY';
    const description='ゲームのプレイ記録から、日記、エッセイ、短い思いつきまで。書きかけの気づきを残す個人のテキストメディアです。';
    const schema={'@context':'https://schema.org','@type':'CollectionPage',name:'HARF-WAY プレイノート',description,url:absoluteUrl(req,'/notes/'),isPartOf:{'@type':'WebSite',name:'HARF-WAY',url:'https://harf-way.com/'}};
-   return res.status(200).end(pageShell(seoHead(req,{title,description,path:'/notes/',type:'website',schema}),listBody(notes,settings,demo),{demo,filters:true}));
+   return res.status(200).end(pageShell(seoHead(req,{title,description,path:'/notes/',type:'website',schema,image:notesFallbackImage(req),imageAlt:'HARF-WAY / プレイノート'}),listBody(notes,settings,demo),{demo,filters:true}));
   }
   const legacyNote=notes.find(n=>n.id===requestedId);const note=legacyNote||notes.find(n=>notePublicSlug(n)===routePart||n.slugHistory?.includes(routePart));if(!note)return notFound(req,res);
   const canonicalSlug=notePublicSlug(note),requestedSlug=queryValue(req.query?.slug);
@@ -113,10 +121,12 @@ async function handler(req,res){
   const waysCatalog=demo?[]:await loadWays(req);
   const ways=(note.relatedWaysIds||[]).map(id=>waysCatalog.find(item=>String(item.id)===String(id))).filter(Boolean);
   const relatedNotes=notes.filter(n=>n.id!==note.id&&n.gameName&&n.gameName===note.gameName).slice(0,3);
+   const image=noteSocialImage(req,note,ways);
+   const imageAlt=note.gameName?`${note.gameName}｜HARF-WAY プレイノート`:'HARF-WAY / プレイノート';
   const description=excerpt(note.gameName?`${note.gameName}を遊びながら残したプレイノート。${note.body||''}`:`${note.typeName||'短文'}。${note.body||''}`,158);
   const title=note.seoTitle?`${note.seoTitle}｜HARF-WAY`:note.gameName?`${note.gameName}のプレイノート「${note.title||'無題'}」｜HARF-WAY`:`${note.title||'無題'}｜プレイノート｜HARF-WAY`;
-  const schema={'@context':'https://schema.org','@type':'BlogPosting',headline:note.seoTitle||(note.gameName?`${note.gameName} ${note.title||'プレイノート'}`:note.title||'プレイノート'),description,url:absoluteUrl(req,note.url),datePublished:isoDate(note.publishedAt)||undefined,dateModified:isoDate(note.snapshotUpdatedAt)||undefined,about:note.gameName?{'@type':'Thing',name:note.gameName}:undefined,author:{'@type':'Organization',name:'HARF-WAY',url:'https://harf-way.com/'},publisher:{'@type':'Organization',name:'HARF-WAY',url:'https://harf-way.com/'},mainEntityOfPage:absoluteUrl(req,note.url)};
-  return res.status(200).end(pageShell(seoHead(req,{title,description,path:note.url,type:'article',schema}),detailBody(note,relatedWords,ways,relatedNotes,demo),{demo}));
+  const schema={'@context':'https://schema.org','@type':'BlogPosting',headline:note.seoTitle||(note.gameName?`${note.gameName} ${note.title||'プレイノート'}`:note.title||'プレイノート'),description,url:absoluteUrl(req,note.url),image,datePublished:isoDate(note.publishedAt)||undefined,dateModified:isoDate(note.snapshotUpdatedAt)||undefined,about:note.gameName?{'@type':'Thing',name:note.gameName}:undefined,author:{'@type':'Organization',name:'HARF-WAY',url:'https://harf-way.com/'},publisher:{'@type':'Organization',name:'HARF-WAY',url:'https://harf-way.com/'},mainEntityOfPage:absoluteUrl(req,note.url)};
+  return res.status(200).end(pageShell(seoHead(req,{title,description,path:note.url,type:'article',schema,image,imageAlt}),detailBody(note,relatedWords,ways,relatedNotes,demo),{demo}));
  }catch(error){
   console.error('[public-notes-page]',error?.message||error);
   res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Cache-Control','no-store');res.setHeader('X-Robots-Tag','noindex');
