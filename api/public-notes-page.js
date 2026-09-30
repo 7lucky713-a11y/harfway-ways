@@ -22,7 +22,7 @@ function pageShell(head,body,{demo=false,filters=false}={}){
 
 function noteUrl(note,demo=false){return `${note.url||'/notes/'}${demo?'?demo=1':''}`}
 
-function notesFallbackImage(req){return absoluteUrl(req,'/api/play-notes-og-image')}
+function notesFallbackImage(req){return absoluteUrl(req,'/play-notes-og.jpg')}
 function noteSocialImage(req,note,ways=[]){
  const related=ways.find(item=>item?.id&&safeUrl(item.thumbnailUrl));
  if(!related)return notesFallbackImage(req);

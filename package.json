@@ -11,7 +11,6 @@
     "@aws-sdk/client-s3": "^3.864.0",
     "@neondatabase/neon-js": "^0.6.2-beta",
     "@neondatabase/serverless": "^1.0.0",
-    "@vercel/og": "^1.0.3",
     "@vercel/oidc": "^2.0.0",
     "astro": "^5.0.0",
     "google-auth-library": "^9.15.1",
