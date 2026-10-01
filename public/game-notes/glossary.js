@@ -7,6 +7,21 @@
   const key = () => sessionStorage.getItem('harfway_game_notes_key') || '';
   const headers = (extra = {}) => ({ ...extra, ...(key() ? { 'x-admin-key': key() } : {}) });
   const gameName = (id) => id ? (state.games.find(g => g.id === id)?.name || '未登録ゲーム') : '共通 / ゲーム横断';
+  const categoryName = (entry) => String(entry?.category || '').trim();
+  const tagsFor = (entry) => Array.isArray(entry?.tags) ? entry.tags : [];
+  const parseTags = (value) => {
+    const seen = new Set();
+    const tags = [];
+    for (const raw of String(value || '').split(/[,、\n]+/)) {
+      const tag = raw.trim().slice(0, 80);
+      const key = tag.toLocaleLowerCase('ja');
+      if (!tag || seen.has(key)) continue;
+      seen.add(key);
+      tags.push(tag);
+      if (tags.length >= 20) break;
+    }
+    return tags;
+  };
   const entryById = (id) => state.entries.find(entry => entry.id === id) || null;
   const relationNames = (entry) => (entry.relatedEntryIds || []).map(id => entryById(id)?.term).filter(Boolean);
   const fmt = (value) => {
@@ -66,6 +81,18 @@
     if ([...form.options].some(o => o.value === currentForm)) form.value = currentForm;
   }
 
+  function fillCategories() {
+    const filter = $('#category-filter');
+    const datalist = $('#category-options');
+    const current = filter.value || 'all';
+    const categories = [...new Set(state.entries.map(categoryName).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'ja'));
+    filter.innerHTML = '<option value="all">すべてのカテゴリー</option><option value="uncategorized">未分類</option>' +
+      categories.map(category => `<option value="${esc(category)}">${esc(category)}</option>`).join('');
+    datalist.innerHTML = categories.map(category => `<option value="${esc(category)}"></option>`).join('');
+    if ([...filter.options].some(option => option.value === current)) filter.value = current;
+  }
+
   function notesForEntry(entry) {
     return state.notes
       .filter(note => Array.isArray(note.glossaryEntryIds) && note.glossaryEntryIds.includes(entry.id))
@@ -75,12 +102,16 @@
   function filteredEntries() {
     const q = ($('#search').value || '').trim().toLocaleLowerCase('ja');
     const game = $('#game-filter').value || 'all';
+    const category = $('#category-filter').value || 'all';
     return state.entries.filter(entry => {
       if (game === 'common' && entry.gameId) return false;
       if (game !== 'all' && game !== 'common' && entry.gameId !== game) return false;
+      const entryCategory = categoryName(entry);
+      if (category === 'uncategorized' && entryCategory) return false;
+      if (category !== 'all' && category !== 'uncategorized' && entryCategory !== category) return false;
       if (!q) return true;
       const noteTitles = notesForEntry(entry).map(note => note.title || '');
-      const haystack = [entry.term, entry.description, gameName(entry.gameId), ...relationNames(entry), ...(entry.relatedTerms || []), ...noteTitles].join(' ').toLocaleLowerCase('ja');
+      const haystack = [entry.term, entry.description, gameName(entry.gameId), entryCategory, ...tagsFor(entry), ...relationNames(entry), ...(entry.relatedTerms || []), ...noteTitles].join(' ').toLocaleLowerCase('ja');
       return haystack.includes(q);
     });
   }
@@ -117,12 +148,19 @@
     grid.innerHTML = entries.map(entry => {
       const related = relatedMarkup(entry);
       const noteLinks = relatedNotesMarkup(entry);
+      const category = categoryName(entry);
+      const tags = tagsFor(entry);
+      const taxonomy = [
+        category ? `<span class="tax-category">${esc(category)}</span>` : '',
+        ...tags.map(tag => `<span class="tax-tag">#${esc(tag)}</span>`)
+      ].filter(Boolean).join('');
       return `
       <article class="card" data-entry="${esc(entry.id)}">
         <div class="card-head">
           <div><span class="game-pill">${esc(gameName(entry.gameId))}</span><h2>${esc(entry.term)}</h2></div>
           <button class="edit" type="button" data-edit="${esc(entry.id)}">編集</button>
         </div>
+        ${taxonomy ? `<div class="taxonomy">${taxonomy}</div>` : ''}
         <p>${esc(entry.description)}</p>
         ${related ? `<div class="related">${related}</div>` : ''}
         ${noteLinks}
@@ -166,6 +204,8 @@
     $('#entry-id').value = entry?.id || '';
     $('#term').value = entry?.term || '';
     $('#game').value = entry?.gameId || '';
+    $('#category').value = entry?.category || '';
+    $('#tags').value = tagsFor(entry).join(', ');
     $('#description').value = entry?.description || '';
     state.selectedRelatedIds = [...(entry?.relatedEntryIds || [])];
     renderRelated();
@@ -209,6 +249,7 @@
       state.entries = Array.isArray(data.entries) ? data.entries : [];
       state.notes = Array.isArray(data.notes) ? data.notes : [];
       fillGames();
+      fillCategories();
       render();
       hideLock();
       const entryId = new URLSearchParams(location.search).get('entry');
@@ -225,6 +266,7 @@
   $('#entry-overlay').addEventListener('click', e => { if (e.target === $('#entry-overlay')) closeEditor(); });
   $('#search').addEventListener('input', render);
   $('#game-filter').addEventListener('change', render);
+  $('#category-filter').addEventListener('change', render);
   $('#game').addEventListener('change', renderRelatedPicker);
   $('#add-related').addEventListener('click', addRelated);
   $('#related-chips').addEventListener('click', e => {
@@ -249,6 +291,8 @@
       id: id || undefined,
       term: $('#term').value,
       gameId: $('#game').value,
+      category: $('#category').value,
+      tags: parseTags($('#tags').value),
       description: $('#description').value,
       relatedEntryIds: state.selectedRelatedIds
     };
