@@ -65,6 +65,14 @@
       "destination": "/api/public-notes-page"
     },
     {
+      "source": "/words/category/:category",
+      "destination": "/api/public-words-page?category=:category&categoryNoTrailing=1"
+    },
+    {
+      "source": "/words/category/:category/",
+      "destination": "/api/public-words-page?category=:category"
+    },
+    {
       "source": "/words/:id/:slug",
       "destination": "/api/public-words-page?id=:id&slug=:slug"
     },
