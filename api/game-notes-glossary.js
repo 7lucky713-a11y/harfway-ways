@@ -135,6 +135,8 @@ function toEntry(row) {
     term: row.title || '',
     description: row.body_text || '',
     gameId: clean(meta.gameId, 160),
+    category: clean(meta.category, 100),
+    tags: normalizeList(meta.tags, 20, 80),
     relatedEntryIds: normalizeIdList(meta.relatedEntryIds),
     relatedTerms: normalizeList(meta.relatedTerms),
     relatedWaysIds: normalizeReferenceIds(meta.relatedWaysIds),
@@ -369,6 +371,8 @@ async function saveEntry(sql, body) {
   const term = clean(body.term || body.title, 180);
   const description = clean(body.description || body.body, 12000);
   const gameId = clean(body.gameId, 160);
+  const category = clean(body.category, 100);
+  const tags = normalizeList(body.tags, 20, 80);
   if (!term || !description) {
     const error = new Error('term_description_required');
     error.status = 400;
@@ -411,6 +415,8 @@ async function saveEntry(sql, body) {
   const metadata = JSON.stringify({
     ...currentMeta,
     gameId,
+    category,
+    tags,
     relatedEntryIds,
     relatedWaysIds,
     relatedArticleIds,
