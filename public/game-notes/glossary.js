@@ -297,14 +297,17 @@
       relatedEntryIds: state.selectedRelatedIds
     };
     try {
-      await request('', {
+      const saved = await request('', {
         method: id ? 'PATCH' : 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(payload)
       });
       closeEditor();
       await load();
-      toast(id ? '更新しました。関連語も双方向で同期しました' : '用語を追加しました');
+      const publicSync = saved?.publicSync?.status || 'not_published';
+      if (id && publicSync === 'synced') toast('更新しました。公開ページにも自動反映しました');
+      else if (id && publicSync === 'failed') toast('Private側は更新済みですが、公開ページの自動反映に失敗しました', true);
+      else toast(id ? '更新しました。関連語も双方向で同期しました' : '用語を追加しました');
     } catch (error) {
       if (error.message === 'duplicate_glossary_term') toast('同じゲームに同名の用語があります');
       else if (error.message !== 'unauthorized') toast('保存できませんでした');

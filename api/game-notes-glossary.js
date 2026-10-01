@@ -1,5 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import { archiveCors, archiveDatabaseConfig, authorizeArchiveRequest } from './archive-core.js';
+import { syncPublishedGlossary } from './game-glossary-publications.js';
 
 const PROJECT_ID = 'wispy-recipe-34518010';
 const PRODUCTION_BRANCH_ID = 'br-noisy-boat-awncea92';
@@ -484,7 +485,15 @@ export default async function handler(req, res) {
     const body = parseBody(req);
     if (req.method === 'POST' || req.method === 'PATCH') {
       const item = await saveEntry(context.sql, body);
-      return res.status(200).json({ ok: true, item });
+      let publicSync = { status: 'not_published' };
+      try {
+        const snapshot = await syncPublishedGlossary(context.sql, item.id);
+        if (snapshot) publicSync = { status: 'synced', item: snapshot };
+      } catch (syncError) {
+        console.error('[game-notes-glossary] public sync', syncError?.message || syncError);
+        publicSync = { status: 'failed', error: syncError?.message || 'public_glossary_sync_failed' };
+      }
+      return res.status(200).json({ ok: true, item, publicSync });
     }
     if (req.method === 'DELETE') {
       const id = clean(body.id, 160);

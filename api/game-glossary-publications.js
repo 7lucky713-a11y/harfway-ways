@@ -43,7 +43,7 @@ function toSnapshot(row){
   const m=row.metadata&&typeof row.metadata==='object'?row.metadata:{};
   return{
     id:wordId(row.id),term:row.title||'',description:row.body_text||'',excerpt:row.excerpt||'',
-    gameName:clean(m.gameName,220),sourceGlossaryId:clean(m.sourceGlossaryId,180),
+    gameName:clean(m.gameName,220),category:clean(m.category,100),tags:list(m.tags,20,80),sourceGlossaryId:clean(m.sourceGlossaryId,180),
     relatedWaysIds:list(m.relatedWaysIds),relatedPublicNoteIds:list(m.relatedPublicNoteIds,40,180),
     relatedPublicGlossaryIds:list(m.relatedPublicGlossaryIds,40,180),sourceCreatedAt:m.sourceCreatedAt||null,
     publishedAt:m.publishedAt||row.created_at||null,snapshotUpdatedAt:m.snapshotUpdatedAt||row.updated_at||null,
@@ -115,6 +115,7 @@ async function assertUniqueSlug(sql,id,slug,history=[]){
 async function publishSnapshot(sql,id,settings={}){
   const source=await sourceGlossary(sql,id),m=source.metadata&&typeof source.metadata==='object'?source.metadata:{};
   const publicId=wordId(source.id),game=await gameName(sql,m.gameId);
+  const category=clean(m.category,100),tags=list(m.tags,20,80);
   const relatedWaysIds=list(m.relatedWaysIds),relatedPublicNoteIds=await relatedPublicNotes(sql,publicId),relatedPublicGlossaryIds=await relatedPublicGlossaries(sql,m);
   const current=await sql`SELECT id,title,metadata FROM core.contents WHERE id=${snapshotDbId(publicId)} AND source=${PUBLIC_SOURCE} AND content_type=${PUBLIC_TYPE} LIMIT 1`;
   const existing=current[0]||null,old=existing?.metadata&&typeof existing.metadata==='object'?existing.metadata:{};
@@ -123,7 +124,7 @@ async function publishSnapshot(sql,id,settings={}){
   const slugHistory=nextSlugHistory(existing,publicSlug);
   await assertUniqueSlug(sql,publicId,publicSlug,slugHistory);
   const now=new Date().toISOString(),publishedAt=old.publishedAt||now;
-  const metadata=JSON.stringify({...old,sourceGlossaryId:publicId,gameName:game,relatedWaysIds,relatedPublicNoteIds,relatedPublicGlossaryIds,sourceCreatedAt:m.createdAt||source.created_at||null,publishedAt,snapshotUpdatedAt:now,publicSlug,slugHistory});
+  const metadata=JSON.stringify({...old,sourceGlossaryId:publicId,gameName:game,category,tags,relatedWaysIds,relatedPublicNoteIds,relatedPublicGlossaryIds,sourceCreatedAt:m.createdAt||source.created_at||null,publishedAt,snapshotUpdatedAt:now,publicSlug,slugHistory});
   const url=wordPublicPath({id:publicId,publicSlug});
   const rows=await sql`
     INSERT INTO core.contents(id,content_type,title,url,excerpt,body_text,status,source,metadata,created_at,updated_at)
@@ -131,6 +132,12 @@ async function publishSnapshot(sql,id,settings={}){
     ON CONFLICT(id) DO UPDATE SET title=EXCLUDED.title,url=EXCLUDED.url,excerpt=EXCLUDED.excerpt,body_text=EXCLUDED.body_text,status='active',source=EXCLUDED.source,metadata=EXCLUDED.metadata,updated_at=now()
     RETURNING id,title,url,excerpt,body_text,metadata,created_at,updated_at`;
   return toSnapshot(rows[0]);
+}
+export async function syncPublishedGlossary(sql,id){
+  const publicId=wordId(id);if(!publicId)return null;
+  const rows=await sql`SELECT id FROM core.contents WHERE id=${snapshotDbId(publicId)} AND source=${PUBLIC_SOURCE} AND content_type=${PUBLIC_TYPE} AND status='active' LIMIT 1`;
+  if(!rows[0])return null;
+  return publishSnapshot(sql,publicId,{});
 }
 // URL-only edits never republish unapproved text from the private glossary.
 async function saveUrlSettings(sql,id,settings={}){
