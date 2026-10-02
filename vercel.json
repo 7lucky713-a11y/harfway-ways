@@ -37,6 +37,14 @@
   ],
   "rewrites": [
     {
+      "source": "/steam-trailer-generator",
+      "destination": "/generator-hub/steam-trailer.html"
+    },
+    {
+      "source": "/steam-trailer-generator/",
+      "destination": "/generator-hub/steam-trailer.html"
+    },
+    {
       "source": "/sitemap.xml",
       "destination": "/api/public-seo-sitemap"
     },
