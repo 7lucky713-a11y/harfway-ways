@@ -50,8 +50,8 @@ input:focus,select:focus{border-color:#6d9a85;box-shadow:0 0 0 3px rgba(109,154,
 .video-shell{position:relative;margin-top:12px;aspect-ratio:16/9;overflow:hidden;background:#111;border-radius:8px}
 .video-shell video{display:block;width:100%;height:100%;object-fit:contain;background:#000}
 .video-empty{position:absolute;inset:0;display:grid;place-items:center;color:#a9b2ae;font-size:11px;font-weight:800;letter-spacing:.08em}
-.source{margin:9px 2px 0;color:var(--muted);font-size:11px;line-height:1.7}
-.source a{color:var(--accent);font-weight:850;text-decoration:none;position:relative;z-index:2;pointer-events:auto}
+.source{margin:9px 2px 8px;color:var(--muted);font-size:11px;line-height:1.7;position:relative;z-index:9999;isolation:isolate}
+.source a{display:inline-block;color:var(--accent);font-weight:850;text-decoration:none;position:relative;z-index:10000;pointer-events:auto!important;cursor:pointer}
 .source a:hover{text-decoration:underline}
 .actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .note{margin-top:10px;padding:10px 12px;color:#51605a;background:#f6f1df;border:1px solid #ddd2af;border-radius:8px;font-size:10px;line-height:1.7}
@@ -105,6 +105,7 @@ input:focus,select:focus{border-color:#6d9a85;box-shadow:0 0 0 3px rgba(109,154,
           </div>
 
           <p class="source" id="sourceRow"></p>
+          <button class="btn" id="openStoreBtn" type="button">Steamストアを開く</button>
         </div>
       </div>
     </section>
@@ -194,7 +195,8 @@ function buildCode() {
       href="${store}"
       target="_blank"
       rel="noopener"
-      style="position:relative;z-index:21;pointer-events:auto;"
+      style="display:inline-block;position:relative;z-index:999999;pointer-events:auto!important;cursor:pointer;"
+      onclick="event.preventDefault();event.stopPropagation();var w=window.open(this.href,'_blank','noopener');if(!w){window.location.href=this.href;}return false;"
     >Steamストア『${escapeHtml(current.name)}』 ↗</a>
   </p>
 </div>`;
@@ -286,9 +288,23 @@ async function renderSelection() {
   if (!current || !movie) return;
 
   $('#trailerLabel').textContent = movie.name + (movie.highlight ? ' / HIGHLIGHT' : '');
+  const storeUrl = withUtm(current.storeUrl);
   $('#sourceRow').innerHTML =
-    '映像出典：<a href="' + escapeHtml(withUtm(current.storeUrl)) + '" target="_blank" rel="noopener">' +
+    '映像出典：<a id="generatorSteamSourceLink" href="' + escapeHtml(storeUrl) + '" target="_blank" rel="noopener noreferrer">' +
     'Steamストア『' + escapeHtml(current.name) + '』 ↗</a>';
+  const sourceLink = $('#generatorSteamSourceLink');
+  if (sourceLink) {
+    sourceLink.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const opened = window.open(sourceLink.href, '_blank', 'noopener');
+      if (!opened) window.location.href = sourceLink.href;
+    }, true);
+  }
+  $('#openStoreBtn').onclick = () => {
+    const opened = window.open(storeUrl, '_blank', 'noopener');
+    if (!opened) window.location.href = storeUrl;
+  };
 
   $('#output').value = buildCode();
   $('#copyBtn').disabled = false;
