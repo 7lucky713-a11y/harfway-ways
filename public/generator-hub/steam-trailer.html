@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title>Steam Trailer Generator | HARF-WAY</title>
+<style>
+:root{
+  color-scheme:light;
+  --bg:#e9eceb;--panel:#fff;--ink:#192724;--muted:#66736f;--line:#ccd4d1;
+  --deep:#1e2c29;--accent:#496f5d;--paper:#f7f3ea;--warn:#a24c43;
+  --shadow:0 15px 42px rgba(28,43,38,.12)
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink)}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP","Yu Gothic",Meiryo,sans-serif}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:13px 18px;color:#fff;background:#1e2c29;border-bottom:1px solid rgba(255,255,255,.12)}
+.brand small{display:block;color:#a9c8b8;font-size:9px;font-weight:800;letter-spacing:.2em}
+.brand h1{margin:2px 0 0;font-size:21px;line-height:1.25}
+.back{display:inline-flex;align-items:center;min-height:36px;padding:8px 12px;border:1px solid rgba(255,255,255,.28);border-radius:8px;color:#fff;text-decoration:none;font-size:11px;font-weight:800}
+.wrap{width:min(1180px,calc(100% - 28px));margin:0 auto;padding:28px 0 60px}
+.hero{margin-bottom:18px;padding:24px 26px;border-radius:14px;color:#fff;background:linear-gradient(135deg,#1d2c28,#3e5b50);box-shadow:var(--shadow)}
+.hero small{color:#a7cdb9;font-size:9px;font-weight:900;letter-spacing:.18em}
+.hero h2{margin:7px 0 8px;font-size:clamp(26px,4vw,42px);letter-spacing:-.035em}
+.hero p{margin:0;color:rgba(255,255,255,.78);font-size:13px;line-height:1.8}
+.grid{display:grid;grid-template-columns:minmax(320px,.86fr) minmax(0,1.14fr);gap:16px;align-items:start}
+.panel{overflow:hidden;border:1px solid var(--line);border-radius:12px;background:var(--panel);box-shadow:0 5px 20px rgba(29,44,39,.06)}
+.panel-head{padding:11px 13px;border-bottom:1px solid var(--line);background:#f8faf9;font-size:11px;font-weight:900;letter-spacing:.08em}
+.panel-body{padding:14px}
+label{display:block;margin-bottom:6px;color:#45534e;font-size:10px;font-weight:850}
+input,select,textarea{width:100%;border:1px solid #c8d1cd;border-radius:7px;outline:none;color:var(--ink);background:#fff}
+input,select{min-height:40px;padding:9px 10px}
+textarea{min-height:400px;padding:12px;resize:vertical;background:#17211e;color:#dce9e3;border-color:#17211e;font:11px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace}
+input:focus,select:focus{border-color:#6d9a85;box-shadow:0 0 0 3px rgba(109,154,133,.13)}
+.row{display:grid;grid-template-columns:1fr auto;gap:8px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:9px 13px;border:1px solid #bdc8c3;border-radius:8px;color:#33423d;background:#fff;font-size:11px;font-weight:850}
+.btn.primary{border-color:var(--accent);color:#fff;background:var(--accent)}
+.btn.wide{width:100%}
+.status{margin:9px 0 0;color:var(--muted);font-size:10px;line-height:1.6}
+.status.error{color:var(--warn)}
+.result{display:none;margin-top:13px}
+.result.show{display:block}
+.meta{display:grid;grid-template-columns:1fr auto;gap:12px;padding:12px;border:1px solid var(--line);border-radius:9px;background:#f9faf9}
+.meta h3{margin:3px 0 3px;font-size:17px}.meta p{margin:0;color:var(--muted);font-size:10px}
+.appid{font:10px/1.5 ui-monospace,monospace;color:var(--muted)}
+.field{margin-top:12px}
+.video-shell{position:relative;margin-top:12px;aspect-ratio:16/9;overflow:hidden;background:#111;border-radius:8px}
+.video-shell video{display:block;width:100%;height:100%;object-fit:contain;background:#000}
+.video-empty{position:absolute;inset:0;display:grid;place-items:center;color:#a9b2ae;font-size:11px;font-weight:800;letter-spacing:.08em}
+.source{margin:9px 2px 0;color:var(--muted);font-size:11px;line-height:1.7}
+.source a{color:var(--accent);font-weight:850;text-decoration:none;position:relative;z-index:2;pointer-events:auto}
+.source a:hover{text-decoration:underline}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.note{margin-top:10px;padding:10px 12px;color:#51605a;background:#f6f1df;border:1px solid #ddd2af;border-radius:8px;font-size:10px;line-height:1.7}
+.hidden{display:none!important}
+@media(max-width:900px){.grid{grid-template-columns:1fr}.wrap{padding-top:18px}}
+@media(max-width:560px){.topbar{padding:11px 12px}.brand h1{font-size:17px}.wrap{width:min(100% - 18px,1180px)}.hero{padding:20px}.row{grid-template-columns:1fr}.row .btn{width:100%}.meta{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><small>HARF-WAY CONTENT TOOLBOX</small><h1>STEAM TRAILER GENERATOR</h1></div>
+  <a class="back" href="/generator-hub/">Generator Hubへ戻る</a>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <small>STEAM URL → WORDPRESS HTML</small>
+    <h2>Steam URLを貼って、トレーラーを生成。</h2>
+    <p>公式トレーラーを取得し、HARF-WAYのWordPressへそのまま貼れる動画＋出典リンクのHTMLを作ります。</p>
+  </section>
+
+  <div class="grid">
+    <section class="panel">
+      <div class="panel-head">INPUT</div>
+      <div class="panel-body">
+        <label for="steamUrl">SteamストアURL</label>
+        <div class="row">
+          <input id="steamUrl" type="url" placeholder="https://store.steampowered.com/app/..." autocomplete="off">
+          <button class="btn primary" id="generateBtn" type="button">取得する</button>
+        </div>
+        <p class="status" id="status">SteamストアURLを貼って「取得する」を押してください。</p>
+
+        <div class="result" id="result">
+          <div class="meta">
+            <div>
+              <p>GAME</p>
+              <h3 id="gameTitle"></h3>
+              <p id="trailerLabel"></p>
+            </div>
+            <span class="appid" id="appIdLabel"></span>
+          </div>
+
+          <div class="field" id="movieSelectWrap">
+            <label for="movieSelect">トレーラー</label>
+            <select id="movieSelect"></select>
+          </div>
+
+          <div class="video-shell">
+            <video id="previewVideo" controls playsinline preload="metadata"></video>
+            <div class="video-empty" id="videoEmpty">TRAILER PREVIEW</div>
+          </div>
+
+          <p class="source" id="sourceRow"></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">WORDPRESS OUTPUT</div>
+      <div class="panel-body">
+        <textarea id="output" readonly spellcheck="false" placeholder="トレーラー取得後、ここにWordPress用HTMLが生成されます。"></textarea>
+        <div class="actions">
+          <button class="btn primary" id="copyBtn" type="button" disabled>HTMLをコピー</button>
+          <button class="btn" id="selectBtn" type="button" disabled>全文選択</button>
+        </div>
+        <div class="note">
+          出典リンクは動画wrapperの外に配置します。UTMは <code>utm_source=harf-way</code> のみ。<br>
+          複数の動画を同じ記事に貼ってもIDが衝突しないよう、App ID＋Trailer IDで生成します。
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+const $ = (selector) => document.querySelector(selector);
+let current = null;
+let currentHls = null;
+
+function appIdFromUrl(value) {
+  const match = String(value || '').match(/store\.steampowered\.com\/app\/(\d+)/i);
+  return match ? match[1] : '';
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function withUtm(url) {
+  try {
+    const u = new URL(url);
+    u.searchParams.set('utm_source', 'harf-way');
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
+function selectedMovie() {
+  if (!current?.movies?.length) return null;
+  const index = Number($('#movieSelect').value || 0);
+  return current.movies[index] || current.movies[0];
+}
+
+function buildCode() {
+  const movie = selectedMovie();
+  if (!current || !movie) return '';
+
+  const appId = current.appId;
+  const movieId = String(movie.id || 'trailer').replace(/[^a-zA-Z0-9_-]/g, '-');
+  const id = `harfway-steam-${appId}-${movieId}`;
+  const store = withUtm(current.storeUrl);
+  const poster = movie.poster || '';
+  const src = movie.hls || movie.mp4 || movie.webm || '';
+  const mode = movie.hls ? 'hls' : (movie.mp4 ? 'mp4' : 'webm');
+  const type = mode === 'webm' ? 'video/webm' : 'video/mp4';
+
+  const videoOpen = `<div class="harfway-steam-video">
+  <video
+    id="${id}"
+    controls
+    playsinline
+    preload="metadata"${poster ? `
+    poster="${poster}"` : ''}
+    style="display:block;width:100%;height:auto;aspect-ratio:16/9;background:#000;"
+  >${mode === 'hls' ? '' : `
+    <source src="${src}" type="${type}">`}
+  </video>
+</div>`;
+
+  const credit = `<div style="position:relative;z-index:20;">
+  <p style="margin:.6em 0 0;font-size:.82em;color:#777;">
+    映像出典：
+    <a
+      href="${store}"
+      target="_blank"
+      rel="noopener"
+      style="position:relative;z-index:21;pointer-events:auto;"
+    >Steamストア『${escapeHtml(current.name)}』 ↗</a>
+  </p>
+</div>`;
+
+  if (mode !== 'hls') return `${videoOpen}
+
+${credit}`;
+
+  const script = `<script>
+(function () {
+  const video = document.getElementById('${id}');
+  const src = '${src}';
+
+  function attachHls() {
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = src;
+      return;
+    }
+    if (window.Hls && window.Hls.isSupported()) {
+      const hls = new window.Hls();
+      hls.loadSource(src);
+      hls.attachMedia(video);
+    }
+  }
+
+  if (video.canPlayType('application/vnd.apple.mpegurl') || (window.Hls && window.Hls.isSupported())) {
+    attachHls();
+    return;
+  }
+
+  let loader = document.getElementById('harfway-hls-js');
+  if (!loader) {
+    loader = document.createElement('script');
+    loader.id = 'harfway-hls-js';
+    loader.src = 'https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js';
+    loader.onload = attachHls;
+    document.head.appendChild(loader);
+  } else {
+    loader.addEventListener('load', attachHls, { once: true });
+  }
+})();
+<\/script>`;
+
+  return `${videoOpen}
+
+${credit}
+
+${script}`;
+}
+
+function destroyPreview() {
+  if (currentHls) {
+    try { currentHls.destroy(); } catch {}
+    currentHls = null;
+  }
+  const video = $('#previewVideo');
+  video.pause();
+  video.removeAttribute('src');
+  while (video.firstChild) video.removeChild(video.firstChild);
+  video.load();
+}
+
+async function ensureHlsJs() {
+  if (window.Hls) return true;
+  const existing = document.getElementById('generator-hls-js');
+  if (existing) {
+    await new Promise((resolve, reject) => {
+      if (window.Hls) return resolve();
+      existing.addEventListener('load', resolve, { once: true });
+      existing.addEventListener('error', reject, { once: true });
+    });
+    return Boolean(window.Hls);
+  }
+
+  await new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.id = 'generator-hls-js';
+    script.src = 'https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js';
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+
+  return Boolean(window.Hls);
+}
+
+async function renderSelection() {
+  const movie = selectedMovie();
+  if (!current || !movie) return;
+
+  $('#trailerLabel').textContent = movie.name + (movie.highlight ? ' / HIGHLIGHT' : '');
+  $('#sourceRow').innerHTML =
+    '映像出典：<a href="' + escapeHtml(withUtm(current.storeUrl)) + '" target="_blank" rel="noopener">' +
+    'Steamストア『' + escapeHtml(current.name) + '』 ↗</a>';
+
+  $('#output').value = buildCode();
+  $('#copyBtn').disabled = false;
+  $('#selectBtn').disabled = false;
+
+  destroyPreview();
+
+  const video = $('#previewVideo');
+  const empty = $('#videoEmpty');
+  empty.classList.remove('hidden');
+  video.poster = movie.poster || '';
+
+  try {
+    if (movie.hls) {
+      if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = movie.hls;
+      } else if (await ensureHlsJs()) {
+        currentHls = new window.Hls();
+        currentHls.loadSource(movie.hls);
+        currentHls.attachMedia(video);
+      }
+    } else {
+      video.src = movie.mp4 || movie.webm || '';
+    }
+
+    if (movie.hls || movie.mp4 || movie.webm) empty.classList.add('hidden');
+  } catch {
+    empty.textContent = 'PREVIEW LOAD FAILED';
+  }
+}
+
+async function generate() {
+  const url = $('#steamUrl').value.trim();
+  const appId = appIdFromUrl(url);
+  const status = $('#status');
+
+  $('#result').classList.remove('show');
+  $('#output').value = '';
+  $('#copyBtn').disabled = true;
+  $('#selectBtn').disabled = true;
+
+  if (!appId) {
+    status.textContent = 'Steamの /app/数字/ 形式のURLを入力してください。';
+    status.className = 'status error';
+    return;
+  }
+
+  status.textContent = 'Steamからトレーラー情報を取得しています…';
+  status.className = 'status';
+
+  try {
+    const response = await fetch('/api/steam-trailer?url=' + encodeURIComponent(url), { cache: 'no-store' });
+    const data = await response.json();
+
+    if (!response.ok || !data?.ok) {
+      throw new Error(data?.error || 'lookup_failed');
+    }
+
+    current = data;
+    $('#gameTitle').textContent = data.name;
+    $('#appIdLabel').textContent = 'APP ID ' + data.appId;
+
+    const select = $('#movieSelect');
+    select.innerHTML = '';
+
+    if (!data.movies?.length) {
+      status.textContent = 'Steamストアに再生可能なトレーラーが見つかりませんでした。';
+      status.className = 'status error';
+      return;
+    }
+
+    data.movies.forEach((movie, index) => {
+      const option = document.createElement('option');
+      option.value = String(index);
+      option.textContent = movie.name + (movie.highlight ? ' ★' : '');
+      select.appendChild(option);
+    });
+
+    select.value = String(Number.isInteger(data.selectedIndex) ? data.selectedIndex : 0);
+    $('#movieSelectWrap').classList.toggle('hidden', data.movies.length <= 1);
+    $('#result').classList.add('show');
+    status.textContent = data.movies.length + '本のトレーラーを取得しました。';
+    status.className = 'status';
+
+    await renderSelection();
+  } catch (error) {
+    current = null;
+    status.textContent = '取得できませんでした。Steam URLを確認してもう一度試してください。';
+    status.className = 'status error';
+  }
+}
+
+$('#generateBtn').addEventListener('click', generate);
+$('#steamUrl').addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') generate();
+});
+$('#movieSelect').addEventListener('change', renderSelection);
+
+$('#copyBtn').addEventListener('click', async () => {
+  const text = $('#output').value;
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    const button = $('#copyBtn');
+    const before = button.textContent;
+    button.textContent = 'コピーしました';
+    setTimeout(() => button.textContent = before, 1200);
+  } catch {
+    $('#output').select();
+  }
+});
+
+$('#selectBtn').addEventListener('click', () => {
+  $('#output').focus();
+  $('#output').select();
+});
+</script>
+</body>
+</html>
