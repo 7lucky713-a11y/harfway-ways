@@ -113,14 +113,25 @@ input:focus,select:focus{border-color:#6d9a85;box-shadow:0 0 0 3px rgba(109,154,
     <section class="panel">
       <div class="panel-head">WORDPRESS OUTPUT</div>
       <div class="panel-body">
-        <textarea id="output" readonly spellcheck="false" placeholder="トレーラー取得後、ここにWordPress用HTMLが生成されます。"></textarea>
+        <label for="videoOutput">① 動画コード</label>
+        <textarea id="videoOutput" readonly spellcheck="false" placeholder="トレーラー取得後、動画用HTMLが生成されます。"></textarea>
         <div class="actions">
-          <button class="btn primary" id="copyBtn" type="button" disabled>HTMLをコピー</button>
-          <button class="btn" id="selectBtn" type="button" disabled>全文選択</button>
+          <button class="btn primary" id="copyVideoBtn" type="button" disabled>動画コードをコピー</button>
+          <button class="btn" id="selectVideoBtn" type="button" disabled>全文選択</button>
         </div>
+
+        <div class="field">
+          <label for="linkOutput">② 出典リンクコード</label>
+          <textarea id="linkOutput" readonly spellcheck="false" style="min-height:150px;" placeholder="Steam出典リンク用HTMLが生成されます。"></textarea>
+          <div class="actions">
+            <button class="btn primary" id="copyLinkBtn" type="button" disabled>リンクコードをコピー</button>
+            <button class="btn" id="selectLinkBtn" type="button" disabled>全文選択</button>
+          </div>
+        </div>
+
         <div class="note">
-          出典リンクは動画wrapperの外に配置します。UTMは <code>utm_source=harf-way</code> のみ。<br>
-          複数の動画を同じ記事に貼ってもIDが衝突しないよう、App ID＋Trailer IDで生成します。
+          WordPressでは<strong>動画コードとリンクコードを別々の「カスタムHTML」ブロック</strong>に貼ってください。<br>
+          HARF-WAY本体で、動画と同一ブロック内のリンクだけクリック干渉が確認されたため分離しています。UTMは <code>utm_source=harf-way</code> のみ。
         </div>
       </div>
     </section>
@@ -162,9 +173,9 @@ function selectedMovie() {
   return current.movies[index] || current.movies[0];
 }
 
-function buildCode() {
+function buildCodes() {
   const movie = selectedMovie();
-  if (!current || !movie) return '';
+  if (!current || !movie) return { video: '', link: '' };
 
   const appId = current.appId;
   const movieId = String(movie.id || 'trailer').replace(/[^a-zA-Z0-9_-]/g, '-');
@@ -188,22 +199,12 @@ function buildCode() {
   </video>
 </div>`;
 
-  const credit = `<div style="position:relative;z-index:20;">
-  <p style="margin:.6em 0 0;font-size:.82em;color:#777;">
-    映像出典：
-    <a
-      href="${store}"
-      target="_blank"
-      rel="noopener"
-      style="display:inline-block;position:relative;z-index:999999;pointer-events:auto!important;cursor:pointer;"
-      onclick="event.preventDefault();event.stopPropagation();var w=window.open(this.href,'_blank','noopener');if(!w){window.location.href=this.href;}return false;"
-    >Steamストア『${escapeHtml(current.name)}』 ↗</a>
-  </p>
-</div>`;
+  const link = `<p style="margin:.6em 0 0;font-size:.82em;color:#777;">
+  映像出典：
+  <a href="${store}">Steamストア『${escapeHtml(current.name)}』 ↗</a>
+</p>`;
 
-  if (mode !== 'hls') return `${videoOpen}
-
-${credit}`;
+  if (mode !== 'hls') return { video: videoOpen, link };
 
   const script = `<script>
 (function () {
@@ -240,13 +241,10 @@ ${credit}`;
 })();
 <\/script>`;
 
-  return `${videoOpen}
+  return { video: `${videoOpen}
 
-${credit}
-
-${script}`;
+${script}`, link };
 }
-
 function destroyPreview() {
   if (currentHls) {
     try { currentHls.destroy(); } catch {}
@@ -306,9 +304,13 @@ async function renderSelection() {
     if (!opened) window.location.href = storeUrl;
   };
 
-  $('#output').value = buildCode();
-  $('#copyBtn').disabled = false;
-  $('#selectBtn').disabled = false;
+  const codes = buildCodes();
+  $('#videoOutput').value = codes.video;
+  $('#linkOutput').value = codes.link;
+  $('#copyVideoBtn').disabled = false;
+  $('#selectVideoBtn').disabled = false;
+  $('#copyLinkBtn').disabled = false;
+  $('#selectLinkBtn').disabled = false;
 
   destroyPreview();
 
@@ -342,9 +344,12 @@ async function generate() {
   const status = $('#status');
 
   $('#result').classList.remove('show');
-  $('#output').value = '';
-  $('#copyBtn').disabled = true;
-  $('#selectBtn').disabled = true;
+  $('#videoOutput').value = '';
+  $('#linkOutput').value = '';
+  $('#copyVideoBtn').disabled = true;
+  $('#selectVideoBtn').disabled = true;
+  $('#copyLinkBtn').disabled = true;
+  $('#selectLinkBtn').disabled = true;
 
   if (!appId) {
     status.textContent = 'Steamの /app/数字/ 形式のURLを入力してください。';
@@ -403,24 +408,26 @@ $('#steamUrl').addEventListener('keydown', (event) => {
 });
 $('#movieSelect').addEventListener('change', renderSelection);
 
-$('#copyBtn').addEventListener('click', async () => {
-  const text = $('#output').value;
+async function copyField(selector, buttonSelector) {
+  const field = $(selector);
+  const text = field.value;
   if (!text) return;
   try {
     await navigator.clipboard.writeText(text);
-    const button = $('#copyBtn');
+    const button = $(buttonSelector);
     const before = button.textContent;
     button.textContent = 'コピーしました';
     setTimeout(() => button.textContent = before, 1200);
   } catch {
-    $('#output').select();
+    field.focus();
+    field.select();
   }
-});
+}
 
-$('#selectBtn').addEventListener('click', () => {
-  $('#output').focus();
-  $('#output').select();
-});
+$('#copyVideoBtn').addEventListener('click', () => copyField('#videoOutput', '#copyVideoBtn'));
+$('#copyLinkBtn').addEventListener('click', () => copyField('#linkOutput', '#copyLinkBtn'));
+$('#selectVideoBtn').addEventListener('click', () => { $('#videoOutput').focus(); $('#videoOutput').select(); });
+$('#selectLinkBtn').addEventListener('click', () => { $('#linkOutput').focus(); $('#linkOutput').select(); });
 </script>
 </body>
 </html>
