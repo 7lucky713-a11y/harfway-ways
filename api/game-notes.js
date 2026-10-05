@@ -252,6 +252,32 @@ async function syncPublishedTypeName(sql, typeId, typeName) {
   return rows.length;
 }
 
+async function syncPublishedGameName(sql, gameId, gameName) {
+  const now = new Date().toISOString();
+  const rows = await sql`
+    UPDATE core.contents AS pub
+    SET metadata = jsonb_set(
+      jsonb_set(COALESCE(pub.metadata, '{}'::jsonb), '{gameName}', to_jsonb(${gameName}::text), true),
+      '{snapshotUpdatedAt}', to_jsonb(${now}::text), true
+    ),
+    updated_at = now()
+    WHERE pub.source = ${PUBLIC_SOURCE}
+      AND pub.content_type = ${PUBLIC_TYPE}
+      AND pub.status = 'active'
+      AND COALESCE(pub.metadata->>'sourceKind', 'note') = 'note'
+      AND pub.metadata->>'sourceNoteId' IN (
+        SELECT regexp_replace(note.id, '^game-notes:note:', '')
+        FROM core.contents AS note
+        WHERE note.source = ${SOURCE}
+          AND note.content_type = ${NOTE_TYPE}
+          AND note.status <> 'archived'
+          AND note.metadata->>'gameId' = ${gameId}
+      )
+    RETURNING pub.id
+  `;
+  return rows.length;
+}
+
 async function upsertDictionary(sql, entity, body) {
   const contentType = entity === 'game' ? GAME_TYPE : entity === 'type' ? DICTIONARY_TYPE : FACET_TYPE;
   const title = clean(body.name || body.title, 180);
@@ -275,6 +301,7 @@ async function upsertDictionary(sql, entity, body) {
     RETURNING id, content_type, title, body_text, metadata, created_at, updated_at
   `;
   if (!rows[0]) { const error = new Error('dictionary_conflict'); error.status = 409; throw error; }
+  if (entity === 'game' && body.id) await syncPublishedGameName(sql, publicId(id, 'game'), title);
   if (entity === 'type' && body.id) await syncPublishedTypeName(sql, publicId(id, 'type'), title);
   return entity === 'game' ? toGame(rows[0]) : entity === 'type' ? toType(rows[0]) : toFacet(rows[0]);
 }
