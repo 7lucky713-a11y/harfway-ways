@@ -385,6 +385,40 @@ async function upsertNote(sql, body) {
 }
 
 
+async function syncPublishedMediaSelection(sql, noteId, media = []) {
+  const sourceId = clean(noteId, 180).replace(/^game-notes:note:/, '').replace(/^game-notes:public-note:/, '');
+  const ids = normalizeList(
+    (Array.isArray(media) ? media : [])
+      .filter(item => item?.public === true && item?.assetId)
+      .map(item => clean(item.assetId, 180))
+      .map(id => id.startsWith('media-asset:') ? id : `media-asset:${id}`),
+    24,
+    180
+  );
+  const now = new Date().toISOString();
+  const rows = await sql`
+    UPDATE core.contents
+    SET metadata = jsonb_set(
+      jsonb_set(
+        COALESCE(metadata, '{}'::jsonb),
+        '{mediaAssetIds}',
+        CAST(${JSON.stringify(ids)} AS jsonb),
+        true
+      ),
+      '{snapshotUpdatedAt}',
+      to_jsonb(${now}::text),
+      true
+    ),
+    updated_at = now()
+    WHERE id = ${`game-notes:public-note:${sourceId}`}
+      AND source = ${PUBLIC_SOURCE}
+      AND content_type = ${PUBLIC_TYPE}
+      AND status = 'active'
+    RETURNING id
+  `;
+  return rows.length;
+}
+
 async function updateCrosscutDestination(sql, body) {
   const facetId = clean(body.facetId, 160);
   const value = clean(body.value, 100);
@@ -454,7 +488,7 @@ export default async function handler(req, res) {
       const entity = clean(body.entity, 20).toLowerCase();
       if (entity === 'bootstrap') { await bootstrap(context.sql); return res.status(200).json({ ok: true, bootstrapped: true }); }
       if (['game', 'type', 'facet'].includes(entity)) { const item = await upsertDictionary(context.sql, entity, body); return res.status(200).json({ ok: true, entity, item }); }
-      if (entity === 'note') { const item = await upsertNote(context.sql, body); return res.status(200).json({ ok: true, entity, item }); }
+      if (entity === 'note') { const item = await upsertNote(context.sql, body); const mediaSynced = await syncPublishedMediaSelection(context.sql, item.id, item.media); return res.status(200).json({ ok: true, entity, item, publicMediaSync: mediaSynced ? 'synced' : 'not_published' }); }
       if (entity === 'crosscut_destination') { const result = await updateCrosscutDestination(context.sql, body); return res.status(200).json({ ok: true, entity, ...result }); }
       return res.status(400).json({ ok: false, error: 'invalid_entity' });
     }
