@@ -2,6 +2,7 @@
   const state = {
     games: [], types: [], facets: [], notes: [], view: 'inbox', gameId: '', query: '',
     filters: { gameId: 'all', typeId: 'all', status: 'all', facets: {} },
+    cross: { facetId: '', value: '', sort: 'games', route: 'all' },
     adminKey: sessionStorage.getItem('harfway_game_notes_key') || '', editing: null,
     draft: { facets: {}, media: [] }, originalMedia: [], uploadedThisSession: [], mediaUrls: new Map()
   };
@@ -17,6 +18,9 @@
   const toast = (message, bad = false) => { const el = $('#toast'); el.textContent = message; el.style.background = bad ? '#d58d8d' : ''; el.classList.add('on'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('on'), 1800); };
   const authHeaders = (extra = {}) => ({ ...extra, ...(state.adminKey ? { 'x-admin-key': state.adminKey } : {}) });
   const noteFacetValues = (note) => visibleFacets().flatMap(f => note?.facets?.[f.id] || []).filter(Boolean);
+  const DESTINATIONS = ['seo','essay','zine','reference','b2b'];
+  const DESTINATION_LABELS = {seo:'SEO',essay:'ESSAY',zine:'ZINE',reference:'REFERENCE',b2b:'B2B'};
+  const destinationLabel = id => DESTINATION_LABELS[id] || String(id || '').toUpperCase();
 
   async function api(path, options = {}) {
     const headers = authHeaders(options.body && !(options.body instanceof Blob) ? { 'content-type': 'application/json' } : {});
@@ -41,6 +45,7 @@
     if (!state.gameId || !gameById(state.gameId)) state.gameId = state.games[0]?.id || '';
     const visible = new Set(visibleFacets().map(f => f.id));
     for (const key of Object.keys(state.filters.facets)) if (!visible.has(key)) delete state.filters.facets[key];
+    if (!state.cross.facetId || !visible.has(state.cross.facetId)) state.cross.facetId = visibleFacets()[0]?.id || '';
     renderAll(); hideLock();
   }
 
@@ -81,6 +86,8 @@
     $('#count-games').textContent = state.games.length;
     const unique = new Set(state.notes.flatMap(noteFacetValues)); $('#count-index').textContent = unique.size;
     $('#candidate-count').textContent = state.notes.filter(n => n.outputStatus === 'candidate').length;
+    if ($('#count-crosscut')) $('#count-crosscut').textContent = crossGroups().length;
+    if ($('#count-promotion')) $('#count-promotion').textContent = crossGroups().filter(g => Object.values(g.destinationCounts).some(Boolean)).length;
   }
   function fillSelect(select, items, selected = '', allLabel = '') {
     if (!select) return;
@@ -136,6 +143,47 @@
     $('#facet-index').innerHTML = visibleFacets().map(f => `<div class="panel"><h2>${esc(f.name)}</h2><div>${indexRows(f, facetValueCounts(f.id))}</div></div>`).join('') || '<div class="empty">EDITORでファセットを追加してください。</div>';
   }
 
+
+  function crossGroups() {
+    const facetId = state.cross.facetId;
+    if (!facetId) return [];
+    const groups = new Map();
+    state.notes.forEach(note => {
+      (note.facets?.[facetId] || []).forEach(value => {
+        if (!groups.has(value)) groups.set(value,{value,notes:[],games:new Set(),candidate:0,destinationCounts:Object.fromEntries(DESTINATIONS.map(x=>[x,0]))});
+        const g=groups.get(value);g.notes.push(note);if(note.gameId)g.games.add(note.gameId);if(note.outputStatus==='candidate')g.candidate++;
+        (note.destinations||[]).forEach(d=>{if(Object.prototype.hasOwnProperty.call(g.destinationCounts,d))g.destinationCounts[d]++});
+      });
+    });
+    const list=[...groups.values()].map(g=>({...g,gameCount:g.games.size,noteCount:g.notes.length}));
+    const key=state.cross.sort==='notes'?'noteCount':state.cross.sort==='candidate'?'candidate':'gameCount';
+    return list.sort((a,b)=>b[key]-a[key]||b.noteCount-a.noteCount||a.value.localeCompare(b.value,'ja'));
+  }
+  function renderCrosscut() {
+    const facets=visibleFacets(),select=$('#cross-facet');if(!select)return;
+    fillSelect(select,facets,state.cross.facetId);
+    const groups=crossGroups(); if (!state.cross.value || !groups.some(g=>g.value===state.cross.value)) state.cross.value=groups[0]?.value||'';
+    const multi=groups.filter(g=>g.gameCount>=3).length, candidates=groups.reduce((n,g)=>n+g.candidate,0);
+    $('#cross-summary').innerHTML=[['テーマ',groups.length],['3作品以上',multi],['候補メモ',candidates],['総メモ',groups.reduce((n,g)=>n+g.noteCount,0)]].map(([label,value])=>`<div><small>${label}</small><b>${value}</b></div>`).join('');
+    $('[data-cross-sort]').forEach(b=>b.classList.toggle('on',b.dataset.crossSort===state.cross.sort));
+    $('#cross-grid').innerHTML=groups.length?groups.map(g=>`<article class="cross-card ${g.value===state.cross.value?'on':''}" data-cross-value="${esc(g.value)}"><div class="cross-card-head"><h3>${esc(g.value)}</h3><span>${g.gameCount} GAMES</span></div><div class="cross-metrics"><div><b>${g.noteCount}</b>NOTES</div><div><b>${g.candidate}</b>CAND.</div><div><b>${Object.values(g.destinationCounts).filter(Boolean).length}</b>ROUTES</div></div><div class="cross-games">${[...g.games].slice(0,4).map(id=>`<span>${esc(gameById(id)?.name||'未登録')}</span>`).join('')}</div></article>`).join(''):'<div class="empty">このファセットにはまだ横断できる値がありません。</div>';
+    renderCrossDetail(groups.find(g=>g.value===state.cross.value));
+  }
+  function renderCrossDetail(group) {
+    const root=$('#cross-detail');if(!root)return;if(!group){root.innerHTML='';return}
+    const facet=facetById(state.cross.facetId);
+    root.innerHTML=`<div class="cross-detail-head"><div><small>${esc(facet?.name||'FACET')} · ${group.gameCount}作品 / ${group.noteCount}メモ</small><h2>${esc(group.value)}</h2></div><button class="ghost" data-open-cross-library>元ノートを絞り込む</button></div><div class="cross-detail-body"><div class="cross-notes">${group.notes.slice(0,12).map(n=>`<article data-cross-note="${esc(n.id)}"><div><span>${esc(gameById(n.gameId)?.name||'未登録')}</span><span>·</span><span>${esc(typeById(n.typeId)?.name||'未分類')}</span></div><b>${esc(n.title||'無題')}</b><p>${esc(n.body)}</p></article>`).join('')}</div><aside class="cross-routes"><h3>この横串をどこへ送る？</h3><p>該当ノートへ出口候補を付けるだけで、自動公開はしません。</p>${DESTINATIONS.map(d=>{const count=group.destinationCounts[d]||0,full=count===group.noteCount&&group.noteCount>0;return `<button class="cross-route ${count?'on':''} ${full?'full':''}" data-cross-destination="${d}" data-enabled="${full?'false':'true'}"><b>${destinationLabel(d)}</b><span>${count}/${group.noteCount}</span></button>`}).join('')}</aside></div>`;
+  }
+  function renderPromotion() {
+    const groups=crossGroups();
+    $('#promotion-routes').innerHTML=['all',...DESTINATIONS].map(r=>`<button class="chip ${state.cross.route===r?'on':''}" data-promotion-route="${r}">${r==='all'?'ALL':destinationLabel(r)}</button>`).join('');
+    const rows=[];
+    groups.forEach(g=>DESTINATIONS.forEach(d=>{const count=g.destinationCounts[d]||0;if(count && (state.cross.route==='all'||state.cross.route===d))rows.push({group:g,destination:d,count})}));
+    $('#promotion-list').innerHTML=rows.length?rows.map(x=>`<article class="promotion-row" data-promotion-value="${esc(x.group.value)}"><div class="promotion-kind">${destinationLabel(x.destination)}<span>${esc(facetById(state.cross.facetId)?.name||'FACET')}</span></div><div><b>${esc(x.group.value)}</b><p>${x.group.gameCount}作品 · ${x.group.noteCount}メモ · ${x.count}件が候補</p></div><button class="ghost">横串を見る</button></article>`).join(''):'<div class="empty">まだ昇格候補はありません。横串から必要なものだけ選んでください。</div>';
+  }
+  function selectedDestinations() { return $('#note-destinations input:checked').map(x=>x.value).filter(v=>DESTINATIONS.includes(v)); }
+  function setDestinationChecks(values=[]) { const set=new Set(values||[]); $('#note-destinations input').forEach(x=>x.checked=set.has(x.value)); }
+
   function facetUsage(id) { return state.notes.filter(n => (n.facets?.[id] || []).length).length; }
   function renderEditor() {
     const usageGame = id => state.notes.filter(n=>n.gameId===id).length, usageType = id => state.notes.filter(n=>n.typeId===id).length;
@@ -143,8 +191,8 @@
     $('#editor-types').innerHTML = state.types.map(t=>`<div class="dict-item editable"><input value="${esc(t.name)}" data-type-name="${esc(t.id)}" aria-label="種類名"><small>${usageType(t.id)} notes</small><button class="dict-save" data-save-type="${esc(t.id)}">保存</button><button data-delete-dict="type" data-id="${esc(t.id)}">削除</button></div>`).join('');
     $('#editor-facets').innerHTML = visibleFacets().map(f=>`<div class="facet-dict-item"><input value="${esc(f.name)}" data-facet-name="${esc(f.id)}" aria-label="ファセット名"><small>${facetUsage(f.id)} notes</small><button class="ghost" data-save-facet="${esc(f.id)}">保存</button><button class="facet-delete" data-delete-dict="facet" data-id="${esc(f.id)}">削除</button></div>`).join('') || '<div class="empty">分類軸を追加してください。</div>';
   }
-  function renderAll() { renderCounts(); renderInbox(); renderLibrary(); renderGame(); renderIndex(); renderEditor(); }
-  function setView(name) { state.view = name; $$('.view').forEach(v => v.classList.toggle('show', v.id === `view-${name}`)); $$('.nav').forEach(v=>v.classList.toggle('on',v.dataset.view===name)); if(name==='library')renderLibrary(); if(name==='game')renderGame(); if(name==='index')renderIndex(); if(name==='editor')renderEditor(); }
+  function renderAll() { renderCounts(); renderInbox(); renderLibrary(); renderGame(); renderCrosscut(); renderPromotion(); renderIndex(); renderEditor(); }
+  function setView(name) { state.view = name; $('.view').forEach(v => v.classList.toggle('show', v.id === `view-${name}`)); $('.nav').forEach(v=>v.classList.toggle('on',v.dataset.view===name)); if(name==='library')renderLibrary(); if(name==='game')renderGame(); if(name==='crosscut')renderCrosscut(); if(name==='promotion')renderPromotion(); if(name==='index')renderIndex(); if(name==='editor')renderEditor(); }
 
   function emptyFacetDraft(noteFacets = {}) {
     const facets = {};
@@ -153,13 +201,13 @@
   }
   function resetDraft() {
     state.editing = null; state.originalMedia = []; state.uploadedThisSession = []; state.draft = { facets: emptyFacetDraft(), media: [] };
-    $('#note-id').value=''; $('#note-title').value=''; $('#note-body').value=''; $('#note-status').value='private'; $('#note-media').value=''; $('#delete-note').classList.add('hidden'); $('#note-dialog-title').textContent='断片を追加'; fillSelect($('#note-game'),state.games,state.gameId); fillSelect($('#note-type'),state.types,state.types[0]?.id||''); renderDraftFields();
+    $('#note-id').value=''; $('#note-title').value=''; $('#note-body').value=''; $('#note-status').value='private'; setDestinationChecks([]); $('#note-media').value=''; $('#delete-note').classList.add('hidden'); $('#note-dialog-title').textContent='断片を追加'; fillSelect($('#note-game'),state.games,state.gameId); fillSelect($('#note-type'),state.types,state.types[0]?.id||''); renderDraftFields();
   }
   function openNote(note = null, presetGame = '') {
     if (!state.games.length) { setView('editor'); toast('先にゲームを追加してください', true); return; }
     if (note) {
       state.editing = note.id; state.originalMedia = [...(note.media||[])]; state.uploadedThisSession = []; state.draft = { facets: emptyFacetDraft(note.facets || {}), media:[...(note.media||[])] };
-      $('#note-id').value=note.id; $('#note-title').value=note.title||''; $('#note-body').value=note.body||''; $('#note-status').value=note.outputStatus||'private'; $('#note-dialog-title').textContent='断片を編集'; $('#delete-note').classList.remove('hidden'); fillSelect($('#note-game'),state.games,note.gameId); fillSelect($('#note-type'),state.types,note.typeId);
+      $('#note-id').value=note.id; $('#note-title').value=note.title||''; $('#note-body').value=note.body||''; $('#note-status').value=note.outputStatus||'private'; setDestinationChecks(note.destinations||[]); $('#note-dialog-title').textContent='断片を編集'; $('#delete-note').classList.remove('hidden'); fillSelect($('#note-game'),state.games,note.gameId); fillSelect($('#note-type'),state.types,note.typeId);
     } else { resetDraft(); if(presetGame) $('#note-game').value=presetGame; }
     renderDraftFields(); $('#note-overlay').classList.add('on'); $('#note-overlay').setAttribute('aria-hidden','false'); setTimeout(()=>$('#note-body').focus(),30);
   }
@@ -228,7 +276,7 @@
         toast(`アップロード中: ${file.name}`);
         uploaded.push(await uploadFile(file));
       }
-      await api('/api/game-notes',{method:'POST',body:JSON.stringify({entity:'note',gameId,typeId,body,facets:{},media:uploaded,outputStatus:'private'})});
+      await api('/api/game-notes',{method:'POST',body:JSON.stringify({entity:'note',gameId,typeId,body,facets:{},media:uploaded,outputStatus:'private',destinations:[]})});
       $('#quick-body').value='';
       if(mediaInput)mediaInput.value='';
       await load();
@@ -243,7 +291,7 @@
   async function saveNote(e) {
     e.preventDefault(); const body=$('#note-body').value.trim(); if(!body){toast('メモを入力してください',true);return}
     const existing=state.editing?state.notes.find(n=>n.id===state.editing):null;
-    const payload={entity:'note',id:$('#note-id').value||undefined,gameId:$('#note-game').value,typeId:$('#note-type').value,title:$('#note-title').value,body,facets:state.draft.facets,media:state.draft.media,outputStatus:$('#note-status').value,createdAt:existing?.createdAt||undefined};
+    const payload={entity:'note',id:$('#note-id').value||undefined,gameId:$('#note-game').value,typeId:$('#note-type').value,title:$('#note-title').value,body,facets:state.draft.facets,media:state.draft.media,outputStatus:$('#note-status').value,destinations:selectedDestinations(),createdAt:existing?.createdAt||undefined};
     $('#save-note').disabled=true; try{await api('/api/game-notes',{method:payload.id?'PATCH':'POST',body:JSON.stringify(payload)}); const removed=state.originalMedia.filter(m=>!state.draft.media.some(x=>x.key===m.key)).map(m=>m.key); state.uploadedThisSession=[]; closeNote(false); removed.forEach(deleteMediaKey); await load(); toast(payload.id?'更新しました':'保存しました');}catch(e2){toast(e2.message,true)}finally{$('#save-note').disabled=false}
   }
   async function deleteNote() { if(!state.editing)return; if(!confirm('この断片を削除しますか？'))return; const media=[...state.draft.media]; await api('/api/game-notes',{method:'DELETE',body:JSON.stringify({entity:'note',id:state.editing})}); state.uploadedThisSession=[]; closeNote(false); media.forEach(m=>deleteMediaKey(m.key)); await load(); toast('削除しました'); }
@@ -269,6 +317,16 @@
   $('#search').addEventListener('input',e=>{state.query=e.target.value;setView('library');renderLibrary()});
   $('#filter-game').addEventListener('change',e=>{state.filters.gameId=e.target.value;renderLibrary()}); $('#filter-type').addEventListener('change',e=>{state.filters.typeId=e.target.value;renderLibrary()}); $('#filter-status').addEventListener('change',e=>{state.filters.status=e.target.value;renderLibrary()}); $('#clear-filters').addEventListener('click',clearFilters);
   $('#facet-filters').addEventListener('click',e=>{const b=e.target.closest('[data-filter-facet]');if(!b)return;const id=b.dataset.filterFacet,value=b.dataset.filterValue;const list=state.filters.facets[id]||[];state.filters.facets[id]=list.includes(value)?list.filter(v=>v!==value):[...list,value];renderLibrary()});
+
+  $('#cross-facet')?.addEventListener('change',e=>{state.cross.facetId=e.target.value;state.cross.value='';renderCrosscut();renderPromotion();renderCounts()});
+  $('#view-crosscut')?.addEventListener('click',async e=>{
+    const sort=e.target.closest('[data-cross-sort]');if(sort){state.cross.sort=sort.dataset.crossSort;renderCrosscut();return}
+    const card=e.target.closest('[data-cross-value]');if(card){state.cross.value=card.dataset.crossValue;renderCrosscut();return}
+    const note=e.target.closest('[data-cross-note]');if(note){openNote(state.notes.find(n=>n.id===note.dataset.crossNote));return}
+    const lib=e.target.closest('[data-open-cross-library]');if(lib){clearFilters();state.filters.facets[state.cross.facetId]=[state.cross.value];setView('library');renderLibrary();return}
+    const route=e.target.closest('[data-cross-destination]');if(route){route.disabled=true;try{await api('/api/game-notes',{method:'PATCH',body:JSON.stringify({entity:'crosscut_destination',facetId:state.cross.facetId,value:state.cross.value,destination:route.dataset.crossDestination,enabled:route.dataset.enabled!=='false'})});await load();toast('出口候補を更新しました')}catch(err){toast(err.message,true)}finally{route.disabled=false}return}
+  });
+  $('#view-promotion')?.addEventListener('click',e=>{const route=e.target.closest('[data-promotion-route]');if(route){state.cross.route=route.dataset.promotionRoute;renderPromotion();return}const row=e.target.closest('[data-promotion-value]');if(row){state.cross.value=row.dataset.promotionValue;setView('crosscut');renderCrosscut();}});
   $('#candidate-filter').addEventListener('click',()=>{clearFilters();state.filters.status='candidate';setView('library');renderLibrary()});
   $('#dig').addEventListener('click',()=>{if(!state.notes.length)return;const n=state.notes[Math.floor(Math.random()*state.notes.length)];const pairs=visibleFacets().flatMap(f=>(n.facets?.[f.id]||[]).map(v=>[f.id,v]));if(pairs.length){const [id,v]=pairs[Math.floor(Math.random()*pairs.length)];clearFilters();state.filters.facets[id]=[v];setView('library');renderLibrary();toast(`「${v}」を掘り返しました`)}else{state.query=gameById(n.gameId)?.name||'';$('#search').value=state.query;setView('library');renderLibrary()}});
   $('#facet-index').addEventListener('click',e=>{const b=e.target.closest('[data-index-facet]');if(!b)return;clearFilters();state.filters.facets[b.dataset.indexFacet]=[b.dataset.indexValue];setView('library');renderLibrary()});
