@@ -389,7 +389,7 @@ async function syncPublishedMediaSelection(sql, noteId, media = []) {
   const sourceId = clean(noteId, 180).replace(/^game-notes:note:/, '').replace(/^game-notes:public-note:/, '');
   const ids = normalizeList(
     (Array.isArray(media) ? media : [])
-      .filter(item => item?.public === true && item?.assetId)
+      .filter(item => item?.assetId)
       .map(item => clean(item.assetId, 180))
       .map(id => id.startsWith('media-asset:') ? id : `media-asset:${id}`),
     24,

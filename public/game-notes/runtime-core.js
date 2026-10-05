@@ -252,7 +252,7 @@
   }
   async function renderMediaList() {
     const root = $('#note-media-list');
-    root.innerHTML = state.draft.media.map((m,i)=>`<div class="media-row"><div class="media-thumb" data-thumb="${i}">${m.kind==='video'?'VIDEO':'IMAGE'}</div><div><b>${esc(m.name||m.key.split('/').pop())}</b><small>${Math.round((m.size||0)/1024)} KB · ${m.assetId?'LIBRARY':'LEGACY'}</small><label class="media-public"><input type="checkbox" data-public-media="${i}" ${m.public?'checked':''}> 公開ページに含める</label></div><button type="button" data-remove-media="${i}">外す</button></div>`).join('');
+    root.innerHTML = state.draft.media.map((m,i)=>`<div class="media-row"><div class="media-thumb" data-thumb="${i}">${m.kind==='video'?'VIDEO':'IMAGE'}</div><div><b>${esc(m.name||m.key.split('/').pop())}</b><small>${Math.round((m.size||0)/1024)} KB · ${m.assetId?'LIBRARY':'LEGACY'} · ノート公開時に自動表示</small></div><button type="button" data-remove-media="${i}">外す</button></div>`).join('');
     state.draft.media.forEach(async (m,i)=>{ const box=$(`[data-thumb="${i}"]`,root); if(!box)return; const url=await mediaBlobUrl(m); if(!url)return; box.innerHTML=m.kind==='video'?`<video muted playsinline src="${url}"></video>`:`<img src="${url}" alt="">`; });
   }
   async function uploadFile(file) {
@@ -373,7 +373,6 @@
   });
   $('#note-facets').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('input')){e.preventDefault();addFacetToken(e.target.closest('[data-facet-id]'));}});
   $('#note-form').addEventListener('click',e=>{const m=e.target.closest('[data-remove-media]');if(m){const item=state.draft.media.splice(Number(m.dataset.removeMedia),1)[0];const fresh=item&&state.uploadedThisSession.some(x=>x.key===item.key);if(fresh){state.uploadedThisSession=state.uploadedThisSession.filter(x=>x.key!==item.key);trashMediaAsset(item)}renderDraftFields()}});
-  $('#note-form').addEventListener('change',e=>{const p=e.target.closest('[data-public-media]');if(p){const item=state.draft.media[Number(p.dataset.publicMedia)];if(item)item.public=p.checked}});
   $('#note-media').addEventListener('change',e=>handleMediaFiles(e.target.files));
   $('#open-media-library')?.addEventListener('click',openMediaPicker);
   $('#close-media-picker')?.addEventListener('click',closeMediaPicker);

@@ -70,7 +70,7 @@ async function relatedWaysForNote(sql,meta){
 }
 
 async function publicMediaAssetIds(sql,meta){
-  const requested=list((Array.isArray(meta?.media)?meta.media:[]).filter(item=>item?.public===true&&item?.assetId).map(item=>item.assetId),24,180)
+  const requested=list((Array.isArray(meta?.media)?meta.media:[]).filter(item=>item?.assetId).map(item=>item.assetId),24,180)
     .map(id=>id.startsWith('media-asset:')?id:`media-asset:${id}`);
   const out=[];
   for(const id of requested){
