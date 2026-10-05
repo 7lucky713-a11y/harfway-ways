@@ -30,7 +30,7 @@
   const CLOSERS=Object.fromEntries(Object.entries(BRACKETS).map(([a,b])=>[b,a]));
   const ENDINGS=['と思う','と感じる','でした','です','ます','だった','である','になる','している','していた'];
   const STOP_WORDS=new Set(['ゲーム','プレイ','作品','今回','感じ','自分','ところ','こと','もの','ような','ため','かなり','とても']);
-  const state={suggestions:[]};
+  const state={suggestions:[],activeIndex:-1,liveTimer:0};
   const $=(s,r=document)=>r.querySelector(s);
 
   function toast(msg,bad=false){
@@ -204,7 +204,9 @@
       .proofread-panel{grid-column:1/-1;display:none;border:1px solid #465147;border-radius:10px;background:#111713;overflow:hidden}.proofread-panel.on{display:block}
       .proofread-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 13px;border-bottom:1px solid var(--line)}
       .proofread-head b{font:900 10px ui-monospace,monospace;letter-spacing:.08em;color:#c8d3c9}.proofread-head span{font-size:9px;color:var(--muted);line-height:1.5;text-align:right}
-      .proofread-empty{padding:16px 13px;color:#88958a;font-size:11px;line-height:1.7}.proofread-list{display:grid}.proofread-item{padding:13px;border-bottom:1px solid var(--line)}.proofread-item:last-child{border-bottom:0}
+      .proofread-empty{padding:16px 13px;color:#88958a;font-size:11px;line-height:1.7}.proofread-list{display:grid}.proofread-item{padding:13px;border-bottom:1px solid var(--line);cursor:pointer;transition:background .14s ease,box-shadow .14s ease}.proofread-item:hover{background:#151c17}.proofread-item.active{background:#171f18;box-shadow:inset 3px 0 #dff238}.proofread-item:last-child{border-bottom:0}
+      .proofread-editor-wrap{position:relative;width:100%;border-radius:8px}.proofread-editor-wrap #note-body{position:relative;z-index:1}.proofread-backdrop{position:absolute;inset:0;z-index:2;overflow:hidden;pointer-events:none;border:1px solid transparent;border-radius:8px;padding:10px;white-space:pre-wrap;overflow-wrap:break-word;word-break:break-word;color:transparent;font:inherit;line-height:inherit}
+      .proofread-mark{color:transparent;background:rgba(217,141,141,.13);border-bottom:2px wavy #d58d8d;pointer-events:auto;cursor:pointer;border-radius:2px}.proofread-mark.check{background:rgba(199,168,121,.10);border-bottom-color:#c7a879}.proofread-mark.active{background:rgba(223,242,56,.22);border-bottom-color:#dff238}
       .proofread-meta{display:flex;align-items:center;gap:7px;margin-bottom:8px}.proofread-kind{display:inline-flex;border:1px solid #5d6c60;border-radius:999px;padding:4px 7px;font:900 8px ui-monospace,monospace;color:#dff238}.proofread-field{font:800 8px ui-monospace,monospace;color:#758178}
       .proofread-change{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}.proofread-text{border:1px solid var(--line);background:#171d19;border-radius:7px;padding:9px 10px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;line-height:1.6}.proofread-arrow{color:#718078;font-weight:900}
       .proofread-reason{margin-top:8px;color:#869188;font-size:10px;line-height:1.6}.proofread-actions{display:flex;justify-content:flex-end;margin-top:9px}.proofread-actions button,.proofread-dict-row button{border:1px solid #607063;background:#1b241d;color:#dbe5dc;border-radius:7px;padding:7px 10px;font-size:10px;font-weight:900;cursor:pointer}
@@ -214,6 +216,64 @@
     `;
     document.head.appendChild(s);
   }
+
+  function markerEls(){
+    return {body:$('#note-body'),backdrop:$('#note-proofread-backdrop')};
+  }
+  function syncMarkerScroll(){
+    const {body,backdrop}=markerEls();if(!body||!backdrop)return;
+    backdrop.scrollTop=body.scrollTop;backdrop.scrollLeft=body.scrollLeft;
+  }
+  function ensureMarkerLayer(){
+    const body=$('#note-body');if(!body)return;
+    if($('#note-proofread-backdrop'))return;
+    const wrap=document.createElement('div');wrap.className='proofread-editor-wrap';
+    body.parentNode.insertBefore(wrap,body);wrap.appendChild(body);
+    const backdrop=document.createElement('div');backdrop.id='note-proofread-backdrop';backdrop.className='proofread-backdrop';backdrop.setAttribute('aria-hidden','true');
+    wrap.insertBefore(backdrop,body);
+    body.addEventListener('scroll',syncMarkerScroll,{passive:true});
+    if('ResizeObserver' in window)new ResizeObserver(syncMarkerScroll).observe(body);
+  }
+  function renderMarkers(){
+    const {body,backdrop}=markerEls();if(!body||!backdrop)return;
+    const text=String(body.value||'');backdrop.innerHTML='';
+    const items=state.suggestions.map((s,index)=>({...s,index}))
+      .filter(s=>s.field==='body'&&s.start>=0&&s.end>s.start&&s.start<text.length)
+      .map(s=>({...s,end:Math.min(text.length,s.end)}));
+    if(!items.length){backdrop.textContent=text+(text.endsWith('\n')?' ':'');syncMarkerScroll();return}
+    const points=new Set([0,text.length]);items.forEach(s=>{points.add(s.start);points.add(s.end)});
+    const ordered=[...points].sort((a,b)=>a-b);
+    for(let i=0;i<ordered.length-1;i++){
+      const start=ordered[i],end=ordered[i+1];if(end<=start)continue;
+      const covered=items.filter(s=>s.start<end&&s.end>start);
+      const value=text.slice(start,end);
+      if(!covered.length){backdrop.appendChild(document.createTextNode(value));continue}
+      const active=covered.some(s=>s.index===state.activeIndex);
+      const chosen=covered.find(s=>s.index===state.activeIndex)||covered[0];
+      const mark=document.createElement('mark');mark.className='proofread-mark'+(covered.some(s=>!s.actionable)?' check':'')+(active?' active':'');
+      mark.dataset.proofreadMarker=String(chosen.index);mark.textContent=value;backdrop.appendChild(mark);
+    }
+    if(text.endsWith('\n'))backdrop.appendChild(document.createTextNode(' '));
+    syncMarkerScroll();
+  }
+  function updateActiveUi(){
+    document.querySelectorAll('.proofread-item[data-focus-proofread]').forEach(el=>el.classList.toggle('active',Number(el.dataset.focusProofread)===state.activeIndex));
+    renderMarkers();
+  }
+  function focusSuggestion(index){
+    const s=state.suggestions[index];if(!s)return;
+    const field=fieldEl(s.field);if(!field)return;
+    state.activeIndex=index;updateActiveUi();
+    field.scrollIntoView({block:'center',behavior:'smooth'});
+    try{field.focus({preventScroll:true})}catch{field.focus()}
+    if(typeof field.setSelectionRange==='function')field.setSelectionRange(Math.max(0,s.start),Math.max(s.start,s.end));
+  }
+  function scheduleLiveRun(){
+    const panel=$('#note-proofread-panel');if(!panel?.classList.contains('on'))return;
+    clearTimeout(state.liveTimer);
+    state.liveTimer=setTimeout(()=>{state.activeIndex=-1;state.suggestions=analyze();render()},260);
+  }
+
   function ensureUi(){
     styles();const form=$('#note-form'),body=$('#note-body'),foot=$('#note-form .dialog-foot');if(!form||!body||!foot)return false;
     if(!$('#proofread-dict-add')){
@@ -227,7 +287,7 @@
     if(!$('#note-proofread-panel')){
       const p=document.createElement('section');p.id='note-proofread-panel';p.className='proofread-panel';p.setAttribute('aria-live','polite');body.closest('label')?.insertAdjacentElement('afterend',p);
     }
-    body.setAttribute('spellcheck','true');return true;
+    ensureMarkerLayer();body.setAttribute('spellcheck','true');return true;
   }
   function fieldEl(field){return field==='title'?$('#note-title'):$('#note-body')}
   function fieldLabel(field){return field==='title'?'タイトル':'本文'}
@@ -250,11 +310,11 @@
     const panel=$('#note-proofread-panel');if(!panel)return;panel.classList.add('on');panel.innerHTML='';
     const head=document.createElement('div');head.className='proofread-head';
     const strong=document.createElement('b');strong.textContent='PROOFREAD · '+state.suggestions.length+'件';
-    const help=document.createElement('span');help.textContent='AI不使用・ブラウザ内だけで判定。文体は自動で直しません。';head.append(strong,help);panel.appendChild(head);
-    if(!state.suggestions.length){const e=document.createElement('div');e.className='proofread-empty';e.textContent='登録済みルールに該当する問題は見つかりませんでした。';panel.appendChild(e);renderDictionary(panel);return}
+    const help=document.createElement('span');help.textContent='本文の下線をクリックすると該当箇所を選択。AI不使用・ブラウザ内だけで判定。';head.append(strong,help);panel.appendChild(head);
+    if(!state.suggestions.length){const e=document.createElement('div');e.className='proofread-empty';e.textContent='登録済みルールに該当する問題は見つかりませんでした。';panel.appendChild(e);renderDictionary(panel);renderMarkers();return}
     const list=document.createElement('div');list.className='proofread-list';
     state.suggestions.forEach((s,index)=>{
-      const field=fieldEl(s.field),text=String(field?.value||''),item=document.createElement('article');item.className='proofread-item';
+      const field=fieldEl(s.field),text=String(field?.value||''),item=document.createElement('article');item.className='proofread-item'+(index===state.activeIndex?' active':'');item.dataset.focusProofread=String(index);
       const meta=document.createElement('div');meta.className='proofread-meta';
       const kind=document.createElement('span');kind.className='proofread-kind';kind.textContent=KINDS[s.kind]||'校正';
       const where=document.createElement('span');where.className='proofread-field';where.textContent=fieldLabel(s.field);meta.append(kind,where);item.appendChild(meta);
@@ -272,11 +332,11 @@
         const acts=document.createElement('div');acts.className='proofread-actions';const b=document.createElement('button');b.type='button';b.dataset.applyProofread=String(index);b.textContent='この修正を反映';acts.appendChild(b);item.appendChild(acts);
       }
       list.appendChild(item);
-    });panel.appendChild(list);renderDictionary(panel);
+    });panel.appendChild(list);renderDictionary(panel);renderMarkers();
   }
   function run(){
     if(!String($('#note-body')?.value||'').trim())return toast('先に本文を入力してください',true);
-    state.suggestions=analyze();render();
+    clearTimeout(state.liveTimer);state.activeIndex=-1;state.suggestions=analyze();render();
   }
   function apply(index){
     const s=state.suggestions[index];if(!s?.actionable)return;
@@ -284,13 +344,16 @@
     if(text.slice(s.start,s.end)!==s.before){toast('本文が変わったため、もう一度チェックしてください。',true);return run()}
     field.value=text.slice(0,s.start)+s.after+text.slice(s.end);field.dispatchEvent(new Event('input',{bubbles:true}));toast('修正を反映しました');run();
   }
-  function reset(){state.suggestions=[];const p=$('#note-proofread-panel');if(p){p.classList.remove('on');p.innerHTML=''}}
+  function reset(){clearTimeout(state.liveTimer);state.suggestions=[];state.activeIndex=-1;const p=$('#note-proofread-panel');if(p){p.classList.remove('on');p.innerHTML=''}renderMarkers()}
   function init(){
     if(!ensureUi())return;
     $('#note-proofread-panel')?.addEventListener('click',e=>{
       const applyButton=e.target.closest('[data-apply-proofread]');if(applyButton)return apply(Number(applyButton.dataset.applyProofread));
       const removeButton=e.target.closest('[data-remove-proofread-rule]');if(removeButton)return removeRule(Number(removeButton.dataset.removeProofreadRule));
+      const item=e.target.closest('[data-focus-proofread]');if(item)return focusSuggestion(Number(item.dataset.focusProofread));
     });
+    $('#note-proofread-backdrop')?.addEventListener('click',e=>{const mark=e.target.closest('[data-proofread-marker]');if(mark)focusSuggestion(Number(mark.dataset.proofreadMarker))});
+    $('#note-body')?.addEventListener('input',scheduleLiveRun);$('#note-title')?.addEventListener('input',scheduleLiveRun);
     const overlay=$('#note-overlay');if(overlay){let was=overlay.classList.contains('on');new MutationObserver(()=>{const open=overlay.classList.contains('on');if(open&&!was)reset();was=open}).observe(overlay,{attributes:true,attributeFilter:['class','aria-hidden']})}
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
