@@ -215,8 +215,30 @@
   }
 
   async function saveQuick() {
-    const gameId=$('#quick-game').value,typeId=$('#quick-type').value,body=$('#quick-body').value.trim(); if(!gameId){setView('editor');toast('ゲームを追加してください',true);return} if(!typeId||!body){toast('種類とメモを入力してください',true);return}
-    await api('/api/game-notes',{method:'POST',body:JSON.stringify({entity:'note',gameId,typeId,body,facets:{},media:[],outputStatus:'private'})}); $('#quick-body').value=''; await load(); toast('INBOXに保存しました');
+    const gameId=$('#quick-game').value,typeId=$('#quick-type').value,body=$('#quick-body').value.trim();
+    if(!gameId){setView('editor');toast('ゲームを追加してください',true);return}
+    if(!typeId||!body){toast('種類とメモを入力してください',true);return}
+    const mediaInput=$('#quick-media');
+    const files=[...(mediaInput?.files||[])].slice(0,12);
+    const uploaded=[];
+    const saveButton=$('#quick-save');
+    if(saveButton)saveButton.disabled=true;
+    try{
+      for(const file of files){
+        toast(`アップロード中: ${file.name}`);
+        uploaded.push(await uploadFile(file));
+      }
+      await api('/api/game-notes',{method:'POST',body:JSON.stringify({entity:'note',gameId,typeId,body,facets:{},media:uploaded,outputStatus:'private'})});
+      $('#quick-body').value='';
+      if(mediaInput)mediaInput.value='';
+      await load();
+      toast(files.length?`INBOXに保存しました（素材${files.length}件）`:'INBOXに保存しました');
+    }catch(error){
+      await Promise.all(uploaded.map(item=>deleteMediaKey(item.key)));
+      throw error;
+    }finally{
+      if(saveButton)saveButton.disabled=false;
+    }
   }
   async function saveNote(e) {
     e.preventDefault(); const body=$('#note-body').value.trim(); if(!body){toast('メモを入力してください',true);return}
