@@ -212,7 +212,7 @@
     renderDraftFields(); $('#note-overlay').classList.add('on'); $('#note-overlay').setAttribute('aria-hidden','false'); setTimeout(()=>$('#note-body').focus(),30);
   }
   async function deleteMediaKey(key) { try { await api('/api/game-notes-media',{method:'DELETE',body:JSON.stringify({key})}); } catch {} }
-  function closeNote(cleanup = true) { $('#note-overlay').classList.remove('on'); $('#note-overlay').setAttribute('aria-hidden','true'); if(cleanup && state.uploadedThisSession.length){ const keys=[...state.uploadedThisSession]; state.uploadedThisSession=[]; keys.forEach(deleteMediaKey); } }
+  function closeNote(cleanup = true) { $('#note-overlay').classList.remove('on'); $('#note-overlay').setAttribute('aria-hidden','true'); if(cleanup && state.uploadedThisSession.length){ const media=[...state.uploadedThisSession]; state.uploadedThisSession=[]; media.forEach(trashMediaAsset); } }
   function renderDraftFields() {
     const facets = visibleFacets();
     const selected = facets.filter(f => Object.prototype.hasOwnProperty.call(state.draft.facets, f.id));
@@ -241,26 +241,83 @@
   }
 
   async function mediaBlobUrl(item) {
-    if (state.mediaUrls.has(item.key)) return state.mediaUrls.get(item.key);
-    const res = await fetch(`/api/game-notes-media?action=file&key=${encodeURIComponent(item.key)}`, { headers: authHeaders(), cache:'no-store' });
+    const cacheKey = item.assetId || item.key;
+    if (state.mediaUrls.has(cacheKey)) return state.mediaUrls.get(cacheKey);
+    const path = item.assetId
+      ? `/api/media-library?action=file&id=${encodeURIComponent(item.assetId)}`
+      : `/api/game-notes-media?action=file&key=${encodeURIComponent(item.key)}`;
+    const res = await fetch(path, { headers: authHeaders(), cache:'no-store' });
     if (!res.ok) return '';
-    const url = URL.createObjectURL(await res.blob()); state.mediaUrls.set(item.key,url); return url;
+    const url = URL.createObjectURL(await res.blob()); state.mediaUrls.set(cacheKey,url); return url;
   }
   async function renderMediaList() {
-    const root = $('#note-media-list'); root.innerHTML = state.draft.media.map((m,i)=>`<div class="media-row"><div class="media-thumb" data-thumb="${i}">${m.kind==='video'?'VIDEO':'IMAGE'}</div><div><b>${esc(m.name||m.key.split('/').pop())}</b><small>${Math.round((m.size||0)/1024)} KB</small></div><button type="button" data-remove-media="${i}">削除</button></div>`).join('');
+    const root = $('#note-media-list');
+    root.innerHTML = state.draft.media.map((m,i)=>`<div class="media-row"><div class="media-thumb" data-thumb="${i}">${m.kind==='video'?'VIDEO':'IMAGE'}</div><div><b>${esc(m.name||m.key.split('/').pop())}</b><small>${Math.round((m.size||0)/1024)} KB · ${m.assetId?'LIBRARY':'LEGACY'}</small><label class="media-public"><input type="checkbox" data-public-media="${i}" ${m.public?'checked':''}> 公開ページに含める</label></div><button type="button" data-remove-media="${i}">外す</button></div>`).join('');
     state.draft.media.forEach(async (m,i)=>{ const box=$(`[data-thumb="${i}"]`,root); if(!box)return; const url=await mediaBlobUrl(m); if(!url)return; box.innerHTML=m.kind==='video'?`<video muted playsinline src="${url}"></video>`:`<img src="${url}" alt="">`; });
   }
   async function uploadFile(file) {
     const start = await api('/api/game-notes-media?action=start',{method:'POST',body:JSON.stringify({fileName:file.name,contentType:file.type,size:file.size})});
     const parts=Math.ceil(file.size/start.chunkBytes);
     for(let p=1;p<=parts;p++){ const blob=file.slice((p-1)*start.chunkBytes,Math.min(file.size,p*start.chunkBytes)); await api('/api/game-notes-media',{method:'PUT',body:blob,headers:{'content-type':'application/octet-stream','x-upload-id':start.uploadId,'x-part-number':String(p),'x-content-type':file.type,'x-file-size':String(file.size)}}); }
-    const done=await api('/api/game-notes-media?action=complete',{method:'POST',body:JSON.stringify({uploadId:start.uploadId,fileName:file.name,contentType:file.type,size:file.size,parts})}); return done.media;
+    const done=await api('/api/game-notes-media?action=complete',{method:'POST',body:JSON.stringify({uploadId:start.uploadId,fileName:file.name,contentType:file.type,size:file.size,parts})});
+    try {
+      const gameId = $('#note-game')?.value || $('#quick-game')?.value || '';
+      const gameName = gameById(gameId)?.name || '';
+      const registered = await api('/api/media-library',{method:'POST',body:JSON.stringify({action:'register',key:done.media.key,name:file.name,mimeType:file.type,size:file.size,gameId,gameName})});
+      return {...done.media,assetId:registered.asset.id,public:false,alt:registered.asset.alt||'',caption:registered.asset.caption||''};
+    } catch (error) {
+      await deleteMediaKey(done.media.key);
+      throw error;
+    }
+  }
+  async function ensureMediaAssets(media) {
+    for (const item of media) {
+      if (item.assetId) continue;
+      const gameId = $('#note-game')?.value || '';
+      const gameName = gameById(gameId)?.name || '';
+      const registered = await api('/api/media-library',{method:'POST',body:JSON.stringify({action:'register',key:item.key,name:item.name||'',mimeType:item.type||'',size:item.size||0,gameId,gameName})});
+      item.assetId = registered.asset.id;
+      item.alt ||= registered.asset.alt || '';
+      item.caption ||= registered.asset.caption || '';
+      item.public = item.public === true;
+    }
+    return media;
+  }
+  async function trashMediaAsset(item) {
+    if (item?.assetId) {
+      try { await api('/api/media-library',{method:'POST',body:JSON.stringify({action:'trash',id:item.assetId})}); } catch {}
+      return;
+    }
+    if (item?.key) await deleteMediaKey(item.key);
   }
   async function handleMediaFiles(files) {
     const selected=[...files].slice(0,Math.max(0,12-state.draft.media.length));
-    for(const file of selected){ toast(`アップロード中: ${file.name}`); try{ const uploaded=await uploadFile(file); state.draft.media.push(uploaded); state.uploadedThisSession.push(uploaded.key); renderDraftFields(); }catch(e){ toast(`アップロード失敗: ${e.message}`,true); } }
+    for(const file of selected){ toast(`アップロード中: ${file.name}`); try{ const uploaded=await uploadFile(file); state.draft.media.push(uploaded); state.uploadedThisSession.push(uploaded); renderDraftFields(); }catch(e){ toast(`アップロード失敗: ${e.message}`,true); } }
     $('#note-media').value='';
   }
+
+  let mediaPickerItems = [];
+  async function loadMediaPicker() {
+    const d = await api('/api/media-library');
+    mediaPickerItems = (d.items||[]).filter(a=>a.status==='active'||a.status==='unregistered').filter(a=>a.kind==='image'||a.kind==='video');
+    renderMediaPicker();
+  }
+  function renderMediaPicker() {
+    const q = ($('#media-picker-search')?.value||'').toLowerCase();
+    const rows = mediaPickerItems.filter(a=>!q||[a.name,a.r2Key,a.gameName,...(a.tags||[])].join(' ').toLowerCase().includes(q));
+    const root=$('#media-picker-grid'); if(!root)return;
+    root.innerHTML=rows.slice(0,160).map(a=>`<button type="button" class="media-pick-card" data-pick-key="${esc(a.r2Key)}"><span>${esc(String(a.kind).toUpperCase())}</span><b>${esc(a.name||a.r2Key)}</b><small>${esc(a.gameName||a.storagePurpose||'')}${a.registered?'':' · 未登録'}</small></button>`).join('')||'<div class="empty">素材がありません。</div>';
+  }
+  async function attachPickerAsset(key) {
+    let a=mediaPickerItems.find(x=>x.r2Key===key); if(!a)return;
+    if(!a.registered){const reg=await api('/api/media-library',{method:'POST',body:JSON.stringify({action:'register',key:a.r2Key,name:a.name,gameId:$('#note-game').value,gameName:gameById($('#note-game').value)?.name||''})});a=reg.asset}
+    if(state.draft.media.length>=12){toast('添付できる素材は12件までです',true);return}
+    if(state.draft.media.some(x=>(x.assetId&&x.assetId===a.id)||x.key===a.r2Key)){toast('この素材は添付済みです');return}
+    state.draft.media.push({key:a.r2Key,assetId:a.id,type:a.mimeType||'',kind:a.kind,size:a.size||0,name:a.name||a.originalName||'',public:false,alt:a.alt||'',caption:a.caption||''});
+    renderDraftFields(); toast('ライブラリから追加しました');
+  }
+  function openMediaPicker(){ $('#media-picker-overlay')?.classList.add('on'); $('#media-picker-overlay')?.setAttribute('aria-hidden','false'); loadMediaPicker().catch(e=>toast(e.message,true)); }
+  function closeMediaPicker(){ $('#media-picker-overlay')?.classList.remove('on'); $('#media-picker-overlay')?.setAttribute('aria-hidden','true'); }
 
   async function saveQuick() {
     const gameId=$('#quick-game').value,typeId=$('#quick-type').value,body=$('#quick-body').value.trim();
@@ -282,7 +339,7 @@
       await load();
       toast(files.length?`INBOXに保存しました（素材${files.length}件）`:'INBOXに保存しました');
     }catch(error){
-      await Promise.all(uploaded.map(item=>deleteMediaKey(item.key)));
+      await Promise.all(uploaded.map(item=>trashMediaAsset(item)));
       throw error;
     }finally{
       if(saveButton)saveButton.disabled=false;
@@ -291,10 +348,15 @@
   async function saveNote(e) {
     e.preventDefault(); const body=$('#note-body').value.trim(); if(!body){toast('メモを入力してください',true);return}
     const existing=state.editing?state.notes.find(n=>n.id===state.editing):null;
-    const payload={entity:'note',id:$('#note-id').value||undefined,gameId:$('#note-game').value,typeId:$('#note-type').value,title:$('#note-title').value,body,facets:state.draft.facets,media:state.draft.media,outputStatus:$('#note-status').value,destinations:selectedDestinations(),createdAt:existing?.createdAt||undefined};
-    $('#save-note').disabled=true; try{await api('/api/game-notes',{method:payload.id?'PATCH':'POST',body:JSON.stringify(payload)}); const removed=state.originalMedia.filter(m=>!state.draft.media.some(x=>x.key===m.key)).map(m=>m.key); state.uploadedThisSession=[]; closeNote(false); removed.forEach(deleteMediaKey); await load(); toast(payload.id?'更新しました':'保存しました');}catch(e2){toast(e2.message,true)}finally{$('#save-note').disabled=false}
+    $('#save-note').disabled=true;
+    try{
+      await ensureMediaAssets(state.draft.media);
+      const payload={entity:'note',id:$('#note-id').value||undefined,gameId:$('#note-game').value,typeId:$('#note-type').value,title:$('#note-title').value,body,facets:state.draft.facets,media:state.draft.media,outputStatus:$('#note-status').value,destinations:selectedDestinations(),createdAt:existing?.createdAt||undefined};
+      await api('/api/game-notes',{method:payload.id?'PATCH':'POST',body:JSON.stringify(payload)});
+      state.uploadedThisSession=[]; closeNote(false); await load(); toast(payload.id?'更新しました':'保存しました');
+    }catch(e2){toast(e2.message,true)}finally{$('#save-note').disabled=false}
   }
-  async function deleteNote() { if(!state.editing)return; if(!confirm('この断片を削除しますか？'))return; const media=[...state.draft.media]; await api('/api/game-notes',{method:'DELETE',body:JSON.stringify({entity:'note',id:state.editing})}); state.uploadedThisSession=[]; closeNote(false); media.forEach(m=>deleteMediaKey(m.key)); await load(); toast('削除しました'); }
+  async function deleteNote() { if(!state.editing)return; if(!confirm('この断片を削除しますか？\n添付素材はMEDIA LIBRARYに残ります。'))return; await api('/api/game-notes',{method:'DELETE',body:JSON.stringify({entity:'note',id:state.editing})}); state.uploadedThisSession=[]; closeNote(false); await load(); toast('削除しました'); }
   async function addDictionary(entity,name,id=''){ await api('/api/game-notes',{method:id?'PATCH':'POST',body:JSON.stringify({entity,name,id:id||undefined})}); await load(); toast(`${entity==='game'?'ゲーム':entity==='type'?'種類':'ファセット'}を${id?'更新':'追加'}しました`); }
   async function deleteDictionary(entity,id){ try{await api('/api/game-notes',{method:'DELETE',body:JSON.stringify({entity,id})});await load();toast('削除しました')}catch(e){if(e.data?.error==='dictionary_in_use')toast(`${e.data.count}件のメモで使用中です`,true);else toast(e.message,true)} }
   function clearFilters() { state.filters = { gameId:'all', typeId:'all', status:'all', facets:{} }; state.query=''; $('#search').value=''; renderLibrary(); }
@@ -310,8 +372,14 @@
     const rem=e.target.closest('[data-remove-facet-token]'); if(rem){const list=state.draft.facets[rem.dataset.removeFacetToken]||[];list.splice(Number(rem.dataset.index),1);renderDraftFields();}
   });
   $('#note-facets').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('input')){e.preventDefault();addFacetToken(e.target.closest('[data-facet-id]'));}});
-  $('#note-form').addEventListener('click',e=>{const m=e.target.closest('[data-remove-media]');if(m){const item=state.draft.media.splice(Number(m.dataset.removeMedia),1)[0];if(item&&state.uploadedThisSession.includes(item.key)){state.uploadedThisSession=state.uploadedThisSession.filter(k=>k!==item.key);deleteMediaKey(item.key)}renderDraftFields()}});
+  $('#note-form').addEventListener('click',e=>{const m=e.target.closest('[data-remove-media]');if(m){const item=state.draft.media.splice(Number(m.dataset.removeMedia),1)[0];const fresh=item&&state.uploadedThisSession.some(x=>x.key===item.key);if(fresh){state.uploadedThisSession=state.uploadedThisSession.filter(x=>x.key!==item.key);trashMediaAsset(item)}renderDraftFields()}});
+  $('#note-form').addEventListener('change',e=>{const p=e.target.closest('[data-public-media]');if(p){const item=state.draft.media[Number(p.dataset.publicMedia)];if(item)item.public=p.checked}});
   $('#note-media').addEventListener('change',e=>handleMediaFiles(e.target.files));
+  $('#open-media-library')?.addEventListener('click',openMediaPicker);
+  $('#close-media-picker')?.addEventListener('click',closeMediaPicker);
+  $('#media-picker-search')?.addEventListener('input',renderMediaPicker);
+  $('#media-picker-grid')?.addEventListener('click',e=>{const b=e.target.closest('[data-pick-key]');if(!b)return;attachPickerAsset(b.dataset.pickKey).catch(err=>toast(err.message,true))});
+  $('#media-picker-overlay')?.addEventListener('click',e=>{if(e.target.id==='media-picker-overlay')closeMediaPicker()});
   $('#library-list').addEventListener('click',e=>{const row=e.target.closest('[data-note]');if(row)openNote(state.notes.find(n=>n.id===row.dataset.note))}); $('#inbox-cards').addEventListener('click',e=>{const row=e.target.closest('[data-note]');if(row)openNote(state.notes.find(n=>n.id===row.dataset.note))}); $('#game-notes').addEventListener('click',e=>{const row=e.target.closest('[data-note]');if(row)openNote(state.notes.find(n=>n.id===row.dataset.note))});
   $('#game-list').addEventListener('click',e=>{const b=e.target.closest('[data-game]');if(!b)return;state.gameId=b.dataset.game;renderGame()});
   $('#search').addEventListener('input',e=>{state.query=e.target.value;setView('library');renderLibrary()});
