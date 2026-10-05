@@ -163,6 +163,50 @@
 
     observer.observe(document.body, { childList: true, subtree: true });
 
+    // Mobile game cards already expose a round pause button. Mirror that same
+    // play/pause behavior on direct taps to the video surface, without
+    // changing links, tags, sound controls, or desktop behavior.
+    document.addEventListener('click', (event) => {
+      if (innerWidth >= 900) return;
+      const video = event.target?.closest?.('.m-card video');
+      if (!video) return;
+
+      const card = video.closest('.m-card');
+      const pauseButton = card?.querySelector('.m-pause');
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (video.paused) {
+        video.play().then(() => {
+          if (pauseButton) pauseButton.textContent = '⏸';
+        }).catch(() => {
+          if (pauseButton) pauseButton.textContent = '▶';
+        });
+      } else {
+        video.pause();
+        if (pauseButton) pauseButton.textContent = '▶';
+      }
+    }, true);
+
+    // Keep the visible mobile pause button in sync even when playback state is
+    // changed by the feed observer or by the direct video tap handler above.
+    document.addEventListener('play', (event) => {
+      if (innerWidth >= 900) return;
+      if (!(event.target instanceof HTMLVideoElement)) return;
+      const card = event.target.closest('.m-card');
+      const pauseButton = card?.querySelector('.m-pause');
+      if (pauseButton) pauseButton.textContent = '⏸';
+    }, true);
+
+    document.addEventListener('pause', (event) => {
+      if (innerWidth >= 900) return;
+      if (!(event.target instanceof HTMLVideoElement)) return;
+      const card = event.target.closest('.m-card');
+      const pauseButton = card?.querySelector('.m-pause');
+      if (pauseButton) pauseButton.textContent = '▶';
+    }, true);
+
     // Desktop promoted shelf cards are stage-open controls. Their card click
     // must never perform a native/default navigation to the advertiser URL.
     // The existing ways-ads.js click handler is allowed to continue and
