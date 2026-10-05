@@ -34,7 +34,7 @@ const title = 'PRIVATE GAME NOTEBOOK';
     .facet-dict-item input{font-size:16px!important;padding:10px!important}.facet-dict-item small{font-size:12px!important}.facet-dict-item .ghost,.facet-delete{font-size:13px!important}
     .lock-card{width:min(520px,94vw)!important;padding:30px!important}.lock-card p{font-size:16px!important}.lock-card>small{font-size:12px!important}.toast{font-size:14px!important;padding:12px 16px!important}.media-count{font-size:12px!important}
     @media(max-width:1100px){.app{grid-template-columns:250px 1fr!important}.library-item{grid-template-columns:105px 150px minmax(180px,1fr) 90px!important}.library-item .tags{display:none}.cards{grid-template-columns:repeat(2,1fr)!important}}
-    @media(max-width:700px){.app{display:block!important}.side{padding:13px!important}.side nav{grid-template-columns:repeat(5,1fr)!important}.nav{font-size:12px!important;padding:11px 4px!important}.top{height:70px!important;padding:0 13px!important}.search{height:46px!important;width:100%!important}.search input{font-size:16px!important}.view{padding:28px 15px 56px!important}.head h1{font-size:40px!important}.head p{font-size:16px!important}.capture{grid-template-columns:1fr!important}.capture textarea{font-size:21px!important;height:120px!important}.cards{grid-template-columns:1fr!important}.library-item{grid-template-columns:90px minmax(0,1fr) 70px!important;padding:15px!important}.library-item .game-name{display:none}.game-layout{grid-template-columns:1fr!important}.game-choice{min-width:175px!important}.game-panel{padding:20px 15px!important}.form-grid input,.form-grid select{font-size:18px!important}.form-grid textarea{font-size:20px!important;min-height:230px!important}}
+    @media(max-width:700px){.app{display:block!important}.side{padding:13px!important}.side nav{grid-template-columns:repeat(4,1fr)!important}.nav{font-size:12px!important;padding:11px 4px!important}.top{height:70px!important;padding:0 13px!important}.search{height:46px!important;width:100%!important}.search input{font-size:16px!important}.view{padding:28px 15px 56px!important}.head h1{font-size:40px!important}.head p{font-size:16px!important}.capture{grid-template-columns:1fr!important}.capture textarea{font-size:21px!important;height:120px!important}.cards{grid-template-columns:1fr!important}.library-item{grid-template-columns:90px minmax(0,1fr) 70px!important;padding:15px!important}.library-item .game-name{display:none}.game-layout{grid-template-columns:1fr!important}.game-choice{min-width:175px!important}.game-panel{padding:20px 15px!important}.form-grid input,.form-grid select{font-size:18px!important}.form-grid textarea{font-size:20px!important;min-height:230px!important}}
     
     .filter-panel{border:1px solid var(--line2);background:var(--panel);border-radius:13px;padding:16px;margin-bottom:18px}.filter-top{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:10px;align-items:end}.filter-control{display:grid;gap:6px}.filter-control>b,.facet-filter-group>b{font:850 10px ui-monospace,monospace;color:#91a095;letter-spacing:.06em}.filter-control select{width:100%;border:1px solid var(--line);background:#121714;border-radius:8px;padding:10px;font-size:13px}.filter-clear{display:flex;align-items:center;gap:8px}.filter-clear small{color:var(--muted);font-size:11px;white-space:nowrap}.facet-filters{display:grid;gap:12px;border-top:1px solid var(--line);margin-top:14px;padding-top:14px}.facet-filter-group{display:grid;grid-template-columns:140px 1fr;gap:12px;align-items:start}.facet-filter-values{display:flex;gap:6px;flex-wrap:wrap}.facet-filter-values>small{color:#68746b;font-size:11px;padding-top:5px}.facet-filter-chip{border:1px solid var(--line);background:#151a17;color:#9aa79d;border-radius:999px;padding:6px 9px;font-size:11px;font-weight:750}.facet-filter-chip span{opacity:.65;margin-left:3px}.facet-filter-chip.on{background:var(--accent);border-color:var(--accent);color:#111610}.filter-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.filter-heading h2{margin:0}.filter-heading small{color:var(--muted);font-size:11px}.filter-badge{display:inline-grid;place-items:center;min-width:20px;height:20px;border-radius:99px;background:var(--accent);color:#111610;font-size:10px;font-weight:900;margin-left:5px}
 
@@ -54,6 +54,8 @@ const title = 'PRIVATE GAME NOTEBOOK';
       <button class="nav on" data-view="inbox">INBOX <em id="count-inbox">0</em></button>
       <button class="nav" data-view="library">LIBRARY <em id="count-library">0</em></button>
       <button class="nav" data-view="game">GAME <em id="count-games">0</em></button>
+      <button class="nav" data-view="crosscut">横串 <em id="count-crosscut">0</em></button>
+      <button class="nav" data-view="promotion">昇格候補 <em id="count-promotion">0</em></button>
       <button class="nav" data-view="index">INDEX <em id="count-index">0</em></button>
       <button class="nav" data-view="editor">EDITOR <em>⚙</em></button>
     </nav>
@@ -96,6 +98,23 @@ const title = 'PRIVATE GAME NOTEBOOK';
       <div class="game-layout"><div class="game-list" id="game-list"></div><div class="game-panel"><div class="game-head"><div><small>GAME NOTEBOOK</small><h1 id="game-title">ゲームを選択</h1><p id="game-meta"></p></div><button class="primary" id="game-add">＋ このゲームに追加</button></div><div class="stats" id="game-stats"></div><div id="game-notes"></div></div></div>
     </section>
 
+    <section class="view" id="view-crosscut">
+      <div class="head"><div><small>CROSS-CUT OBSERVATION</small><h1>横串</h1><p>1作品のメモを、複数作品をまたぐ観察に育てる。</p></div></div>
+      <div class="cross-summary" id="cross-summary"></div>
+      <div class="cross-toolbar">
+        <label><b>FACET</b><select id="cross-facet"></select></label>
+        <div class="cross-sort"><button class="chip on" data-cross-sort="games">ゲーム数</button><button class="chip" data-cross-sort="notes">メモ数</button><button class="chip" data-cross-sort="candidate">出力候補</button></div>
+      </div>
+      <div class="cross-grid" id="cross-grid"></div>
+      <div class="cross-detail" id="cross-detail"></div>
+    </section>
+
+    <section class="view" id="view-promotion">
+      <div class="head"><div><small>PROMOTION QUEUE</small><h1>昇格候補</h1><p>全部を展開しない。育った素材だけ出口を決める。</p></div></div>
+      <div class="promotion-routes" id="promotion-routes"></div>
+      <div class="promotion-list" id="promotion-list"></div>
+    </section>
+
     <section class="view" id="view-index">
       <div class="head"><div><small>YOUR PERSONAL INDEX</small><h1>INDEX</h1><p>自分で作った分類軸ごとに、記録を横断して掘り返す。</p></div></div>
       <div class="index-grid" id="facet-index"></div>
@@ -123,6 +142,13 @@ const title = 'PRIVATE GAME NOTEBOOK';
     <div class="full facet-entry-list" id="note-facets"></div>
     <label class="full">画像 / 動画<input id="note-media" type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm" /><span class="help">画像8MB / 動画20MBまで。複数選択可。保存時にR2へ送ります。</span></label><div class="full media-list" id="note-media-list"></div>
     <label>活用状態<select id="note-status"><option value="private">ストック（自分用）</option><option value="candidate">出力候補</option><option value="exported">使用済み</option></select><span class="help">ここを変えても公開はされません。素材を整理するための目印です。</span></label>
+    <div class="full destination-field"><b>出口候補 <span>任意</span></b><div class="destination-options" id="note-destinations">
+      <label><input type="checkbox" value="seo"> SEO</label>
+      <label><input type="checkbox" value="essay"> ESSAY</label>
+      <label><input type="checkbox" value="zine"> ZINE</label>
+      <label><input type="checkbox" value="reference"> REFERENCE</label>
+      <label><input type="checkbox" value="b2b"> B2B</label>
+    </div><span class="help">候補を付けても自動公開・自動生成はしません。</span></div>
   </div><div class="dialog-foot"><button type="button" class="danger hidden" id="delete-note">削除</button><div class="spacer"></div><button type="button" class="ghost" data-close="note">キャンセル</button><button class="primary" id="save-note">保存する</button></div></form>
 </div></div>
 

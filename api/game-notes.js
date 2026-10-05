@@ -11,6 +11,7 @@ const DICTIONARY_TYPE = 'private_game_note_type';
 const FACET_TYPE = 'private_game_note_facet';
 const PUBLIC_SOURCE = 'game-note-publications';
 const PUBLIC_TYPE = 'game_note_public_snapshot';
+const DESTINATIONS = ['seo', 'essay', 'zine', 'reference', 'b2b'];
 const DEFAULT_TYPES = [
   ['memo', 'メモ'],
   ['idea', 'アイデア'],
@@ -46,6 +47,10 @@ function normalizeList(value, maxItems = 40, maxLength = 100) {
     if (result.length >= maxItems) break;
   }
   return result;
+}
+function normalizeDestinations(value) {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.map(v => clean(v, 20).toLowerCase()).filter(v => DESTINATIONS.includes(v)))];
 }
 function publicId(id, entity) {
   return String(id || '').replace(new RegExp(`^game-notes:${entity}:`), '');
@@ -160,7 +165,7 @@ function toNote(row) {
     id: publicId(row.id, 'note'), title: row.title || '', body: row.body_text || '', gameId: meta.gameId || '', typeId: meta.typeId || '',
     facets,
     tags: facets.tags || [], characters: facets.characters || [], themes: facets.themes || [],
-    media: Array.isArray(meta.media) ? meta.media : [], outputStatus: meta.outputStatus || 'private', exportedTo: Array.isArray(meta.exportedTo) ? meta.exportedTo : [],
+    media: Array.isArray(meta.media) ? meta.media : [], outputStatus: meta.outputStatus || 'private', destinations: normalizeDestinations(meta.destinations), exportedTo: Array.isArray(meta.exportedTo) ? meta.exportedTo : [],
     createdAt: meta.createdAt || (row.created_at ? new Date(row.created_at).toISOString() : null), updatedAt: row.updated_at || null
   };
 }
@@ -340,7 +345,7 @@ async function upsertNote(sql, body) {
   const metadata = JSON.stringify({
     gameId, typeId, facets,
     tags: facets.tags || [], characters: facets.characters || [], themes: facets.themes || [],
-    media: validMedia(body.media), outputStatus, exportedTo: normalizeList(body.exportedTo, 20, 80),
+    media: validMedia(body.media), outputStatus, destinations: normalizeDestinations(body.destinations), exportedTo: normalizeList(body.exportedTo, 20, 80),
     createdAt: clean(body.createdAt, 60) || new Date().toISOString()
   });
   const rows = await sql`
@@ -352,6 +357,34 @@ async function upsertNote(sql, body) {
   `;
   if (!rows[0]) { const error = new Error('note_conflict'); error.status = 409; throw error; }
   return toNote(rows[0]);
+}
+
+
+async function updateCrosscutDestination(sql, body) {
+  const facetId = clean(body.facetId, 160);
+  const value = clean(body.value, 100);
+  const destination = clean(body.destination, 20).toLowerCase();
+  const enabled = body.enabled !== false;
+  if (!facetId || !value || !DESTINATIONS.includes(destination)) {
+    const error = new Error('crosscut_destination_invalid'); error.status = 400; throw error;
+  }
+  const facetRows = await sql`SELECT id FROM core.contents WHERE id=${dbId('facet', facetId)} AND source=${SOURCE} AND content_type=${FACET_TYPE} AND status<>'archived' LIMIT 1`;
+  if (!facetRows[0]) { const error = new Error('facet_not_found'); error.status = 400; throw error; }
+  const rows = await sql`SELECT id, metadata FROM core.contents WHERE source=${SOURCE} AND content_type=${NOTE_TYPE} AND status<>'archived'`;
+  let updated = 0;
+  for (const row of rows) {
+    const meta = row.metadata && typeof row.metadata === 'object' ? { ...row.metadata } : {};
+    const facets = normalizedFacetObject(meta);
+    if (!(facets[facetId] || []).includes(value)) continue;
+    const destinations = normalizeDestinations(meta.destinations);
+    const next = enabled ? [...new Set([...destinations, destination])] : destinations.filter(v => v !== destination);
+    meta.destinations = next;
+    if (enabled && (!meta.outputStatus || meta.outputStatus === 'private')) meta.outputStatus = 'candidate';
+    const serialized = JSON.stringify(meta);
+    await sql`UPDATE core.contents SET metadata=CAST(${serialized} AS jsonb),updated_at=now() WHERE id=${row.id} AND source=${SOURCE} AND content_type=${NOTE_TYPE}`;
+    updated += 1;
+  }
+  return { updated, destination, enabled };
 }
 
 async function facetUsageCount(sql, id) {
@@ -397,6 +430,7 @@ export default async function handler(req, res) {
       if (entity === 'bootstrap') { await bootstrap(context.sql); return res.status(200).json({ ok: true, bootstrapped: true }); }
       if (['game', 'type', 'facet'].includes(entity)) { const item = await upsertDictionary(context.sql, entity, body); return res.status(200).json({ ok: true, entity, item }); }
       if (entity === 'note') { const item = await upsertNote(context.sql, body); return res.status(200).json({ ok: true, entity, item }); }
+      if (entity === 'crosscut_destination') { const result = await updateCrosscutDestination(context.sql, body); return res.status(200).json({ ok: true, entity, ...result }); }
       return res.status(400).json({ ok: false, error: 'invalid_entity' });
     }
     if (req.method === 'DELETE') {
