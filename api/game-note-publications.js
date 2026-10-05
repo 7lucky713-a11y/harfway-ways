@@ -70,8 +70,10 @@ async function relatedWaysForNote(sql,meta){
 }
 
 async function publicMediaAssetIds(sql,meta){
-  const requested=list((Array.isArray(meta?.media)?meta.media:[]).filter(item=>item?.public===true&&item?.assetId).map(item=>item.assetId),24,180)
-    .map(id=>id.startsWith('media-asset:')?id:`media-asset:${id}`);
+  const sourceIds = Array.isArray(meta?.publicMediaAssetIds)
+    ? meta.publicMediaAssetIds
+    : (Array.isArray(meta?.media)?meta.media:[]).filter(item=>item?.public===true&&item?.assetId).map(item=>item.assetId);
+  const requested=list(sourceIds,24,180).map(id=>id.startsWith('media-asset:')?id:`media-asset:${id}`);
   const out=[];
   for(const id of requested){
     const rows=await sql`SELECT id FROM core.contents WHERE id=${id} AND source=${MEDIA_SOURCE} AND content_type=${MEDIA_TYPE} AND status<>'archived' LIMIT 1`;

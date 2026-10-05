@@ -181,6 +181,19 @@ function normalizedFacetObject(meta) {
   }
   return result;
 }
+function normalizedPublicMediaIds(meta) {
+  return normalizeList(meta?.publicMediaAssetIds, 24, 180).map(id => id.startsWith('media-asset:') ? id : `media-asset:${id}`);
+}
+function mediaForRead(meta) {
+  const raw = Array.isArray(meta?.media) ? meta.media : [];
+  const explicit = Array.isArray(meta?.publicMediaAssetIds);
+  const publicIds = new Set(normalizedPublicMediaIds(meta));
+  return raw.map(item => {
+    const rawId = clean(item?.assetId, 180);
+    const id = rawId ? (rawId.startsWith('media-asset:') ? rawId : `media-asset:${rawId}`) : '';
+    return { ...item, assetId: id, public: explicit ? Boolean(id && publicIds.has(id)) : item?.public === true };
+  });
+}
 function toNote(row) {
   const meta = row.metadata && typeof row.metadata === 'object' ? row.metadata : {};
   const facets = normalizedFacetObject(meta);
@@ -188,7 +201,7 @@ function toNote(row) {
     id: publicId(row.id, 'note'), title: row.title || '', body: row.body_text || '', gameId: meta.gameId || '', typeId: meta.typeId || '',
     facets,
     tags: facets.tags || [], characters: facets.characters || [], themes: facets.themes || [],
-    media: Array.isArray(meta.media) ? meta.media : [], mediaAssetIds: normalizeList(meta.mediaAssetIds?.length ? meta.mediaAssetIds : (Array.isArray(meta.media) ? meta.media.map(item => item?.assetId) : []), 24, 180), outputStatus: meta.outputStatus || 'private', destinations: normalizeDestinations(meta.destinations), exportedTo: Array.isArray(meta.exportedTo) ? meta.exportedTo : [],
+    media: mediaForRead(meta), publicMediaAssetIds: normalizedPublicMediaIds(meta), mediaAssetIds: normalizeList(meta.mediaAssetIds?.length ? meta.mediaAssetIds : (Array.isArray(meta.media) ? meta.media.map(item => item?.assetId) : []), 24, 180), outputStatus: meta.outputStatus || 'private', destinations: normalizeDestinations(meta.destinations), exportedTo: Array.isArray(meta.exportedTo) ? meta.exportedTo : [],
     createdAt: meta.createdAt || (row.created_at ? new Date(row.created_at).toISOString() : null), updatedAt: row.updated_at || null
   };
 }
@@ -367,10 +380,11 @@ async function upsertNote(sql, body) {
   const outputStatus = ['private', 'candidate', 'exported'].includes(body.outputStatus) ? body.outputStatus : 'private';
   const media = await validateMediaAssets(sql, validMedia(body.media));
   const mediaAssetIds = normalizeList(media.map(item => item.assetId).filter(Boolean), 24, 180);
+  const publicMediaAssetIds = normalizeList(media.filter(item => item.public === true && item.assetId).map(item => item.assetId), 24, 180);
   const metadata = JSON.stringify({
     gameId, typeId, facets,
     tags: facets.tags || [], characters: facets.characters || [], themes: facets.themes || [],
-    media, mediaAssetIds, outputStatus, destinations: normalizeDestinations(body.destinations), exportedTo: normalizeList(body.exportedTo, 20, 80),
+    media, mediaAssetIds, publicMediaAssetIds, outputStatus, destinations: normalizeDestinations(body.destinations), exportedTo: normalizeList(body.exportedTo, 20, 80),
     createdAt: clean(body.createdAt, 60) || new Date().toISOString()
   });
   const rows = await sql`
@@ -385,16 +399,9 @@ async function upsertNote(sql, body) {
 }
 
 
-async function syncPublishedMediaSelection(sql, noteId, media = []) {
+async function syncPublishedMediaSelection(sql, noteId, selectedIds = []) {
   const sourceId = clean(noteId, 180).replace(/^game-notes:note:/, '').replace(/^game-notes:public-note:/, '');
-  const ids = normalizeList(
-    (Array.isArray(media) ? media : [])
-      .filter(item => item?.public === true && item?.assetId)
-      .map(item => clean(item.assetId, 180))
-      .map(id => id.startsWith('media-asset:') ? id : `media-asset:${id}`),
-    24,
-    180
-  );
+  const ids = normalizeList(selectedIds, 24, 180).map(id => id.startsWith('media-asset:') ? id : `media-asset:${id}`);
   const now = new Date().toISOString();
   const rows = await sql`
     UPDATE core.contents
@@ -488,7 +495,7 @@ export default async function handler(req, res) {
       const entity = clean(body.entity, 20).toLowerCase();
       if (entity === 'bootstrap') { await bootstrap(context.sql); return res.status(200).json({ ok: true, bootstrapped: true }); }
       if (['game', 'type', 'facet'].includes(entity)) { const item = await upsertDictionary(context.sql, entity, body); return res.status(200).json({ ok: true, entity, item }); }
-      if (entity === 'note') { const item = await upsertNote(context.sql, body); const mediaSynced = await syncPublishedMediaSelection(context.sql, item.id, item.media); return res.status(200).json({ ok: true, entity, item, publicMediaSync: mediaSynced ? 'synced' : 'not_published' }); }
+      if (entity === 'note') { const item = await upsertNote(context.sql, body); const mediaSynced = await syncPublishedMediaSelection(context.sql, item.id, item.publicMediaAssetIds); return res.status(200).json({ ok: true, entity, item, publicMediaSync: mediaSynced ? 'synced' : 'not_published' }); }
       if (entity === 'crosscut_destination') { const result = await updateCrosscutDestination(context.sql, body); return res.status(200).json({ ok: true, entity, ...result }); }
       return res.status(400).json({ ok: false, error: 'invalid_entity' });
     }
