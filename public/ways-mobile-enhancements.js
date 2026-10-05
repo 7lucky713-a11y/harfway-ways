@@ -168,11 +168,19 @@
     // changing links, tags, sound controls, or desktop behavior.
     document.addEventListener('click', (event) => {
       if (innerWidth >= 900) return;
-      const video = event.target?.closest?.('.m-card video');
+
+      const card = event.target?.closest?.('.m-card');
+      if (!card) return;
+
+      // Do not hijack intentional UI interactions layered over the video.
+      if (event.target?.closest?.('button, a, input, label, .m-meta, .m-context, .m-tools')) {
+        return;
+      }
+
+      const video = card.querySelector('video');
       if (!video) return;
 
-      const card = video.closest('.m-card');
-      const pauseButton = card?.querySelector('.m-pause');
+      const pauseButton = card.querySelector('.m-pause');
 
       event.preventDefault();
       event.stopPropagation();
