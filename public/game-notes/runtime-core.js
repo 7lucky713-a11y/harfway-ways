@@ -297,6 +297,33 @@
   }
 
   let mediaPickerItems = [];
+  let mediaPickerObserver = null;
+  function normalizedPickerStem(asset) {
+    const raw = String(asset?.name || asset?.r2Key || '').split('/').pop().replace(/\.[^.]+$/, '').replace(/-thumb$/i, '');
+    return raw.replace(/^\d{10,}-[a-z0-9]+-/i, '').toLowerCase();
+  }
+  function pickerPreviewAsset(asset) {
+    if (!asset) return null;
+    if (asset.kind === 'image') return asset;
+    if (asset.kind !== 'video') return null;
+    const stem = normalizedPickerStem(asset);
+    return mediaPickerItems.find(x=>x.kind==='image' && normalizedPickerStem(x)===stem) || null;
+  }
+  async function hydrateMediaPickerThumb(box, asset) {
+    if (!box || box.dataset.loaded === '1') return;
+    box.dataset.loaded = '1';
+    const source = pickerPreviewAsset(asset);
+    if (!source) {
+      box.innerHTML = asset.kind==='video' ? '<span>VIDEO</span><em>VIDEO</em>' : '<span>IMAGE</span>';
+      return;
+    }
+    const url = await mediaBlobUrl({assetId:source.id||'', key:source.r2Key||''});
+    if (!url) {
+      box.innerHTML = asset.kind==='video' ? '<span>VIDEO</span><em>VIDEO</em>' : '<span>IMAGE</span>';
+      return;
+    }
+    box.innerHTML = `<img src="${url}" alt="">${asset.kind==='video'?'<em>VIDEO</em>':''}`;
+  }
   async function loadMediaPicker() {
     const d = await api('/api/media-library');
     mediaPickerItems = (d.items||[]).filter(a=>a.status==='active'||a.status==='unregistered').filter(a=>a.kind==='image'||a.kind==='video');
@@ -304,9 +331,14 @@
   }
   function renderMediaPicker() {
     const q = ($('#media-picker-search')?.value||'').toLowerCase();
-    const rows = mediaPickerItems.filter(a=>!q||[a.name,a.r2Key,a.gameName,...(a.tags||[])].join(' ').toLowerCase().includes(q));
+    const rows = mediaPickerItems.filter(a=>!q||[a.name,a.r2Key,a.gameName,...(a.tags||[])].join(' ').toLowerCase().includes(q)).slice(0,160);
     const root=$('#media-picker-grid'); if(!root)return;
-    root.innerHTML=rows.slice(0,160).map(a=>`<button type="button" class="media-pick-card" data-pick-key="${esc(a.r2Key)}"><span>${esc(String(a.kind).toUpperCase())}</span><b>${esc(a.name||a.r2Key)}</b><small>${esc(a.gameName||a.storagePurpose||'')}${a.registered?'':' · 未登録'}</small></button>`).join('')||'<div class="empty">素材がありません。</div>';
+    mediaPickerObserver?.disconnect();
+    root.innerHTML=rows.map((a,i)=>`<button type="button" class="media-pick-card" data-pick-key="${esc(a.r2Key)}"><div class="media-pick-preview" data-pick-preview="${i}"><span>${esc(String(a.kind).toUpperCase())}</span></div><div class="media-pick-info"><span>${esc(String(a.kind).toUpperCase())}</span><b title="${esc(a.name||a.r2Key)}">${esc(a.name||a.r2Key)}</b><small>${esc(a.gameName||a.storagePurpose||'')}${a.registered?'':' · 未登録'}</small></div></button>`).join('')||'<div class="empty">素材がありません。</div>';
+    const boxes=[...root.querySelectorAll('[data-pick-preview]')];
+    if (!('IntersectionObserver' in window)) { boxes.forEach(box=>hydrateMediaPickerThumb(box,rows[Number(box.dataset.pickPreview)])); return; }
+    mediaPickerObserver=new IntersectionObserver(entries=>{for(const entry of entries){if(!entry.isIntersecting)continue;mediaPickerObserver?.unobserve(entry.target);hydrateMediaPickerThumb(entry.target,rows[Number(entry.target.dataset.pickPreview)]);}}, {root,rootMargin:'80px'});
+    boxes.forEach(box=>mediaPickerObserver.observe(box));
   }
   async function attachPickerAsset(key) {
     let a=mediaPickerItems.find(x=>x.r2Key===key); if(!a)return;
