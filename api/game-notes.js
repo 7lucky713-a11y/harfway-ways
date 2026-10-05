@@ -11,6 +11,8 @@ const DICTIONARY_TYPE = 'private_game_note_type';
 const FACET_TYPE = 'private_game_note_facet';
 const PUBLIC_SOURCE = 'game-note-publications';
 const PUBLIC_TYPE = 'game_note_public_snapshot';
+const MEDIA_SOURCE = 'harfway-media-library';
+const MEDIA_TYPE = 'media_asset';
 const DESTINATIONS = ['seo', 'essay', 'zine', 'reference', 'b2b'];
 const DEFAULT_TYPES = [
   ['memo', 'メモ'],
@@ -66,15 +68,36 @@ function validMedia(media) {
   if (!Array.isArray(media)) return [];
   return media.slice(0, 12).map((item) => {
     const key = clean(item?.key, 1200);
-    if (!/^private-game-notes\/\d{4}-\d{2}-\d{2}\/[0-9a-f-]+\.(jpg|png|webp|gif|mp4|webm)$/i.test(key)) return null;
+    const assetIdRaw = clean(item?.assetId, 180);
+    const assetId = assetIdRaw ? (assetIdRaw.startsWith('media-asset:') ? assetIdRaw : `media-asset:${assetIdRaw}`) : '';
+    const legacyKey = /^private-game-notes\/\d{4}-\d{2}-\d{2}\/[0-9a-f-]+\.(jpg|png|webp|gif|mp4|webm)$/i.test(key);
+    const safeAssetKey = assetId && key && !key.includes('..') && !/[\\\u0000]/.test(key);
+    if (!legacyKey && !safeAssetKey) return null;
     return {
       key,
+      assetId,
       type: clean(item?.type, 120),
       kind: clean(item?.kind, 24),
       size: Math.max(0, Number(item?.size || 0) || 0),
-      name: clean(item?.name, 240)
+      name: clean(item?.name, 240),
+      public: item?.public === true,
+      alt: clean(item?.alt, 500),
+      caption: clean(item?.caption, 1200)
     };
   }).filter(Boolean);
+}
+async function validateMediaAssets(sql, media) {
+  for (const item of media) {
+    if (!item.assetId) continue;
+    const rows = await sql`SELECT metadata,status FROM core.contents WHERE id=${item.assetId} AND source=${MEDIA_SOURCE} AND content_type=${MEDIA_TYPE} AND status<>'archived' LIMIT 1`;
+    const row = rows[0], meta = row?.metadata && typeof row.metadata === 'object' ? row.metadata : {};
+    if (!row || clean(meta.r2Key, 1200) !== item.key) {
+      const error = new Error('media_asset_invalid');
+      error.status = 400;
+      throw error;
+    }
+  }
+  return media;
 }
 
 function databaseConfig() {
@@ -165,7 +188,7 @@ function toNote(row) {
     id: publicId(row.id, 'note'), title: row.title || '', body: row.body_text || '', gameId: meta.gameId || '', typeId: meta.typeId || '',
     facets,
     tags: facets.tags || [], characters: facets.characters || [], themes: facets.themes || [],
-    media: Array.isArray(meta.media) ? meta.media : [], outputStatus: meta.outputStatus || 'private', destinations: normalizeDestinations(meta.destinations), exportedTo: Array.isArray(meta.exportedTo) ? meta.exportedTo : [],
+    media: Array.isArray(meta.media) ? meta.media : [], mediaAssetIds: normalizeList(meta.mediaAssetIds?.length ? meta.mediaAssetIds : (Array.isArray(meta.media) ? meta.media.map(item => item?.assetId) : []), 24, 180), outputStatus: meta.outputStatus || 'private', destinations: normalizeDestinations(meta.destinations), exportedTo: Array.isArray(meta.exportedTo) ? meta.exportedTo : [],
     createdAt: meta.createdAt || (row.created_at ? new Date(row.created_at).toISOString() : null), updatedAt: row.updated_at || null
   };
 }
@@ -342,10 +365,12 @@ async function upsertNote(sql, body) {
   const id = dbId('note', body.id);
   const title = clean(body.title, 280) || clean(text.replace(/\s+/g, ' '), 60);
   const outputStatus = ['private', 'candidate', 'exported'].includes(body.outputStatus) ? body.outputStatus : 'private';
+  const media = await validateMediaAssets(sql, validMedia(body.media));
+  const mediaAssetIds = normalizeList(media.map(item => item.assetId).filter(Boolean), 24, 180);
   const metadata = JSON.stringify({
     gameId, typeId, facets,
     tags: facets.tags || [], characters: facets.characters || [], themes: facets.themes || [],
-    media: validMedia(body.media), outputStatus, destinations: normalizeDestinations(body.destinations), exportedTo: normalizeList(body.exportedTo, 20, 80),
+    media, mediaAssetIds, outputStatus, destinations: normalizeDestinations(body.destinations), exportedTo: normalizeList(body.exportedTo, 20, 80),
     createdAt: clean(body.createdAt, 60) || new Date().toISOString()
   });
   const rows = await sql`

@@ -204,6 +204,7 @@ export default async function handler(req, res) {
       const configured = Object.values(flags).every(Boolean);
       return json(res, configured ? 200 : 503, { ok: configured, configured, environment: process.env.VERCEL_ENV || 'development', env: flags, maxImageBytes: 8 * 1024 * 1024, maxVideoBytes: 20 * 1024 * 1024, chunkBytes: CHUNK_BYTES });
     }
+    if (process.env.VERCEL_ENV !== 'production') return json(res, 409, { ok: false, error: 'preview_r2_write_disabled' });
     ensureWriteOrigin(req);
     if (req.method === 'POST') {
       const action = String(req.query?.action || '');

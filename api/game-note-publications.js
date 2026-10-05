@@ -12,6 +12,8 @@ const GAME_TYPE='private_game_note_game';
 const TYPE_TYPE='private_game_note_type';
 const GLOSSARY_TYPE='private_game_note_glossary';
 const PUBLIC_TYPE='game_note_public_snapshot';
+const MEDIA_SOURCE='harfway-media-library';
+const MEDIA_TYPE='media_asset';
 
 const clean=(v,max=280)=>String(v??'').trim().slice(0,max);
 const list=(v,max=60,len=220)=>{if(!Array.isArray(v))return[];const out=[],seen=new Set();for(const x of v){const s=clean(x,len);if(!s||seen.has(s))continue;seen.add(s);out.push(s);if(out.length>=max)break}return out};
@@ -43,7 +45,7 @@ function toSnapshot(row){
   const item={
     id:publicNoteId(row.id),title:row.title||'',body:row.body_text||'',excerpt:row.excerpt||'',
     gameName:clean(m.gameName,220),typeName:clean(m.typeName,160),sourceNoteId:clean(m.sourceNoteId,180),
-    relatedWaysIds:list(m.relatedWaysIds),sourceCreatedAt:m.sourceCreatedAt||null,publishedAt:m.publishedAt||row.created_at||null,
+    relatedWaysIds:list(m.relatedWaysIds),mediaAssetIds:list(m.mediaAssetIds,24,180),sourceCreatedAt:m.sourceCreatedAt||null,publishedAt:m.publishedAt||row.created_at||null,
     snapshotUpdatedAt:m.snapshotUpdatedAt||row.updated_at||null,publicSlug:clean(m.publicSlug,150),slugHistory:list(m.slugHistory,40,150),seoTitle:clean(m.seoTitle,90)
   };
   item.publicSlug=notePublicSlug(item);item.url=notePublicPath(item);return item;
@@ -65,6 +67,17 @@ async function relatedWaysForNote(sql,meta){
   const wanted=new Set(list(meta?.glossaryEntryIds,80,180).map(glossaryPublicId));if(!wanted.size)return[];
   const rows=await sql`SELECT id,metadata FROM core.contents WHERE source=${PRIVATE_SOURCE} AND content_type=${GLOSSARY_TYPE} AND status<>'archived'`;
   const out=[];for(const row of rows){if(!wanted.has(glossaryPublicId(row.id)))continue;const m=row.metadata&&typeof row.metadata==='object'?row.metadata:{};out.push(...list(m.relatedWaysIds))}return list(out);
+}
+
+async function publicMediaAssetIds(sql,meta){
+  const requested=list((Array.isArray(meta?.media)?meta.media:[]).filter(item=>item?.public===true&&item?.assetId).map(item=>item.assetId),24,180)
+    .map(id=>id.startsWith('media-asset:')?id:`media-asset:${id}`);
+  const out=[];
+  for(const id of requested){
+    const rows=await sql`SELECT id FROM core.contents WHERE id=${id} AND source=${MEDIA_SOURCE} AND content_type=${MEDIA_TYPE} AND status<>'archived' LIMIT 1`;
+    if(rows[0])out.push(id);
+  }
+  return list(out,24,180);
 }
 
 function requestedSlug(value){
@@ -99,6 +112,7 @@ async function publishSnapshot(sql,noteId,settings={}){
   const gameName=await dictionaryName(sql,GAME_TYPE,m.gameId,'game');
   const typeName=await dictionaryName(sql,TYPE_TYPE,m.typeId,'type');
   const relatedWaysIds=await relatedWaysForNote(sql,m);
+  const mediaAssetIds=await publicMediaAssetIds(sql,m);
   const current=await sql`SELECT title,metadata FROM core.contents WHERE id=${snapshotDbId(noteId)} AND source=${PUBLIC_SOURCE} AND content_type=${PUBLIC_TYPE} LIMIT 1`;
   const existing=current[0]||null,old=existing?.metadata&&typeof existing.metadata==='object'?existing.metadata:{};
   const title=clean(note.title,280)||'PLAY NOTE',body=clean(note.body_text,30000);
@@ -106,7 +120,7 @@ async function publishSnapshot(sql,noteId,settings={}){
   const slugHistory=nextSlugHistory(old,publicSlug,existing);await assertUniqueSlug(sql,noteId,publicSlug,slugHistory);
   const seoTitle=Object.hasOwn(settings,'seoTitle')?requestedSeoTitle(settings.seoTitle):clean(old.seoTitle,90);
   const now=new Date().toISOString(),publishedAt=old.publishedAt||now;
-  const metadata=JSON.stringify({sourceNoteId:publicNoteId(note.id),gameName,typeName,relatedWaysIds,sourceCreatedAt:m.createdAt||note.created_at||null,publishedAt,snapshotUpdatedAt:now,publicSlug,slugHistory,seoTitle});
+  const metadata=JSON.stringify({sourceNoteId:publicNoteId(note.id),gameName,typeName,relatedWaysIds,mediaAssetIds,sourceCreatedAt:m.createdAt||note.created_at||null,publishedAt,snapshotUpdatedAt:now,publicSlug,slugHistory,seoTitle});
   const url=notePublicPath({id:publicNoteId(note.id),publicSlug});
   const rows=await sql`
     INSERT INTO core.contents(id,content_type,title,url,excerpt,body_text,status,source,metadata,created_at,updated_at)
