@@ -1,5 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import { archiveCors, archiveDatabaseConfig, authorizeArchiveRequest } from './archive-core.js';
+import { ensureRegisteredMedia } from '../lib/media-asset-resolver.js';
 
 const PROJECT_ID = 'wispy-recipe-34518010';
 const PRODUCTION_BRANCH_ID = 'br-noisy-boat-awncea92';
@@ -365,7 +366,7 @@ async function upsertNote(sql, body) {
   const id = dbId('note', body.id);
   const title = clean(body.title, 280) || clean(text.replace(/\s+/g, ' '), 60);
   const outputStatus = ['private', 'candidate', 'exported'].includes(body.outputStatus) ? body.outputStatus : 'private';
-  const media = await validateMediaAssets(sql, validMedia(body.media));
+  const media = await validateMediaAssets(sql, await ensureRegisteredMedia(sql, validMedia(body.media)));
   const mediaAssetIds = normalizeList(media.map(item => item.assetId).filter(Boolean), 24, 180);
   const metadata = JSON.stringify({
     gameId, typeId, facets,
@@ -389,7 +390,7 @@ async function syncPublishedMediaSelection(sql, noteId, media = []) {
   const sourceId = clean(noteId, 180).replace(/^game-notes:note:/, '').replace(/^game-notes:public-note:/, '');
   const ids = normalizeList(
     (Array.isArray(media) ? media : [])
-      .filter(item => item?.public === true && item?.assetId)
+      .filter(item => item?.assetId)
       .map(item => clean(item.assetId, 180))
       .map(id => id.startsWith('media-asset:') ? id : `media-asset:${id}`),
     24,

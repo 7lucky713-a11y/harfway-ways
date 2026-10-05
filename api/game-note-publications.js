@@ -1,6 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import { archiveCors, archiveDatabaseConfig, authorizeArchiveRequest } from './archive-core.js';
 import { notePublicPath, notePublicSlug, slugifyPublic } from '../lib/game-public-seo.js';
+import { attachedMediaAssetIds, ensureRegisteredMedia } from '../lib/media-asset-resolver.js';
 
 const PROJECT_ID='wispy-recipe-34518010';
 const PRODUCTION_BRANCH_ID='br-noisy-boat-awncea92';
@@ -70,14 +71,8 @@ async function relatedWaysForNote(sql,meta){
 }
 
 async function publicMediaAssetIds(sql,meta){
-  const requested=list((Array.isArray(meta?.media)?meta.media:[]).filter(item=>item?.public===true&&item?.assetId).map(item=>item.assetId),24,180)
-    .map(id=>id.startsWith('media-asset:')?id:`media-asset:${id}`);
-  const out=[];
-  for(const id of requested){
-    const rows=await sql`SELECT id FROM core.contents WHERE id=${id} AND source=${MEDIA_SOURCE} AND content_type=${MEDIA_TYPE} AND status<>'archived' LIMIT 1`;
-    if(rows[0])out.push(id);
-  }
-  return list(out,24,180);
+  const media=await ensureRegisteredMedia(sql,Array.isArray(meta?.media)?meta.media:[]);
+  return list(attachedMediaAssetIds(media),24,180);
 }
 
 function requestedSlug(value){
