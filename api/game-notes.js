@@ -9,6 +9,8 @@ const NOTE_TYPE = 'private_game_note';
 const GAME_TYPE = 'private_game_note_game';
 const DICTIONARY_TYPE = 'private_game_note_type';
 const FACET_TYPE = 'private_game_note_facet';
+const PUBLIC_SOURCE = 'game-note-publications';
+const PUBLIC_TYPE = 'game_note_public_snapshot';
 const DEFAULT_TYPES = [
   ['memo', 'メモ'],
   ['idea', 'アイデア'],
@@ -224,24 +226,58 @@ async function ensureUniqueTitle(sql, contentType, title, currentDbId = '') {
   if (rows[0]) { const error = new Error('duplicate_dictionary_value'); error.status = 409; throw error; }
 }
 
+async function syncPublishedTypeName(sql, typeId, typeName) {
+  const now = new Date().toISOString();
+  const rows = await sql`
+    UPDATE core.contents AS pub
+    SET metadata = jsonb_set(
+      jsonb_set(COALESCE(pub.metadata, '{}'::jsonb), '{typeName}', to_jsonb(${typeName}::text), true),
+      '{snapshotUpdatedAt}', to_jsonb(${now}::text), true
+    ),
+    updated_at = now()
+    WHERE pub.source = ${PUBLIC_SOURCE}
+      AND pub.content_type = ${PUBLIC_TYPE}
+      AND pub.status = 'active'
+      AND COALESCE(pub.metadata->>'sourceKind', 'note') = 'note'
+      AND pub.metadata->>'sourceNoteId' IN (
+        SELECT regexp_replace(note.id, '^game-notes:note:', '')
+        FROM core.contents AS note
+        WHERE note.source = ${SOURCE}
+          AND note.content_type = ${NOTE_TYPE}
+          AND note.status <> 'archived'
+          AND note.metadata->>'typeId' = ${typeId}
+      )
+    RETURNING pub.id
+  `;
+  return rows.length;
+}
+
 async function upsertDictionary(sql, entity, body) {
   const contentType = entity === 'game' ? GAME_TYPE : entity === 'type' ? DICTIONARY_TYPE : FACET_TYPE;
   const title = clean(body.name || body.title, 180);
   if (!title) { const error = new Error('name_required'); error.status = 400; throw error; }
   const id = dbId(entity, body.id);
   await ensureUniqueTitle(sql, contentType, title, body.id ? id : '');
-  const metadata = JSON.stringify({ ...(entity === 'game' ? { canonicalGameId: clean(body.canonicalGameId, 180) } : entity === 'type' ? { system: false } : {}), createdAt: clean(body.createdAt, 60) || new Date().toISOString() });
+  let previousMetadata = {};
+  if (body.id) {
+    const previous = await sql`SELECT metadata FROM core.contents WHERE id=${id} AND source=${SOURCE} AND content_type=${contentType} LIMIT 1`;
+    previousMetadata = previous[0]?.metadata && typeof previous[0].metadata === 'object' ? previous[0].metadata : {};
+  }
+  const nextMetadata = { ...previousMetadata, createdAt: previousMetadata.createdAt || clean(body.createdAt, 60) || new Date().toISOString() };
+  if (entity === 'game' && (!body.id || Object.hasOwn(body, 'canonicalGameId'))) nextMetadata.canonicalGameId = clean(body.canonicalGameId, 180);
+  if (entity === 'type' && !body.id) nextMetadata.system = false;
+  const metadata = JSON.stringify(nextMetadata);
   const rows = await sql`
     INSERT INTO core.contents (id, content_type, title, url, body_text, status, source, metadata, created_at, updated_at)
     VALUES (${id}, ${contentType}, ${title}, ${privateRecordUrl(entity, id)}, '', 'active', ${SOURCE}, CAST(${metadata} AS jsonb), now(), now())
-    ON CONFLICT (id) DO UPDATE SET url = EXCLUDED.url, title = EXCLUDED.title, metadata = core.contents.metadata || EXCLUDED.metadata, status = 'active', updated_at = now()
+    ON CONFLICT (id) DO UPDATE SET url = EXCLUDED.url, title = EXCLUDED.title, metadata = EXCLUDED.metadata, status = 'active', updated_at = now()
     WHERE core.contents.source = ${SOURCE}
     RETURNING id, content_type, title, body_text, metadata, created_at, updated_at
   `;
   if (!rows[0]) { const error = new Error('dictionary_conflict'); error.status = 409; throw error; }
+  if (entity === 'type' && body.id) await syncPublishedTypeName(sql, publicId(id, 'type'), title);
   return entity === 'game' ? toGame(rows[0]) : entity === 'type' ? toType(rows[0]) : toFacet(rows[0]);
 }
-
 async function assertDictionaryExists(sql, entity, publicValue) {
   const contentType = entity === 'game' ? GAME_TYPE : DICTIONARY_TYPE;
   const id = dbId(entity, publicValue);
