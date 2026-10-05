@@ -165,7 +165,7 @@
     const groups=crossGroups(); if (!state.cross.value || !groups.some(g=>g.value===state.cross.value)) state.cross.value=groups[0]?.value||'';
     const multi=groups.filter(g=>g.gameCount>=3).length, candidates=groups.reduce((n,g)=>n+g.candidate,0);
     $('#cross-summary').innerHTML=[['テーマ',groups.length],['3作品以上',multi],['候補メモ',candidates],['総メモ',groups.reduce((n,g)=>n+g.noteCount,0)]].map(([label,value])=>`<div><small>${label}</small><b>${value}</b></div>`).join('');
-    $('[data-cross-sort]').forEach(b=>b.classList.toggle('on',b.dataset.crossSort===state.cross.sort));
+    $$('[data-cross-sort]').forEach(b=>b.classList.toggle('on',b.dataset.crossSort===state.cross.sort));
     $('#cross-grid').innerHTML=groups.length?groups.map(g=>`<article class="cross-card ${g.value===state.cross.value?'on':''}" data-cross-value="${esc(g.value)}"><div class="cross-card-head"><h3>${esc(g.value)}</h3><span>${g.gameCount} GAMES</span></div><div class="cross-metrics"><div><b>${g.noteCount}</b>NOTES</div><div><b>${g.candidate}</b>CAND.</div><div><b>${Object.values(g.destinationCounts).filter(Boolean).length}</b>ROUTES</div></div><div class="cross-games">${[...g.games].slice(0,4).map(id=>`<span>${esc(gameById(id)?.name||'未登録')}</span>`).join('')}</div></article>`).join(''):'<div class="empty">このファセットにはまだ横断できる値がありません。</div>';
     renderCrossDetail(groups.find(g=>g.value===state.cross.value));
   }
@@ -181,8 +181,8 @@
     groups.forEach(g=>DESTINATIONS.forEach(d=>{const count=g.destinationCounts[d]||0;if(count && (state.cross.route==='all'||state.cross.route===d))rows.push({group:g,destination:d,count})}));
     $('#promotion-list').innerHTML=rows.length?rows.map(x=>`<article class="promotion-row" data-promotion-value="${esc(x.group.value)}"><div class="promotion-kind">${destinationLabel(x.destination)}<span>${esc(facetById(state.cross.facetId)?.name||'FACET')}</span></div><div><b>${esc(x.group.value)}</b><p>${x.group.gameCount}作品 · ${x.group.noteCount}メモ · ${x.count}件が候補</p></div><button class="ghost">横串を見る</button></article>`).join(''):'<div class="empty">まだ昇格候補はありません。横串から必要なものだけ選んでください。</div>';
   }
-  function selectedDestinations() { return $('#note-destinations input:checked').map(x=>x.value).filter(v=>DESTINATIONS.includes(v)); }
-  function setDestinationChecks(values=[]) { const set=new Set(values||[]); $('#note-destinations input').forEach(x=>x.checked=set.has(x.value)); }
+  function selectedDestinations() { return $$('#note-destinations input:checked').map(x=>x.value).filter(v=>DESTINATIONS.includes(v)); }
+  function setDestinationChecks(values=[]) { const set=new Set(values||[]); $$('#note-destinations input').forEach(x=>x.checked=set.has(x.value)); }
 
   function facetUsage(id) { return state.notes.filter(n => (n.facets?.[id] || []).length).length; }
   function renderEditor() {
@@ -192,7 +192,7 @@
     $('#editor-facets').innerHTML = visibleFacets().map(f=>`<div class="facet-dict-item"><input value="${esc(f.name)}" data-facet-name="${esc(f.id)}" aria-label="ファセット名"><small>${facetUsage(f.id)} notes</small><button class="ghost" data-save-facet="${esc(f.id)}">保存</button><button class="facet-delete" data-delete-dict="facet" data-id="${esc(f.id)}">削除</button></div>`).join('') || '<div class="empty">分類軸を追加してください。</div>';
   }
   function renderAll() { renderCounts(); renderInbox(); renderLibrary(); renderGame(); renderCrosscut(); renderPromotion(); renderIndex(); renderEditor(); }
-  function setView(name) { state.view = name; $('.view').forEach(v => v.classList.toggle('show', v.id === `view-${name}`)); $('.nav').forEach(v=>v.classList.toggle('on',v.dataset.view===name)); if(name==='library')renderLibrary(); if(name==='game')renderGame(); if(name==='crosscut')renderCrosscut(); if(name==='promotion')renderPromotion(); if(name==='index')renderIndex(); if(name==='editor')renderEditor(); }
+  function setView(name) { state.view = name; $$('.view').forEach(v => v.classList.toggle('show', v.id === `view-${name}`)); $$('.nav').forEach(v=>v.classList.toggle('on',v.dataset.view===name)); if(name==='library')renderLibrary(); if(name==='game')renderGame(); if(name==='crosscut')renderCrosscut(); if(name==='promotion')renderPromotion(); if(name==='index')renderIndex(); if(name==='editor')renderEditor(); }
 
   function emptyFacetDraft(noteFacets = {}) {
     const facets = {};
