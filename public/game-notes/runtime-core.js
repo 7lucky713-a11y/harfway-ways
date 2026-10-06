@@ -245,7 +245,7 @@
     if (state.mediaUrls.has(cacheKey)) return state.mediaUrls.get(cacheKey);
     const path = item.assetId
       ? `/api/media-library?action=file&id=${encodeURIComponent(item.assetId)}`
-      : `/api/game-notes-media?action=file&key=${encodeURIComponent(item.key)}`;
+      : `/api/media-library?action=file&key=${encodeURIComponent(item.key)}`;
     const res = await fetch(path, { headers: authHeaders(), cache:'no-store' });
     if (!res.ok) return '';
     const url = URL.createObjectURL(await res.blob()); state.mediaUrls.set(cacheKey,url); return url;
