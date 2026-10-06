@@ -60,7 +60,7 @@
     if (document.getElementById('hwSaleBadgeStyle')) return;
     const style = document.createElement('style');
     style.id = 'hwSaleBadgeStyle';
-    style.textContent = '.hw-price-compare{position:relative;z-index:6;display:inline-flex;align-items:center;flex-wrap:wrap;gap:6px;min-height:34px;padding:7px 10px;border:1px solid #67864c;border-radius:8px;background:#142015;color:#dcffae;font-size:10px;line-height:1.3;font-weight:900;text-decoration:none;pointer-events:auto;touch-action:manipulation}.hw-price-compare:hover{border-color:#eaff35;color:#eaff35}.hw-price-amount{font-size:13px;font-weight:950;color:#fff}.hw-price-discount{padding:3px 5px;border-radius:4px;background:#eaff35;color:#10130a;font-size:10px;font-weight:950}.hw-price-store{font-size:9px;color:#b8ccab}.hw-price-compare:hover .hw-price-store{color:#eaff35}@media(max-width:899px){.m-meta .hw-price-compare{margin:10px 0 0 6px;border-radius:999px;background:#111a13dd}}';
+    style.textContent = '.hw-price-compare{position:relative;z-index:6;display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-height:44px;padding:7px 10px;border:1px solid #67864c;border-radius:8px;background:#142015;color:#dcffae;font-size:10px;line-height:1.3;font-weight:900;text-decoration:none;pointer-events:auto;touch-action:manipulation}.hw-price-compare:hover{border-color:#eaff35;color:#eaff35}#links a.hw-price-compare{order:99;flex-basis:100%;width:100%}.hw-price-detail{display:flex;align-items:center;flex-wrap:wrap;gap:7px}.hw-price-cta{font-size:11px;font-weight:950;color:#dcffae}.hw-price-amount{font-size:13px;font-weight:950;color:#fff}.hw-price-discount{padding:3px 5px;border-radius:4px;background:#eaff35;color:#10130a;font-size:10px;font-weight:950}.hw-price-store{font-size:9px;color:#b8ccab}.hw-price-compare:hover .hw-price-store{color:#eaff35}@media(max-width:899px){.m-meta a.hw-price-compare{display:flex;flex-direction:column;align-items:flex-start;width:max-content;max-width:100%;margin:10px 0 0;border-radius:12px;background:#111a13dd;color:#dcffae}}';
     document.head.appendChild(style);
   }
 
@@ -80,7 +80,7 @@
     link.rel = 'noopener';
     link.dataset.steam = id;
     link.dataset.offerKey = key;
-    link.setAttribute('aria-label', deal.store + 'のセール価格 ' + deal.price + '円、' + deal.discount + '%オフ。Sale Watchで価格を比較');
+    link.setAttribute('aria-label', 'ほかのセール情報をチェック。' + deal.store + 'の割引価格 ' + deal.price + '円、' + deal.discount + '%オフ。');
     link.replaceChildren();
     const amount = document.createElement('span');
     amount.className = 'hw-price-amount';
@@ -90,11 +90,10 @@
     off.textContent = '-' + deal.discount + '%';
     const store = document.createElement('span');
     store.className = 'hw-price-store';
-    store.textContent = deal.store + (deal.coupon ? ' 要クーポン' : '') + ' ↗';
-    link.append(amount, off, store);
+    store.textContent = deal.store + (deal.coupon ? ' 要クーポン' : '');
+    const label=document.createElement('span');label.className='hw-price-cta';label.textContent='ほかのセール情報をチェック ↗';const detail=document.createElement('span');detail.className='hw-price-detail';detail.append(amount,off,store);link.append(label,detail);
     if (!existing) {
-      const anchor = root.querySelector('.hw-take-home') || root.querySelector('a[href*="store.steampowered.com/app/"]');
-      anchor ? anchor.insertAdjacentElement('afterend', link) : root.appendChild(link);
+      root.appendChild(link);
     }
   }
 
