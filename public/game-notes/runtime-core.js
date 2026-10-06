@@ -336,7 +336,7 @@
       .filter(a=>mediaPickerKind==='all'||a.kind===mediaPickerKind)
       .filter(a=>!q||[a.name,a.r2Key,a.gameName,...(a.tags||[])].join(' ').toLowerCase().includes(q))
       .slice(0,160);
-    $('[data-media-kind]').forEach(button=>button.classList.toggle('on',button.dataset.mediaKind===mediaPickerKind));
+    document.querySelectorAll('[data-media-kind]').forEach(button=>button.classList.toggle('on',button.dataset.mediaKind===mediaPickerKind));
     const root=$('#media-picker-grid'); if(!root)return;
     mediaPickerObserver?.disconnect();
     root.innerHTML=rows.map((a,i)=>`<button type="button" class="media-pick-card" data-pick-key="${esc(a.r2Key)}"><div class="media-pick-preview" data-pick-preview="${i}"><span>${esc(String(a.kind).toUpperCase())}</span></div><div class="media-pick-info"><span>${esc(String(a.kind).toUpperCase())}</span><b title="${esc(a.name||a.r2Key)}">${esc(a.name||a.r2Key)}</b><small>${esc(a.gameName||a.storagePurpose||'')}${a.registered?'':' · 未登録'}</small></div></button>`).join('')||'<div class="empty">素材がありません。</div>';
