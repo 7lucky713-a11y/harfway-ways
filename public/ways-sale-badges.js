@@ -43,7 +43,15 @@
     return candidates[0] || null;
   };
 
+  function isPromoted(root) {
+    if (root?.closest?.('.ways-ad-mobile,[data-ways-ad]')) return true;
+    if (root?.id !== 'links') return false;
+    return Boolean(document.querySelector('#shelf .ways-ad-card.on, #links .ways-ad-store'))
+      || /^AD\s*\/\s*PROMOTED$/i.test(document.querySelector('#count')?.textContent?.trim() || '')
+      || /^PR\s*\/\s*SPONSORED$/i.test(document.querySelector('#stageLabel')?.textContent?.trim() || '');
+  }
   function steamId(root) {
+    if (isPromoted(root)) return '';
     const id = String(root?.querySelector('.hw-take-home[data-steam]')?.dataset.steam || '');
     return /^\d{1,12}$/.test(id) ? id : '';
   }
@@ -129,6 +137,7 @@
   }
 
   function observeMobile(card) {
+    if (isPromoted(card)) return;
     if (watchedCards.has(card) || !card.querySelector('.hw-take-home[data-steam]')) return;
     if (!mobileObserver) {
       mobileObserver = new IntersectionObserver((entries) => {
