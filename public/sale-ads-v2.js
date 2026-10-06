@@ -3,7 +3,7 @@
   const EVENT = '/api/sale-ads-event';
   const PLACEMENT = 'sale';
   const DEFAULT_EVERY = 6;
-  const PROD_HOSTS = new Set(['harfway-playback.vercel.app','harfway-playback-harf-way.vercel.app']);
+  const PROD_HOSTS = new Set(['ways.harf-way.com','harfway-playback.vercel.app','harfway-playback-harf-way.vercel.app','harfway-playback-git-production-harf-way.vercel.app']);
   const TRACK_ENABLED = PROD_HOSTS.has(location.hostname);
   const DEMO = new URLSearchParams(location.search).get('ads_demo') === '1';
   const contextTags = ['SALE WATCH','Steam Sale','セール','インディーゲーム'];
