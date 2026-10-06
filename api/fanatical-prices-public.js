@@ -94,41 +94,61 @@ function unixIso(value) {
   return Number.isFinite(n) && n > 0 ? new Date(n * 1000).toISOString() : null;
 }
 
+function finiteMoney(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount >= 0 ? amount : null;
+}
+
+function fanaticalProductUrl(raw) {
+  try {
+    const url = new URL(String(raw || ''));
+    if (url.protocol !== 'https:' || !['www.fanatical.com', 'fanatical.com'].includes(url.hostname.toLowerCase())) return '';
+    return url.toString();
+  } catch { return ''; }
+}
+
 function normalizeProduct(product, currency) {
   const appid = String(product?.steam_id || '');
   if (!/^\d+$/.test(appid)) return null;
-  const basePrice = Number(product?.price);
-  const fullPrice = Number(product?.full_price);
-  const couponPrice = Number(product?.coupon?.coupon_price);
-  const hasCouponPrice = Number.isFinite(couponPrice);
-  const effectivePrice = hasCouponPrice ? couponPrice : basePrice;
-  let discountPercent = Number(product?.discount_percent || 0);
-  if (hasCouponPrice && Number.isFinite(fullPrice) && fullPrice > 0) {
-    discountPercent = Math.max(discountPercent, Math.round((1 - effectivePrice / fullPrice) * 100));
-  }
-  const destinationUrl = String(product?.url || '');
+  const basePrice = finiteMoney(product?.price);
+  const fullPrice = finiteMoney(product?.full_price);
+  const couponPrice = finiteMoney(product?.coupon?.coupon_price);
+  const couponCode = String(product?.coupon?.code || '').trim();
+  const couponUntil = unixIso(product?.coupon?.valid_until);
+  // A discount that requires entering a code must not look like a guaranteed checkout price.
+  const priceRequiresCoupon = Boolean(couponCode && couponPrice !== null && basePrice !== null && couponPrice < basePrice && (!couponUntil || Date.parse(couponUntil) > Date.now()));
+  const effectivePrice = priceRequiresCoupon ? couponPrice : basePrice;
+  const inStock = product?.in_stock !== false;
+  const destinationUrl = fanaticalProductUrl(product?.url);
+  const normalizedCurrency = String(currency || 'JPY').toUpperCase();
+  const available = inStock && normalizedCurrency === 'JPY' && effectivePrice !== null && Boolean(destinationUrl);
+  const rawDiscount = Number(product?.discount_percent);
+  const discountPercent = available ? (fullPrice !== null && fullPrice > 0 && effectivePrice < fullPrice
+    ? Math.min(100, Math.max(0, Math.round((1 - effectivePrice / fullPrice) * 100)))
+    : (Number.isFinite(rawDiscount) ? Math.min(100, Math.max(0, Math.round(rawDiscount))) : 0)) : 0;
   return {
-    ok: true,
+    ok: available,
     appid,
     name: String(product?.name || ''),
-    currency: String(currency || 'JPY'),
-    price: Number.isFinite(effectivePrice) ? effectivePrice : null,
-    basePrice: Number.isFinite(basePrice) ? basePrice : null,
-    fullPrice: Number.isFinite(fullPrice) ? fullPrice : null,
-    discountPercent: Number.isFinite(discountPercent) ? discountPercent : 0,
-    onSale: Number.isFinite(effectivePrice) && Number.isFinite(fullPrice) && effectivePrice < fullPrice,
-    inStock: product?.in_stock !== false,
+    currency: normalizedCurrency,
+    price: effectivePrice,
+    basePrice,
+    fullPrice,
+    discountPercent,
+    onSale: available && discountPercent > 0,
+    inStock,
     drm: String(product?.drm || ''),
     saleName: String(product?.sale_name || ''),
-    couponCode: String(product?.coupon?.code || ''),
-    validUntil: unixIso(product?.coupon?.valid_until || product?.valid_until),
+    couponCode: priceRequiresCoupon ? couponCode : '',
+    priceRequiresCoupon,
+    validUntil: priceRequiresCoupon ? (couponUntil || unixIso(product?.valid_until)) : unixIso(product?.valid_until),
     lastModified: unixIso(product?.last_modified),
     sourceUrl: destinationUrl,
-    affiliateUrl: destinationUrl ? awinDeepLink(destinationUrl, appid) : '',
+    affiliateUrl: available ? awinDeepLink(destinationUrl, appid) : '',
     source: 'fanatical-mcp'
   };
 }
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('X-Robots-Tag', 'noindex');

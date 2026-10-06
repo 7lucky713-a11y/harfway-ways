@@ -29,7 +29,31 @@ function button(id){const b=document.createElement('button');b.type='button';b.c
 function removeOld(b){if(!b)return;const n=b.nextElementSibling;if(n?.classList?.contains('hw-my-harfway-open'))n.remove();b.remove()}
 function decorateDesktop(){const box=document.querySelector('#links');if(!box)return;const id=identity(desktopEntry()),old=box.querySelector('.hw-take-home');if(!id){removeOld(old);return}if(old?.dataset.key===id.key){state(old,id);return}removeOld(old);const b=button(id),store=box.querySelector('a.store[href]');store?store.insertAdjacentElement('afterend',b):box.appendChild(b)}
 function decorateMobile(){document.querySelectorAll('.m-card').forEach(card=>{const box=card.querySelector('.m-meta');if(!box)return;const id=identity(mobileEntry(card)),old=box.querySelector('.hw-take-home');if(!id){removeOld(old);return}if(old?.dataset.key===id.key){state(old,id);return}removeOld(old);const b=button(id),store=box.querySelector('a[href]');store?store.insertAdjacentElement('afterend',b):box.appendChild(b)})}
-const decorate=()=>{decorateDesktop();decorateMobile()};
+function priceCompareStyle(){
+  if(document.querySelector('#hwPriceCompareStyle'))return;
+  const style=document.createElement('style');style.id='hwPriceCompareStyle';
+  style.textContent='.hw-price-compare{position:relative;z-index:6;display:inline-flex;align-items:center;min-height:34px;padding:8px 11px;border:1px solid #67864c;border-radius:6px;background:#142015;color:#d8ff9a;font-size:10px;font-weight:900;text-decoration:none;white-space:normal;line-height:1.35;pointer-events:auto;touch-action:manipulation}.hw-price-compare:hover{border-color:#eaff35;color:#eaff35}@media(max-width:899px){.m-meta .hw-price-compare{margin:10px 0 0 6px;border-radius:999px;padding:8px 11px;background:#111a13dd}}';
+  document.head.appendChild(style);
+}
+function placePriceCompare(box,id){
+  if(!box)return;const old=box.querySelector('.hw-price-compare');
+  if(!id?.steamAppid){old?.remove();return}
+  const href='/sales?appid='+encodeURIComponent(id.steamAppid)+'&from=ways';
+  if(old?.dataset.steam===id.steamAppid&&old.getAttribute('href')===href)return;
+  const link=old||document.createElement('a');
+  link.className='hw-price-compare';link.textContent='現在の価格・セールを見る ↗';link.href=href;link.dataset.steam=id.steamAppid;
+  link.target='_blank';link.rel='noopener';
+  if(!old){
+    const anchor=box.querySelector('.hw-take-home')||box.querySelector('a[href*="store.steampowered.com/app/"]');
+    anchor?anchor.insertAdjacentElement('afterend',link):box.appendChild(link);
+  }
+}
+function decoratePriceCompare(){
+  priceCompareStyle();
+  const desk=document.querySelector('#links');if(desk)placePriceCompare(desk,identity(desktopEntry()));
+  document.querySelectorAll('.m-card').forEach(card=>{const box=card.querySelector('.m-meta');if(box)placePriceCompare(box,identity(mobileEntry(card)))});
+}
+const decorate=()=>{decorateDesktop();decorateMobile();decoratePriceCompare()};
 function authUrl(id,mode){const u=new URL(AUTH_PATH,AUTH_ORIGIN);for(const[k,v]of Object.entries({mode,source:SOURCE,context:CONTEXT,origin:location.origin,game:id.gameId,steam:id.steamAppid,source_item:id.sourceItemId,title:id.title,store:id.storeUrl}))if(v)u.searchParams.set(k,v);return u.toString()}
 async function post(body,token){const r=await fetch(ENDPOINT,{method:'POST',headers:{'content-type':'application/json','authorization':`Bearer ${token}`},body:JSON.stringify(body),cache:'no-store'}),data=await r.json().catch(()=>({}));return{r,data}}
 async function inlineSave(id,cap){document.querySelectorAll(`.hw-take-home[data-key="${CSS.escape(id.key)}"]`).forEach(b=>state(b,id,true));const {r,data}=await post({action:'save',gameId:id.gameId,steamAppid:id.steamAppid,sourceItemId:id.sourceItemId,title:id.title,storeUrl:id.storeUrl,contextSource:CONTEXT},cap.token).catch(()=>({r:null,data:{}}));if(r?.ok&&data?.ok){const server=String(data.gameId||data.game?.id||'');markSaved(id,server);storeRemove(id,data);toast('MY HARF-WAYに持ち帰りました ✓');return}if([401,403,410].includes(r?.status)){localStorage.removeItem(CAP_KEY);return authorize(id,'save')}refreshButtons();toast('持ち帰れませんでした。もう一度お試しください')}

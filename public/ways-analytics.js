@@ -237,7 +237,7 @@
         });
       }
       const store = e.target.closest?.('.m-meta a');
-      if (store) post('store_click', game.id, { metadata: { title: game.title || '' } });
+      if (store && !store.classList.contains('hw-price-compare')) post('store_click', game.id, { metadata: { title: game.title || '' } });
     }, true);
   };
 
@@ -259,6 +259,17 @@
       }
     }, true);
   };
+
+  // WAYS -> Sale Watch: count internal price-comparison visits separately from Steam store clicks.
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest?.('.hw-price-compare');
+    if (!link) return;
+    const appid = String(link.dataset.steam || '');
+    if (!/^\d+$/.test(appid)) return;
+    const card = link.closest('.m-card');
+    const game = card ? gameByTitle(titleOf(card)) : currentDesktopGame();
+    post('sale_watch_click', game?.id || '', { metadata: { appid, title: game?.title || '' } });
+  }, true);
 
   addEventListener('pagehide', () => {
     endState(desktop, true);
