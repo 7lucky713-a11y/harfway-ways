@@ -298,6 +298,7 @@
 
   let mediaPickerItems = [];
   let mediaPickerObserver = null;
+  let mediaPickerKind = 'all';
   function normalizedPickerStem(asset) {
     const raw = String(asset?.name || asset?.r2Key || '').split('/').pop().replace(/\.[^.]+$/, '').replace(/-thumb$/i, '');
     return raw.replace(/^\d{10,}-[a-z0-9]+-/i, '').toLowerCase();
@@ -331,7 +332,11 @@
   }
   function renderMediaPicker() {
     const q = ($('#media-picker-search')?.value||'').toLowerCase();
-    const rows = mediaPickerItems.filter(a=>!q||[a.name,a.r2Key,a.gameName,...(a.tags||[])].join(' ').toLowerCase().includes(q)).slice(0,160);
+    const rows = mediaPickerItems
+      .filter(a=>mediaPickerKind==='all'||a.kind===mediaPickerKind)
+      .filter(a=>!q||[a.name,a.r2Key,a.gameName,...(a.tags||[])].join(' ').toLowerCase().includes(q))
+      .slice(0,160);
+    $('[data-media-kind]').forEach(button=>button.classList.toggle('on',button.dataset.mediaKind===mediaPickerKind));
     const root=$('#media-picker-grid'); if(!root)return;
     mediaPickerObserver?.disconnect();
     root.innerHTML=rows.map((a,i)=>`<button type="button" class="media-pick-card" data-pick-key="${esc(a.r2Key)}"><div class="media-pick-preview" data-pick-preview="${i}"><span>${esc(String(a.kind).toUpperCase())}</span></div><div class="media-pick-info"><span>${esc(String(a.kind).toUpperCase())}</span><b title="${esc(a.name||a.r2Key)}">${esc(a.name||a.r2Key)}</b><small>${esc(a.gameName||a.storagePurpose||'')}${a.registered?'':' · 未登録'}</small></div></button>`).join('')||'<div class="empty">素材がありません。</div>';
@@ -409,6 +414,7 @@
   $('#open-media-library')?.addEventListener('click',openMediaPicker);
   $('#close-media-picker')?.addEventListener('click',closeMediaPicker);
   $('#media-picker-search')?.addEventListener('input',renderMediaPicker);
+  $('#media-picker-kind')?.addEventListener('click',e=>{const button=e.target.closest('[data-media-kind]');if(!button)return;mediaPickerKind=button.dataset.mediaKind||'all';renderMediaPicker()});
   $('#media-picker-grid')?.addEventListener('click',e=>{const b=e.target.closest('[data-pick-key]');if(!b)return;attachPickerAsset(b.dataset.pickKey).catch(err=>toast(err.message,true))});
   $('#media-picker-overlay')?.addEventListener('click',e=>{if(e.target.id==='media-picker-overlay')closeMediaPicker()});
   $('#library-list').addEventListener('click',e=>{const row=e.target.closest('[data-note]');if(row)openNote(state.notes.find(n=>n.id===row.dataset.note))}); $('#inbox-cards').addEventListener('click',e=>{const row=e.target.closest('[data-note]');if(row)openNote(state.notes.find(n=>n.id===row.dataset.note))}); $('#game-notes').addEventListener('click',e=>{const row=e.target.closest('[data-note]');if(row)openNote(state.notes.find(n=>n.id===row.dataset.note))});
