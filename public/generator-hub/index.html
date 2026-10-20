@@ -18,6 +18,8 @@
     const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
     let html=await new Response(stream).text();
     html=html.replace('<meta name="viewport" content="width=device-width,initial-scale=1">','<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">');
+    html=html.replace('</nav>','<button type="button" onclick="location.href=\'/generator-hub/steam-trailer.html\'">Steam Trailer</button></nav>');
+    html=html.replace('</div>\n    <div class="backup"><h3>全体バックアップ</h3>','<article class="dash-card"><small>STEAM TRAILER</small><h3>Steam Trailer Generator</h3><p>SteamストアURLから公式トレーラーを取得し、WordPress用の動画＋出典リンクHTMLを生成します。</p><button class="btn primary wide" type="button" onclick="location.href=\'/generator-hub/steam-trailer.html\'">開く</button></article></div>\n    <div class="backup"><h3>全体バックアップ</h3>');
     document.open();document.write(html);document.close();
   }catch(err){
     document.body.innerHTML='<pre style="white-space:pre-wrap;padding:24px;font-family:ui-monospace,monospace">GENERATOR HUB load error\n'+String(err)+'</pre>';
