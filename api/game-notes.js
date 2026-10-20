@@ -470,6 +470,28 @@ async function archiveEntity(sql, entity, id) {
     const count = Number(rows[0]?.count || 0);
     if (count > 0) { const error = new Error('dictionary_in_use'); error.status = 409; error.details = { count }; throw error; }
   }
+  if (entity === 'note') {
+    const snapshotId = `game-notes:public-note:${publicId(dbid, 'note')}`;
+    const rows = await sql`
+      WITH archived_source AS (
+        UPDATE core.contents SET status='archived', updated_at=now()
+        WHERE id=${dbid} AND source=${SOURCE} AND content_type=${NOTE_TYPE}
+          AND status<>'archived'
+        RETURNING id
+      ),
+      archived_public AS (
+        UPDATE core.contents AS pub SET status='archived',updated_at=now()
+        WHERE pub.id=${snapshotId} AND pub.source=${PUBLIC_SOURCE}
+          AND pub.content_type=${PUBLIC_TYPE} AND pub.status='active'
+          AND COALESCE(pub.metadata->>'sourceKind','note')='note'
+          AND EXISTS (SELECT 1 FROM archived_source)
+        RETURNING pub.id
+      )
+      SELECT EXISTS (SELECT 1 FROM archived_source) AS deleted,
+             (SELECT count(*) FROM archived_public) AS unpublished
+    `;
+    return Boolean(rows[0]?.deleted);
+  }
   const rows = await sql`UPDATE core.contents SET status='archived',updated_at=now() WHERE id=${dbid} AND source=${SOURCE} AND content_type=${contentType} AND status<>'archived' RETURNING id`;
   return Boolean(rows[0]);
 }

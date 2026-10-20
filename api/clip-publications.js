@@ -29,9 +29,16 @@ function toEntry(row){
 }
 async function listEntries(sql){
   const rows=await sql`SELECT id,title,body_text,metadata,created_at,updated_at
-    FROM core.contents WHERE source=${PUBLIC_SOURCE} AND content_type=${PUBLIC_TYPE} AND status='active'
-      AND metadata->>'sourceKind'='clip'
-    ORDER BY COALESCE((metadata->>'publishedAt')::timestamptz,created_at) DESC`;
+    FROM core.contents AS pub
+    WHERE pub.source=${PUBLIC_SOURCE} AND pub.content_type=${PUBLIC_TYPE} AND pub.status='active'
+      AND pub.metadata->>'sourceKind'='clip'
+      AND EXISTS (
+        SELECT 1 FROM core.contents AS original
+        WHERE original.id='private-clips:clip:' || (pub.metadata->>'sourceClipId')
+          AND original.source=${PRIVATE_SOURCE} AND original.content_type=${CLIP_TYPE}
+          AND original.status='active'
+      )
+    ORDER BY COALESCE((pub.metadata->>'publishedAt')::timestamptz,pub.created_at) DESC`;
   return rows.map(toEntry);
 }
 async function sourceClip(sql,id){

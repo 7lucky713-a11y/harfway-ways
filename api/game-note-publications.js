@@ -52,7 +52,17 @@ function toSnapshot(row){
   item.publicSlug=notePublicSlug(item);item.url=notePublicPath(item);return item;
 }
 async function listSnapshots(sql){
-  const rows=await sql`SELECT id,title,url,excerpt,body_text,metadata,created_at,updated_at FROM core.contents WHERE source=${PUBLIC_SOURCE} AND content_type=${PUBLIC_TYPE} AND status='active' AND COALESCE(metadata->>'sourceKind','note')<>'clip' ORDER BY COALESCE((metadata->>'publishedAt')::timestamptz,created_at) DESC`;
+  const rows=await sql`SELECT pub.id,pub.title,pub.url,pub.excerpt,pub.body_text,pub.metadata,pub.created_at,pub.updated_at
+    FROM core.contents AS pub
+    WHERE pub.source=${PUBLIC_SOURCE} AND pub.content_type=${PUBLIC_TYPE} AND pub.status='active'
+      AND COALESCE(pub.metadata->>'sourceKind','note')<>'clip'
+      AND EXISTS (
+        SELECT 1 FROM core.contents AS original
+        WHERE original.id='game-notes:note:' || (pub.metadata->>'sourceNoteId')
+        AND original.source=${PRIVATE_SOURCE} AND original.content_type=${NOTE_TYPE}
+        AND original.status='active'
+      )
+    ORDER BY COALESCE((pub.metadata->>'publishedAt')::timestamptz,pub.created_at) DESC`;
   return rows.map(toSnapshot);
 }
 async function sourceNote(sql,noteId){
