@@ -1,6 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import { archiveCors, archiveDatabaseConfig, authorizeArchiveRequest } from './archive-core.js';
 import { ensureRegisteredMedia } from '../lib/media-asset-resolver.js';
+import { normalizeNoteStoreUrl, safeNoteStoreUrl } from '../lib/note-store-link.js';
 
 const PROJECT_ID = 'wispy-recipe-34518010';
 const PRODUCTION_BRANCH_ID = 'br-noisy-boat-awncea92';
@@ -189,7 +190,7 @@ function toNote(row) {
     id: publicId(row.id, 'note'), title: row.title || '', body: row.body_text || '', gameId: meta.gameId || '', typeId: meta.typeId || '',
     facets,
     tags: facets.tags || [], characters: facets.characters || [], themes: facets.themes || [],
-    media: Array.isArray(meta.media) ? meta.media : [], mediaAssetIds: normalizeList(meta.mediaAssetIds?.length ? meta.mediaAssetIds : (Array.isArray(meta.media) ? meta.media.map(item => item?.assetId) : []), 24, 180), outputStatus: meta.outputStatus || 'private', destinations: normalizeDestinations(meta.destinations), exportedTo: Array.isArray(meta.exportedTo) ? meta.exportedTo : [],
+    media: Array.isArray(meta.media) ? meta.media : [], mediaAssetIds: normalizeList(meta.mediaAssetIds?.length ? meta.mediaAssetIds : (Array.isArray(meta.media) ? meta.media.map(item => item?.assetId) : []), 24, 180), storeUrl: safeNoteStoreUrl(meta.storeUrl), outputStatus: meta.outputStatus || 'private', destinations: normalizeDestinations(meta.destinations), exportedTo: Array.isArray(meta.exportedTo) ? meta.exportedTo : [],
     createdAt: meta.createdAt || (row.created_at ? new Date(row.created_at).toISOString() : null), updatedAt: row.updated_at || null
   };
 }
@@ -368,10 +369,15 @@ async function upsertNote(sql, body) {
   const outputStatus = ['private', 'candidate', 'exported'].includes(body.outputStatus) ? body.outputStatus : 'private';
   const media = await validateMediaAssets(sql, await ensureRegisteredMedia(sql, validMedia(body.media)));
   const mediaAssetIds = normalizeList(media.map(item => item.assetId).filter(Boolean), 24, 180);
+  let storeUrl = normalizeNoteStoreUrl(body.storeUrl);
+  if (!Object.hasOwn(body, 'storeUrl') && body.id) {
+    const current = await sql`SELECT metadata FROM core.contents WHERE id=${id} AND source=${SOURCE} AND content_type=${NOTE_TYPE} LIMIT 1`;
+    storeUrl = safeNoteStoreUrl(current[0]?.metadata?.storeUrl);
+  }
   const metadata = JSON.stringify({
     gameId, typeId, facets,
     tags: facets.tags || [], characters: facets.characters || [], themes: facets.themes || [],
-    media, mediaAssetIds, outputStatus, destinations: normalizeDestinations(body.destinations), exportedTo: normalizeList(body.exportedTo, 20, 80),
+    media, mediaAssetIds, storeUrl, outputStatus, destinations: normalizeDestinations(body.destinations), exportedTo: normalizeList(body.exportedTo, 20, 80),
     createdAt: clean(body.createdAt, 60) || new Date().toISOString()
   });
   const rows = await sql`
@@ -386,7 +392,7 @@ async function upsertNote(sql, body) {
 }
 
 
-async function syncPublishedMediaSelection(sql, noteId, media = []) {
+async function syncPublishedLinksAndMedia(sql, noteId, media = [], storeUrl = '') {
   const sourceId = clean(noteId, 180).replace(/^game-notes:note:/, '').replace(/^game-notes:public-note:/, '');
   const ids = normalizeList(
     (Array.isArray(media) ? media : [])
@@ -401,9 +407,14 @@ async function syncPublishedMediaSelection(sql, noteId, media = []) {
     UPDATE core.contents
     SET metadata = jsonb_set(
       jsonb_set(
-        COALESCE(metadata, '{}'::jsonb),
-        '{mediaAssetIds}',
-        CAST(${JSON.stringify(ids)} AS jsonb),
+        jsonb_set(
+          COALESCE(metadata, '{}'::jsonb),
+          '{mediaAssetIds}',
+          CAST(${JSON.stringify(ids)} AS jsonb),
+          true
+        ),
+        '{storeUrl}',
+        to_jsonb(${storeUrl}::text),
         true
       ),
       '{snapshotUpdatedAt}',
@@ -511,7 +522,7 @@ export default async function handler(req, res) {
       const entity = clean(body.entity, 20).toLowerCase();
       if (entity === 'bootstrap') { await bootstrap(context.sql); return res.status(200).json({ ok: true, bootstrapped: true }); }
       if (['game', 'type', 'facet'].includes(entity)) { const item = await upsertDictionary(context.sql, entity, body); return res.status(200).json({ ok: true, entity, item }); }
-      if (entity === 'note') { const item = await upsertNote(context.sql, body); const mediaSynced = await syncPublishedMediaSelection(context.sql, item.id, item.media); return res.status(200).json({ ok: true, entity, item, publicMediaSync: mediaSynced ? 'synced' : 'not_published' }); }
+      if (entity === 'note') { const item = await upsertNote(context.sql, body); const publicSynced = await syncPublishedLinksAndMedia(context.sql, item.id, item.media, item.storeUrl); return res.status(200).json({ ok: true, entity, item, publicMediaSync: publicSynced ? 'synced' : 'not_published', publicStoreLinkSync: publicSynced ? 'synced' : 'not_published' }); }
       if (entity === 'crosscut_destination') { const result = await updateCrosscutDestination(context.sql, body); return res.status(200).json({ ok: true, entity, ...result }); }
       return res.status(400).json({ ok: false, error: 'invalid_entity' });
     }
