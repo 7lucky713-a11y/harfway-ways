@@ -2,7 +2,7 @@
   const STORAGE_PREFIX = 'harfway_game_notes_autodraft_v1:';
   const STORAGE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
   const SAVE_DELAY_MS = 450;
-  const TRACKED_IDS = new Set(['note-game', 'note-type', 'note-title', 'note-body', 'note-status']);
+  const TRACKED_IDS = new Set(['note-game', 'note-type', 'note-title', 'note-body', 'note-store-url', 'note-status']);
   const $ = (selector, root = document) => root.querySelector(selector);
   let saveTimer = 0;
   let currentKey = '';
@@ -53,6 +53,7 @@
       typeId: String($('#note-type')?.value || ''),
       title: String($('#note-title')?.value || ''),
       body: String($('#note-body')?.value || ''),
+      storeUrl: String($('#note-store-url')?.value || ''),
       outputStatus: String($('#note-status')?.value || 'private')
     };
   }
@@ -172,6 +173,7 @@
     assignSelect('note-status', draft.outputStatus);
     if ($('#note-title')) $('#note-title').value = String(draft.title || '');
     if ($('#note-body')) $('#note-body').value = String(draft.body || '');
+    if (Object.hasOwn(draft, 'storeUrl') && $('#note-store-url')) $('#note-store-url').value = String(draft.storeUrl || '');
     restoring = false;
     dirty = true;
     setStatus('下書きを復元しました', 'ok');

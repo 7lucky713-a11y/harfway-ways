@@ -1,5 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import { archiveCors, archiveDatabaseConfig, authorizeArchiveRequest } from './archive-core.js';
+import { normalizeNoteStoreUrl, safeNoteStoreUrl } from '../lib/note-store-link.js';
 
 const PROJECT_ID = 'wispy-recipe-34518010';
 const PRODUCTION_BRANCH_ID = 'br-noisy-boat-awncea92';
@@ -10,6 +11,8 @@ const GAME_TYPE = 'private_game_note_game';
 const TYPE_TYPE = 'private_game_note_type';
 const FACET_TYPE = 'private_game_note_facet';
 const GLOSSARY_TYPE = 'private_game_note_glossary';
+const PUBLIC_SOURCE = 'game-note-publications';
+const PUBLIC_TYPE = 'game_note_public_snapshot';
 const TARGET_GAME_IDS = new Set([
   'a10e6a8c-95a7-4480-adcb-bf6f8c8054e2',
   'c5dd23a5-4951-4123-881d-c71df1c446b3'
@@ -220,6 +223,7 @@ function toNote(row) {
     characters: facets.characters || [],
     themes: facets.themes || [],
     media: Array.isArray(meta.media) ? meta.media : [],
+    storeUrl: safeNoteStoreUrl(meta.storeUrl),
     outputStatus: meta.outputStatus || 'private',
     exportedTo: Array.isArray(meta.exportedTo) ? meta.exportedTo : [],
     glossaryEntryIds: normalizeGlossaryIds(meta.glossaryEntryIds),
@@ -276,6 +280,9 @@ async function saveNote(sql, body) {
   const glossaryEntryIds = await validatedGlossaryIds(sql, relationInput);
   const title = clean(body.title, 280) || clean(text.replace(/\s+/g, ' '), 60);
   const outputStatus = ['private', 'candidate', 'exported'].includes(body.outputStatus) ? body.outputStatus : 'private';
+  const storeUrl = Object.hasOwn(body, 'storeUrl')
+    ? normalizeNoteStoreUrl(body.storeUrl)
+    : safeNoteStoreUrl(currentMeta.storeUrl);
   const gameSpecific = currentMeta.gameSpecific && typeof currentMeta.gameSpecific === 'object' && !Array.isArray(currentMeta.gameSpecific)
     ? { ...currentMeta.gameSpecific }
     : {};
@@ -297,6 +304,7 @@ async function saveNote(sql, body) {
     characters: facets.characters || [],
     themes: facets.themes || [],
     media: validMedia(body.media),
+    storeUrl,
     outputStatus,
     exportedTo: normalizeList(body.exportedTo, 20, 80),
     glossaryEntryIds,
@@ -326,6 +334,22 @@ async function saveNote(sql, body) {
   return toNote(rows[0]);
 }
 
+async function syncPublishedStoreUrl(sql, noteId, storeUrl) {
+  const snapshotId = `game-notes:public-note:${publicId(noteId, 'note')}`;
+  const now = new Date().toISOString();
+  const rows = await sql`
+    UPDATE core.contents
+    SET metadata = jsonb_set(
+      jsonb_set(COALESCE(metadata, '{}'::jsonb), '{storeUrl}', to_jsonb(${storeUrl}::text), true),
+      '{snapshotUpdatedAt}', to_jsonb(${now}::text), true
+    ), updated_at = now()
+    WHERE id = ${snapshotId} AND source = ${PUBLIC_SOURCE}
+      AND content_type = ${PUBLIC_TYPE} AND status = 'active'
+    RETURNING id
+  `;
+  return rows.length > 0;
+}
+
 export default async function handler(req, res) {
   archiveCors(res);
   res.setHeader('Cache-Control', 'no-store, private');
@@ -353,7 +377,8 @@ export default async function handler(req, res) {
         return res.status(400).json({ ok: false, error: 'invalid_entity' });
       }
       const item = await saveNote(context.sql, body);
-      return res.status(200).json({ ok: true, entity: 'note', item });
+      const publicSynced = await syncPublishedStoreUrl(context.sql, item.id, item.storeUrl);
+      return res.status(200).json({ ok: true, entity: 'note', item, publicStoreLinkSync: publicSynced ? 'synced' : 'not_published' });
     }
 
     return res.status(405).json({ ok: false, error: 'method_not_allowed' });
