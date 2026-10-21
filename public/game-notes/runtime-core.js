@@ -201,13 +201,13 @@
   }
   function resetDraft() {
     state.editing = null; state.originalMedia = []; state.uploadedThisSession = []; state.draft = { facets: emptyFacetDraft(), media: [] };
-    $('#note-id').value=''; $('#note-title').value=''; $('#note-body').value=''; $('#note-status').value='private'; setDestinationChecks([]); $('#note-media').value=''; $('#delete-note').classList.add('hidden'); $('#note-dialog-title').textContent='断片を追加'; fillSelect($('#note-game'),state.games,state.gameId); fillSelect($('#note-type'),state.types,state.types[0]?.id||''); renderDraftFields();
+    $('#note-id').value=''; $('#note-title').value=''; $('#note-body').value=''; $('#note-store-url').value=''; $('#note-status').value='private'; setDestinationChecks([]); $('#note-media').value=''; $('#delete-note').classList.add('hidden'); $('#note-dialog-title').textContent='断片を追加'; fillSelect($('#note-game'),state.games,state.gameId); fillSelect($('#note-type'),state.types,state.types[0]?.id||''); renderDraftFields();
   }
   function openNote(note = null, presetGame = '') {
     if (!state.games.length) { setView('editor'); toast('先にゲームを追加してください', true); return; }
     if (note) {
       state.editing = note.id; state.originalMedia = [...(note.media||[])]; state.uploadedThisSession = []; state.draft = { facets: emptyFacetDraft(note.facets || {}), media:[...(note.media||[])] };
-      $('#note-id').value=note.id; $('#note-title').value=note.title||''; $('#note-body').value=note.body||''; $('#note-status').value=note.outputStatus||'private'; setDestinationChecks(note.destinations||[]); $('#note-dialog-title').textContent='断片を編集'; $('#delete-note').classList.remove('hidden'); fillSelect($('#note-game'),state.games,note.gameId); fillSelect($('#note-type'),state.types,note.typeId);
+      $('#note-id').value=note.id; $('#note-title').value=note.title||''; $('#note-body').value=note.body||''; $('#note-store-url').value=note.storeUrl||''; $('#note-status').value=note.outputStatus||'private'; setDestinationChecks(note.destinations||[]); $('#note-dialog-title').textContent='断片を編集'; $('#delete-note').classList.remove('hidden'); fillSelect($('#note-game'),state.games,note.gameId); fillSelect($('#note-type'),state.types,note.typeId);
     } else { resetDraft(); if(presetGame) $('#note-game').value=presetGame; }
     renderDraftFields(); $('#note-overlay').classList.add('on'); $('#note-overlay').setAttribute('aria-hidden','false'); setTimeout(()=>$('#note-body').focus(),30);
   }
@@ -384,11 +384,13 @@
   }
   async function saveNote(e) {
     e.preventDefault(); const body=$('#note-body').value.trim(); if(!body){toast('メモを入力してください',true);return}
+    const storeInput=$('#note-store-url'),storeUrl=storeInput.value.trim();
+    if(storeUrl && !storeUrl.startsWith('https://')){toast('ストアリンクは https:// から始まるURLにしてください',true);storeInput.focus();return}
     const existing=state.editing?state.notes.find(n=>n.id===state.editing):null;
     $('#save-note').disabled=true;
     try{
       await ensureMediaAssets(state.draft.media);
-      const payload={entity:'note',id:$('#note-id').value||undefined,gameId:$('#note-game').value,typeId:$('#note-type').value,title:$('#note-title').value,body,facets:state.draft.facets,media:state.draft.media,outputStatus:$('#note-status').value,destinations:selectedDestinations(),createdAt:existing?.createdAt||undefined};
+      const payload={entity:'note',id:$('#note-id').value||undefined,gameId:$('#note-game').value,typeId:$('#note-type').value,title:$('#note-title').value,body,storeUrl,facets:state.draft.facets,media:state.draft.media,outputStatus:$('#note-status').value,destinations:selectedDestinations(),createdAt:existing?.createdAt||undefined};
       await api('/api/game-notes',{method:payload.id?'PATCH':'POST',body:JSON.stringify(payload)});
       state.uploadedThisSession=[]; closeNote(false); await load(); toast(payload.id?'更新しました':'保存しました');
     }catch(e2){toast(e2.message,true)}finally{$('#save-note').disabled=false}

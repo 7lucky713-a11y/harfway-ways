@@ -2,6 +2,7 @@ import { neon } from '@neondatabase/serverless';
 import { archiveCors, archiveDatabaseConfig, authorizeArchiveRequest } from './archive-core.js';
 import { notePublicPath, notePublicSlug, slugifyPublic } from '../lib/game-public-seo.js';
 import { attachedMediaAssetIds, ensureRegisteredMedia } from '../lib/media-asset-resolver.js';
+import { safeNoteStoreUrl } from '../lib/note-store-link.js';
 
 const PROJECT_ID='wispy-recipe-34518010';
 const PRODUCTION_BRANCH_ID='br-noisy-boat-awncea92';
@@ -45,7 +46,7 @@ function toSnapshot(row){
   const m=row.metadata&&typeof row.metadata==='object'?row.metadata:{};
   const item={
     id:publicNoteId(row.id),title:row.title||'',body:row.body_text||'',excerpt:row.excerpt||'',
-    gameName:clean(m.gameName,220),typeName:clean(m.typeName,160),sourceNoteId:clean(m.sourceNoteId,180),
+    gameName:clean(m.gameName,220),typeName:clean(m.typeName,160),sourceNoteId:clean(m.sourceNoteId,180),storeUrl:safeNoteStoreUrl(m.storeUrl),
     relatedWaysIds:list(m.relatedWaysIds),mediaAssetIds:list(m.mediaAssetIds,24,180),sourceCreatedAt:m.sourceCreatedAt||null,publishedAt:m.publishedAt||row.created_at||null,
     snapshotUpdatedAt:m.snapshotUpdatedAt||row.updated_at||null,publicSlug:clean(m.publicSlug,150),slugHistory:list(m.slugHistory,40,150),seoTitle:clean(m.seoTitle,90)
   };
@@ -125,7 +126,7 @@ async function publishSnapshot(sql,noteId,settings={}){
   const slugHistory=nextSlugHistory(old,publicSlug,existing);await assertUniqueSlug(sql,noteId,publicSlug,slugHistory);
   const seoTitle=Object.hasOwn(settings,'seoTitle')?requestedSeoTitle(settings.seoTitle):clean(old.seoTitle,90);
   const now=new Date().toISOString(),publishedAt=old.publishedAt||now;
-  const metadata=JSON.stringify({sourceNoteId:publicNoteId(note.id),gameName,typeName,relatedWaysIds,mediaAssetIds,sourceCreatedAt:m.createdAt||note.created_at||null,publishedAt,snapshotUpdatedAt:now,publicSlug,slugHistory,seoTitle});
+  const metadata=JSON.stringify({sourceNoteId:publicNoteId(note.id),gameName,typeName,relatedWaysIds,mediaAssetIds,storeUrl:safeNoteStoreUrl(m.storeUrl),sourceCreatedAt:m.createdAt||note.created_at||null,publishedAt,snapshotUpdatedAt:now,publicSlug,slugHistory,seoTitle});
   const url=notePublicPath({id:publicNoteId(note.id),publicSlug});
   const rows=await sql`
     INSERT INTO core.contents(id,content_type,title,url,excerpt,body_text,status,source,metadata,created_at,updated_at)
