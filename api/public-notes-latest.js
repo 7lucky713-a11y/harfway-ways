@@ -33,7 +33,10 @@ export default async function handler(req, res) {
     const { sql } = await publicDatabaseContext();
     const notes = await listPublicNotes(sql);
     const entries = notes.slice(0, MAX_ITEMS).map(publicCard);
-    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60, must-revalidate');
+    // Browser requests may recheck normally, but Vercel should reuse the public
+    // snapshot for 24h instead of waking Neon after each short-lived TTL.
+    res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+    res.setHeader('Vercel-CDN-Cache-Control', 'public, s-maxage=86400');
     return res.status(200).json({ ok: true, entries, count: entries.length });
   } catch (error) {
     console.error('[public-notes-latest]', error?.message || error);
