@@ -60,6 +60,7 @@ const title = 'PRIVATE GAME NOTEBOOK';
       <button class="nav" data-view="promotion">昇格候補 <em id="count-promotion">0</em></button>
       <button class="nav" data-view="index">INDEX <em id="count-index">0</em></button>
       <button class="nav" data-view="editor">EDITOR <em>⚙</em></button>
+      <a class="nav" href="/game-notes/english/" style="text-decoration:none">ENGLISH <em>学習</em></a>
     </nav>
     <div class="side-note">● PRIVATE ONLY<small>本文・検索結果は管理キー認証後のみ取得</small></div>
   </aside>
@@ -97,7 +98,7 @@ const title = 'PRIVATE GAME NOTEBOOK';
     </section>
 
     <section class="view" id="view-game">
-      <div class="game-layout"><div class="game-list" id="game-list"></div><div class="game-panel"><div class="game-head"><div><small>GAME NOTEBOOK</small><h1 id="game-title">ゲームを選択</h1><p id="game-meta"></p></div><button class="primary" id="game-add">＋ このゲームに追加</button></div><div class="stats" id="game-stats"></div><div id="game-notes"></div></div></div>
+      <div class="game-layout"><div class="game-list" id="game-list"></div><div class="game-panel"><div class="game-head"><div><small>GAME NOTEBOOK</small><h1 id="game-title">ゲームを選択</h1><p id="game-meta"></p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><a class="ghost" id="game-english-link" href="/game-notes/english/" style="text-decoration:none">英語メモ ↗</a><button class="primary" id="game-add">＋ このゲームに追加</button></div></div><div class="stats" id="game-stats"></div><div id="game-notes"></div></div></div>
     </section>
 
     <section class="view" id="view-crosscut">
