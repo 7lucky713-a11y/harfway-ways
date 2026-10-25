@@ -8,6 +8,7 @@ const PRODUCTION_BRANCH_ID = 'br-noisy-boat-awncea92';
 const PREVIEW_BRANCH_ID = 'br-bold-butterfly-aw2ztgbd';
 const SOURCE = 'private-game-notes';
 const NOTE_TYPE = 'private_game_note';
+const ENGLISH_TYPE = 'private_game_note_english_card';
 const GAME_TYPE = 'private_game_note_game';
 const DICTIONARY_TYPE = 'private_game_note_type';
 const FACET_TYPE = 'private_game_note_facet';
@@ -477,7 +478,7 @@ async function archiveEntity(sql, entity, id) {
     if (count > 0) { const error = new Error('dictionary_in_use'); error.status = 409; error.details = { count }; throw error; }
   } else if (entity !== 'note') {
     const field = entity === 'game' ? 'gameId' : 'typeId';
-    const rows = await sql`SELECT count(*)::int AS count FROM core.contents WHERE source=${SOURCE} AND content_type=${NOTE_TYPE} AND status<>'archived' AND metadata->>${field}=${clean(id, 160)}`;
+    const rows = await sql`SELECT count(*)::int AS count FROM core.contents WHERE source=${SOURCE} AND content_type IN (${NOTE_TYPE}, ${ENGLISH_TYPE}) AND status<>'archived' AND metadata->>${field}=${clean(id, 160)}`;
     const count = Number(rows[0]?.count || 0);
     if (count > 0) { const error = new Error('dictionary_in_use'); error.status = 409; error.details = { count }; throw error; }
   }

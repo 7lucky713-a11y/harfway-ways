@@ -128,6 +128,8 @@
 
   function renderGame() {
     $('#game-list').innerHTML = state.games.length ? state.games.map(g => { const c = state.notes.filter(n => n.gameId === g.id).length; return `<button class="game-choice ${g.id===state.gameId?'on':''}" data-game="${esc(g.id)}">${esc(g.name)}<small>${c} notes</small></button>`; }).join('') : '<div class="empty">ゲーム未登録</div>';
+    const englishLink = $('#game-english-link');
+    if (englishLink) englishLink.href = `/game-notes/english/?game=${encodeURIComponent(state.gameId || '')}`;
     const g = gameById(state.gameId); const notes = state.notes.filter(n => n.gameId === state.gameId);
     $('#game-title').textContent = g?.name || 'ゲームを選択'; $('#game-meta').textContent = g ? `${notes.length} fragments · PRIVATE` : 'EDITORからゲームを追加してください。';
     const values = new Set(notes.flatMap(noteFacetValues)); const media = notes.reduce((s,n)=>s+(n.media?.length||0),0); const cand = notes.filter(n=>n.outputStatus==='candidate').length;

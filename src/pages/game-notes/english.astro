@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow,noarchive" />
+  <meta name="referrer" content="same-origin" />
+  <title>英語プレイノート — HARF-WAY</title>
+  <style is:global>
+    :root{--bg:#101412;--panel:#1a201c;--sub:#202821;--line:#38433a;--text:#edf1eb;--muted:#a0aea2;--accent:#b6d19c;--warm:#d9df93;color-scheme:dark}
+    *{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Hiragino Sans","Yu Gothic",sans-serif}
+    button,input,select,textarea{font:inherit;color:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.5}a{color:inherit}
+    .shell{width:min(1120px,calc(100% - 32px));margin:auto;padding:24px 0 80px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:34px}.back{color:var(--muted);font-size:13px;text-decoration:none}.back:hover{text-decoration:underline}
+    .badge{display:inline-block;border:1px solid #53674f;background:#26352a;color:#d0e8c2;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:850}
+    .hero{margin-bottom:26px}.eyebrow{font:900 11px ui-monospace,monospace;color:var(--accent);letter-spacing:.12em}.hero h1{font-size:clamp(32px,5vw,58px);letter-spacing:-.045em;margin:7px 0 9px;line-height:1.12}.hero p{color:var(--muted);line-height:1.8;margin:0;font-size:15px;max-width:720px}
+    .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}.stat{border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:18px}.stat small{display:block;color:var(--muted);font-weight:800;font-size:12px}.stat strong{display:block;font-size:32px;margin-top:4px;line-height:1.2}
+    .layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(290px,.82fr);gap:16px;align-items:start}.panel{border:1px solid var(--line);background:var(--panel);border-radius:15px;padding:22px}.panel h2{font-size:20px;margin:0 0 8px}.panel-intro{font-size:13px;line-height:1.7;color:var(--muted);margin:0 0 20px}.field{display:grid;gap:8px;font-weight:800;font-size:13px;margin:0 0 16px}.field small{font-size:12px;color:var(--muted);font-weight:500}.field input,.field textarea,.field select{display:block;width:100%;border:1px solid #4b5a4d;background:#101713;border-radius:9px;padding:12px 13px;font-size:16px;line-height:1.6;outline:none}.field textarea{min-height:90px;resize:vertical}.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px #9dbc8433}
+    .actions{display:flex;flex-wrap:wrap;align-items:center;gap:9px}.primary,.ghost,.danger{border-radius:9px;padding:11px 15px;font-weight:850;font-size:13px}.primary{background:var(--accent);color:#182019;border:1px solid var(--accent)}.ghost{border:1px solid var(--line);background:var(--sub);color:var(--text)}.danger{border:1px solid #79514c;background:#2a1d1c;color:#ecc4bc}.muted{color:var(--muted)}.hidden{display:none!important}
+    .review-english{font-size:clamp(23px,3vw,32px);line-height:1.45;font-weight:800;overflow-wrap:anywhere;margin:24px 0}.review-label{display:flex;gap:8px;align-items:center;color:var(--accent);font-weight:850;font-size:12px}.review-answer{background:#111913;border:1px solid #526450;border-radius:10px;padding:17px;margin:0 0 16px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere}.review-answer b{display:block;color:var(--warm);font-size:12px;margin-bottom:5px}.review-answer span{display:block}.review-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.review-actions button{width:100%}
+    .weekly{grid-column:1/-1}.week-row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;margin-top:15px}.day{display:grid;gap:5px;text-align:center;border:1px solid var(--line);border-radius:9px;padding:10px 2px;color:var(--muted)}.day b{font-size:12px}.day small{font-size:10px}.day.on{background:#26382b;border-color:#6f876a;color:#d4e8cb}
+    .library{grid-column:1/-1}.library-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}.library-head select{max-width:330px;border:1px solid var(--line);background:#101713;border-radius:9px;padding:10px;color:var(--text)}.cards{display:grid;gap:10px;margin-top:17px}.item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;border:1px solid var(--line);border-radius:11px;padding:16px;background:#151c17}.item h3{margin:4px 0 7px;font-size:18px;line-height:1.5;overflow-wrap:anywhere}.item p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;color:#c8d3c9;line-height:1.7;font-size:14px}.item small{color:var(--muted);font-size:11px}.item-actions{display:flex;gap:6px;align-items:start}.item-actions button{font-size:12px;padding:8px 10px}.empty{border:1px dashed #516052;padding:24px;border-radius:10px;color:var(--muted);font-size:14px;line-height:1.7}.status{font-size:13px;color:var(--muted);min-height:20px;margin:12px 0 0}.status.error{color:#e4aaa4}
+    .lock{position:fixed;inset:0;z-index:50;background:#0a0e0bfa;display:grid;place-items:center;padding:18px}.lock-card{width:min(420px,100%);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:26px}.lock h2{margin:0;font-size:30px}.lock p{color:var(--muted);line-height:1.7}.lock form{display:grid;grid-template-columns:1fr auto;gap:9px}.lock input{min-width:0;background:#0b100d;border:1px solid var(--line);border-radius:8px;padding:12px}
+    @media(max-width:760px){.summary{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.stat{padding:13px}.stat strong{font-size:24px}.stat small{font-size:10px}.layout{grid-template-columns:1fr}.panel{padding:18px}.week-row{gap:4px}.day{padding:8px 1px}.item{grid-template-columns:1fr}.item-actions{justify-content:flex-end}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="top">
+      <a class="back" href="/game-notes/">← PRIVATE GAME NOTEBOOK</a>
+      <span class="badge">非公開 / 自分用</span>
+    </header>
+    <section class="hero">
+      <div class="eyebrow">PLAY, NOTICE, REMEMBER</div>
+      <h1>英語プレイノート</h1>
+      <p>英語のゲームを遊びながら、気になった一文を1〜3個だけ残す。翌日以降に意味を思い出す。勉強のためにゲームを止めすぎない、小さな学習記録。</p>
+    </section>
+    <div class="summary" aria-label="学習状況">
+      <div class="stat"><small>今日の追加</small><strong id="today-count">0 / 3</strong></div>
+      <div class="stat"><small>復習待ち</small><strong id="due-count">0</strong></div>
+      <div class="stat"><small>保存した英文</small><strong id="total-count">0</strong></div>
+    </div>
+    <div class="layout">
+      <section class="panel" id="add-panel">
+        <h2 id="form-title">新しい英文を残す</h2>
+        <p class="panel-intro">英文を自分で推測してから意味を確認する。記録は既存のGAME NOTESのゲームに紐づきます。</p>
+        <form id="card-form">
+          <input type="hidden" id="card-id" />
+          <label class="field">ゲーム<select id="card-game" required></select></label>
+          <label class="field">ゲームに出てきた英文<textarea id="card-english" required maxlength="1200" placeholder="例：You need to find a way out."></textarea></label>
+          <label class="field">自分の予想 <small>空欄でもOK</small><textarea id="card-guess" maxlength="2000" placeholder="たぶん、脱出する方法を探す？"></textarea></label>
+          <label class="field">調べて分かった意味<textarea id="card-meaning" required maxlength="2000" placeholder="脱出する方法を見つける必要がある。"></textarea></label>
+          <label class="field">場面・話者 <small>任意</small><input id="card-context" maxlength="1200" placeholder="例：最初のクエストでNPCが言った" /></label>
+          <div class="actions">
+            <button class="primary" id="save-card" type="submit">英文を保存する</button>
+            <button class="ghost hidden" id="cancel-edit" type="button">編集をやめる</button>
+          </div>
+        </form>
+        <p id="form-status" class="status" role="status" aria-live="polite"></p>
+      </section>
+      <section class="panel" id="review-panel">
+        <h2>今日の復習</h2>
+        <p class="panel-intro">まず英文だけを読んで意味を思い出そう。覚えていなくても大丈夫。</p>
+        <div id="review-content"><div class="empty">復習カードを読み込んでいます…</div></div>
+      </section>
+      <section class="panel weekly">
+        <h2>この7日間</h2>
+        <p class="panel-intro">英文の追加か復習をした日に印がつきます。連続記録は気にせず、遊んだ日に少しだけ。</p>
+        <div class="week-row" id="week-row" aria-label="最近7日間の学習記録"></div>
+      </section>
+      <section class="panel library">
+        <div class="library-head"><div><h2>これまでの英語メモ</h2><p class="panel-intro" style="margin:0">登録済みゲームから選んで見返せます。</p></div><select id="library-game" aria-label="ゲームで絞り込む"><option value="all">すべてのゲーム</option></select></div>
+        <div class="cards" id="card-list"></div>
+      </section>
+    </div>
+  </main>
+  <div class="lock" id="lock">
+    <div class="lock-card">
+      <h2>UNLOCK</h2>
+      <p>英語メモも既存のPrivate Game Notebookと同じ管理キーで保護します。</p>
+      <form id="unlock-form"><input id="admin-key" type="password" autocomplete="current-password" placeholder="HARF-WAY 管理キー" /><button class="primary">開く</button></form>
+      <p id="lock-message" class="status">読み込み中…</p>
+    </div>
+  </div>
+  <script is:inline src="/game-notes/english.js"></script>
+  <script is:inline src="/private-tools/shell.js"></script>
+</body>
+</html>
