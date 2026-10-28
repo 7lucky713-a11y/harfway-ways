@@ -28,8 +28,8 @@ export const prerender = true;
 <body>
 <div class="app">
   <header class="topbar"><div class="brand">HARF-WAY / SALE WATCH<small>HARF-WAY紹介済みゲームのセール比較</small></div><a class="toplink" href="https://harf-way.com/" target="_blank" rel="noopener">HARF-WAY ↗</a></header>
-  <section class="intro"><div><div class="ey">GAME SALE DATABASE</div><h1>SALE<br>WATCH</h1></div><p>WAYS・プレイリスト・紹介記事・ヨリミチ・切れ端で過去に紹介したゲームを対象に、HARF-WAYで実際に紹介した作品に限って、SteamとFanaticalの現在価格・セールを比較できます。作品名、紹介元、価格条件、割引率で絞り込んでください。</p></section>
-  <section class="stats"><div class="stat"><small>紹介ゲーム</small><b id="statTotal">—</b></div><div class="stat"><small>Steam紐付け</small><b id="statLinked">—</b></div><div class="stat sale"><small>現在セール中</small><b id="statSale">—</b></div><div class="stat"><small>500円以下</small><b id="statCheap">—</b></div></section>
+  <section class="intro"><div><div class="ey">GAME SALE DATABASE</div><h1>SALE<br>WATCH</h1></div><p>WAYS・プレイリスト・紹介記事・ヨリミチ・切れ端で過去に紹介したゲームを対象に、HARF-WAYで実際に紹介した作品に限って、Steamでセール中の作品を一覧に表示し、Fanaticalの価格は購入先の比較情報として併記します。作品名、紹介元、価格条件、割引率で絞り込んでください。</p></section>
+  <section class="stats"><div class="stat"><small>紹介ゲーム</small><b id="statTotal">—</b></div><div class="stat"><small>Steam紐付け</small><b id="statLinked">—</b></div><div class="stat sale"><small>Steamセール中</small><b id="statSale">—</b></div><div class="stat"><small>500円以下</small><b id="statCheap">—</b></div></section>
   <section id="focus" class="focusGame" hidden></section>
   <section class="controls">
     <div class="controlMain">
@@ -42,7 +42,7 @@ export const prerender = true;
   </section>
   <div class="resultbar"><div><b id="resultCount">0件</b> を表示</div><div class="progress"><span id="progressText">準備中…</span><div class="track"><i id="progressBar"></i></div></div></div>
   <main id="grid" class="grid"><div class="empty">セール情報を読み込んでいます…</div></main>
-  <div class="foot">Steam価格はSteamストア、Fanatical価格はFanatical公式カタログの日本向け情報をもとに表示しています。最安値は価格が取得できて購入可能なストアの範囲で比較しています。クーポン適用後の価格はコード入力が必要です。価格・在庫は変動するため、購入前に各ストアで最終価格をご確認ください。Fanaticalの取扱作品がHARF-WAYの紹介作品として自動追加されることはありません。Fanaticalへのリンクにはアフィリエイトリンクを含みます。</div>
+  <div class="foot">一覧の掲載条件と割引率はSteamのセール情報に基づき、Fanatical単独のセールは一覧に表示しません。Steam価格はSteamストア、Fanatical価格はFanatical公式カタログの日本向け情報をもとに表示しています。最安値は価格が取得できて購入可能なストアの範囲で比較しています。クーポン適用後の価格はコード入力が必要です。価格・在庫は変動するため、購入前に各ストアで最終価格をご確認ください。Fanaticalの取扱作品がHARF-WAYの紹介作品として自動追加されることはありません。Fanaticalへのリンクにはアフィリエイトリンクを含みます。</div>
 </div>
 <script>
 const $=s=>document.querySelector(s);
@@ -92,8 +92,8 @@ function fanAvailable(r){
   return Boolean(f?.ok&&f.inStock!==false&&f.currency==='JPY'&&f.affiliateUrl&&n!==null&&n>=0&&(!Number.isFinite(until)||until>Date.now()));
 }
 function bestPrice(r){const vals=[steamAvailable(r)?numberOrNull(r.price.finalYen):null,fanAvailable(r)?numberOrNull(fanOf(r).price):null].filter(v=>v!==null);return vals.length?Math.min(...vals):null}
-function bestDiscount(r){return Math.max(steamAvailable(r)&&r.price?.onSale?Number(r.price.discountPercent||0):0,fanAvailable(r)&&fanOf(r)?.onSale?Number(fanOf(r).discountPercent||0):0)}
-function anySale(r){return Boolean(steamAvailable(r)&&r.price?.onSale)||Boolean(fanAvailable(r)&&fanOf(r)?.onSale)}
+function bestDiscount(r){return anySale(r)?Number(r.price.discountPercent||0):0}
+function anySale(r){return Boolean(steamAvailable(r)&&r.price?.onSale&&Number(r.price.discountPercent||0)>0)}
 function saleGames(){return games.filter(anySale)}
 function imageOf(r){return r.price?.headerImage||r.thumbnail||`https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${r.appid}/header.jpg`}
 function steamUrl(r){return r.steamUrl||`https://store.steampowered.com/app/${r.appid}/`}
@@ -129,7 +129,7 @@ function card(r){
     fanReady?`<div class="storeRow ${fanBest?'best':''}"><div class="storeInfo"><div class="storeName">Fanatical${fanBest?' / 安い':''}</div><div class="storeMeta">${fanMeta}</div></div><a class="action fanatical" data-track="store_click" data-kind="fanatical" data-game-id="${esc(r.appid)}" data-title="${esc(title)}" href="${esc(f.affiliateUrl)}" target="_blank" rel="sponsored noopener">購入 ↗</a></div>`:'',
     f?.inStock===false?'<div class="storeRow"><div class="storeInfo"><div class="storeName">Fanatical</div><div class="storeMeta">在庫なし</div></div></div>':''
   ].filter(Boolean).join('');
-  return `<article class="card" data-game-id="${esc(r.appid)}"><div class="media"><img src="${esc(imageOf(r))}" alt="${esc(title)}" loading="lazy" onerror="this.style.opacity='.18'"><div class="saleBadge${bestDiscount(r)>0?"":" isRegular"}">${bestDiscount(r)>0?"-"+bestDiscount(r)+"%":"通常価格"}</div></div><div class="cardBody"><div class="kv"><div class="kvRow"><div class="kvLabel">ゲーム名</div><div class="kvValue game">${esc(title)}</div></div><div class="kvRow"><div class="kvLabel">最大セール率</div><div class="kvValue sale">${bestDiscount(r)>0?"-"+bestDiscount(r)+"%":"セール対象外"}</div></div><div class="kvRow"><div class="kvLabel">最安値</div><div class="kvValue"><span class="priceNow">${money(bestPrice(r))||"価格未取得"}</span>${fanBest?'<span class="priceSource">（<b>Fanatical</b>）</span>':fanReference?'<span class="priceSource">（Fanatical参考価格）</span>':''}</div></div><div class="kvRow"><div class="kvLabel">ストア比較</div><div class="kvValue"><div class="storeCompare">${storeRows}</div>${fanReady?'<div class="affiliate">※Fanaticalへのリンクはアフィリエイトリンクです。</div>':''}</div></div><div class="kvRow"><div class="kvLabel">HARF-WAYコンテンツ</div><div class="kvValue links">${hwHtml}<a class="action" data-track="price_link_click" data-kind="sale-watch" data-game-id="${esc(r.appid)}" data-title="${esc(title)}" href="/sales?appid=${esc(r.appid)}">この作品の価格リンク ↗</a></div></div></div>${tags.length?`<div class="cardMeta">${tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`:''}</div></article>`
+  return `<article class="card" data-game-id="${esc(r.appid)}"><div class="media"><img src="${esc(imageOf(r))}" alt="${esc(title)}" loading="lazy" onerror="this.style.opacity='.18'"><div class="saleBadge${bestDiscount(r)>0?"":" isRegular"}">${bestDiscount(r)>0?"-"+bestDiscount(r)+"%":"通常価格"}</div></div><div class="cardBody"><div class="kv"><div class="kvRow"><div class="kvLabel">ゲーム名</div><div class="kvValue game">${esc(title)}</div></div><div class="kvRow"><div class="kvLabel">Steam割引率</div><div class="kvValue sale">${bestDiscount(r)>0?"-"+bestDiscount(r)+"%":"セール対象外"}</div></div><div class="kvRow"><div class="kvLabel">最安値</div><div class="kvValue"><span class="priceNow">${money(bestPrice(r))||"価格未取得"}</span>${fanBest?'<span class="priceSource">（<b>Fanatical</b>）</span>':fanReference?'<span class="priceSource">（Fanatical参考価格）</span>':''}</div></div><div class="kvRow"><div class="kvLabel">ストア比較</div><div class="kvValue"><div class="storeCompare">${storeRows}</div>${fanReady?'<div class="affiliate">※Fanaticalへのリンクはアフィリエイトリンクです。</div>':''}</div></div><div class="kvRow"><div class="kvLabel">HARF-WAYコンテンツ</div><div class="kvValue links">${hwHtml}<a class="action" data-track="price_link_click" data-kind="sale-watch" data-game-id="${esc(r.appid)}" data-title="${esc(title)}" href="/sales?appid=${esc(r.appid)}">この作品の価格リンク ↗</a></div></div></div>${tags.length?`<div class="cardMeta">${tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`:''}</div></article>`
 }
 function renderFocus(){
   const box=$('#focus');if(!requestedAppid){box.hidden=true;return}box.hidden=false;

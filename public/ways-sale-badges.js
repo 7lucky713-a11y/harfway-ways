@@ -1,5 +1,5 @@
 (() => {
-  // WAYS videos remain unfiltered. Only the price CTA is limited to confirmed sale offers.
+  // WAYS videos remain unfiltered. The price CTA requires a confirmed Steam sale; Fanatical remains a price comparison.
   const STEAM_API = '/api/steam-prices-public?appids=';
   const FAN_API = '/api/fanatical-prices-public?appids=';
   const BATCH_SIZE = 8;
@@ -30,9 +30,11 @@
     const candidates = [];
     const sPrice = numberOrNull(steam?.finalYen);
     const sOff = percent(steam?.discountPercent);
-    if (steam?.ok && steam.priceAvailable && steam.currency === 'JPY' && steam.onSale && sPrice !== null && sOff > 0) {
-      candidates.push({ price: sPrice, discount: sOff, store: 'Steam' });
+    // A Fanatical-only discount must never surface the Steam SALE WATCH CTA.
+    if (!(steam?.ok && steam.priceAvailable && steam.currency === 'JPY' && steam.onSale && sPrice !== null && sOff > 0)) {
+      return null;
     }
+    candidates.push({ price: sPrice, discount: sOff, store: 'Steam' });
     const fPrice = numberOrNull(fan?.price);
     const fOff = percent(fan?.discountPercent);
     if (fan?.ok && fan.inStock !== false && fan.currency === 'JPY' && fan.onSale && fan.affiliateUrl && isCurrent(fan.validUntil)
