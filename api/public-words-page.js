@@ -49,7 +49,7 @@ async function handler(req,res){
     const legacyId=publicWordId(queryValue(req.query?.id)||queryValue(req.query?.word));
     const requestedSlug=queryValue(req.query?.slug);
     res.setHeader('Content-Type','text/html; charset=utf-8');
-    res.setHeader('Cache-Control',demo?'no-store':'public, max-age=0, s-maxage=5, must-revalidate');
+    res.setHeader('Cache-Control',demo||process.env.VERCEL_ENV!=='production'?'no-store':'public, max-age=0, s-maxage=300, must-revalidate');
     res.setHeader('Referrer-Policy','strict-origin-when-cross-origin');
 
     if(categoryRequest){

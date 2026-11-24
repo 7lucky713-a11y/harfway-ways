@@ -41,7 +41,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+  res.setHeader('Cache-Control', 'no-store');
 
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'method_not_allowed' });
@@ -146,6 +146,11 @@ export default async function handler(req, res) {
     }
 
     const games = normalizeRows(rows);
+    // Only successful, public production responses are shared by the CDN.
+    if (process.env.VERCEL_ENV === 'production') {
+      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+      res.setHeader('Vercel-CDN-Cache-Control', 'public, s-maxage=600');
+    }
     return res.status(200).json({
       ok: true,
       version: '0.3',
