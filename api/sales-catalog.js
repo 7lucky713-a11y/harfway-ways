@@ -201,14 +201,15 @@ function mergeScraps(coreRows, scrapRows) {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+  res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Robots-Tag', 'index, follow');
   if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'method_not_allowed' });
   try {
+    let degraded = false;
     const [games, contentRefs, salvagedArticles, scraps] = await Promise.all([
       fetchCoreGames(),
-      fetchContentRefs().catch(error => { console.error('[sales-catalog] content refs query failed', error?.message || error); return new Map(); }),
-      fetchSalvagedArticles().catch(error => { console.error('[sales-catalog] salvaged article query failed', error?.message || error); return new Map(); }),
+      fetchContentRefs().catch(error => { console.error('[sales-catalog] content refs query failed', error?.message || error); degraded = true; return new Map(); }),
+      fetchSalvagedArticles().catch(error => { console.error('[sales-catalog] salvaged article query failed', error?.message || error); degraded = true; return new Map(); }),
       fetchScraps()
     ]);
     const coreRows = games.map(game => {
@@ -238,6 +239,11 @@ export default async function handler(req, res) {
     const articleWithoutSteam = articleRows.filter(row => !row.appid && row.articleUrl).length;
     const scrapRows = rows.filter(row => (row.sources || []).includes('scrap'));
     const scrapSteamLinked = scrapRows.filter(row => row.appid).length;
+    // This catalog is public; avoid caching a degraded upstream response.
+    if (process.env.VERCEL_ENV === 'production' && scraps.ok && !degraded) {
+      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+      res.setHeader('Vercel-CDN-Cache-Control', 'public, s-maxage=600');
+    }
     return res.status(200).json({
       ok: true, source: 'shared-content-core + content-refs + scraps-recovery', articlePolicy: 'archive-salvager-only', scrapPolicy: 'scraps-recovery + core refs',
       updatedAt: new Date().toISOString(),
