@@ -17,3 +17,8 @@ Baseline: 2026-11-01 through 23 UTC, 110.54 CU-h organization-wide, 105.85 CU-h 
 4. Compare 3–7 complete UTC days before/after for main CU-h/day and network transfer, and check error rates, public page freshness and normal editor workflows. Initial target main CU-h/day at least 30% lower, measured not promised. Roll back on regressions.
 5. Phase 2: inventory public DB dependencies, static published snapshots and per-request shuffle, ad serving and tracking separately. No deletion of old projects until dependencies and backups verified.
 
+
+## Hobby-compatible cron adjustment
+- Weekly draft generation: Monday 00:00 UTC (09:00 JST), once weekly instead of twice. The Monday 21:00 JST refresh is removed. Existing working drafts and authorization remain unchanged.
+- Daily sale snapshot and WAYS sync are unchanged. Hobby schedules are approximate within the scheduled hour; do not depend on minute ordering.
+- This resolves the deployment configuration error only; no paid upgrade is authorized. Commercial production must use an eligible host (e.g. Cloudflare or Vercel Pro).
